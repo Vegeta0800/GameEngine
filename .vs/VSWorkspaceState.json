@@ -1,0 +1,16 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\core\\src",
+    "\\game\\src",
+    "\\renderexample",
+    "\\renderexample\\header",
+    "\\renderexample\\src",
+    "\\rendering",
+    "\\rendering\\header",
+    "\\rendering\\src",
+    "\\shared\\header"
+  ],
+  "SelectedNode": "\\rendering\\header\\ra_vkcheck.h",
+  "PreviewInSolutionExplorer": false
+}
