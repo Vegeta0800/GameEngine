@@ -1,0 +1,190 @@
+#include "ra_gameobject.h"
+
+Gameobject::Gameobject() :
+	isRoot(false),
+	parent(nullptr)
+{
+}
+
+
+void Gameobject::Initialize()
+{
+	this->parent = nullptr;
+	this->transform.position = Math::Vec3::zero;
+	this->transform.eulerRotation = Math::Vec3::zero;
+	this->transform.rotation = Math::Quaternion::identity;
+	this->transform.scaling = Math::Vec3::unit_scale;
+}
+
+void Gameobject::Update()
+{
+	this->oldPosition = this->transform.position;
+
+	for (Gameobject* child : this->children)
+	{
+		if (child != nullptr)
+			child->Update();
+	}
+
+	for (Component* component : this->components)
+	{
+
+	}
+
+	if (this->moved)
+	{
+		for (Gameobject* child : this->GetAllChildren())
+		{
+			child->transform.position += (this->transform.position - this->oldPosition);
+		}
+	}
+}
+
+void Gameobject::Cleanup()
+{
+	for (Gameobject* child : this->children)
+	{
+		if (child != nullptr)
+		{
+			child->Cleanup();
+			delete child;
+		}
+	}
+
+	for (Component* component : this->components)
+	{
+		delete component;
+	}
+
+	delete this;
+}
+
+void Gameobject::SetParent(Gameobject* parent)
+{
+	//Set this node to the parent of the inputed node.
+	if (!this->isRoot)
+		this->parent = parent;
+
+	this->parent->children.push_back(this);
+}
+
+void Gameobject::DeleteParent(Gameobject* parent)
+{
+	//If this node has no parent.
+	if (!this->parent)
+	{
+		//Recursive function to delete all children.
+		this->DeleteChildren();
+		return;
+	}
+
+	//Recursive function to do the same for the parent nodes.
+	this->parent->DeleteParent();
+}
+
+void Gameobject::DeleteChild(Gameobject* child, Gameobject* parent)
+{
+	if (child)
+	{
+		//Add the inputed node into this nodes children list.
+		this->children.remove(child);
+
+		//If the inputed node isnt the root
+		if (!child->isRoot)
+			//Set the inputed nodes parent to this.
+			child->parent = parent;
+	}
+}
+
+void Gameobject::DeleteChildren()
+{
+	//for all nodes in this nodes children list.
+	for (Gameobject* child : this->children)
+	{
+		//Recursive function to open all children in all childs of this node.
+		child->DeleteChildren();
+	}
+
+	//Delete this child. Because all children execute this function, all children with all child objects are deleted.
+	delete this;
+}
+
+void Gameobject::MakeRoot()
+{
+	//if this node has a parent.
+	if (this->parent)
+	{
+		//Remove this node from its parent children list.
+		this->parent->children.remove(this);
+
+		//Delete all Parents with its child objects.
+		this->DeleteParent();
+
+		//Set this nodes parent to null pointer.
+		this->parent = nullptr;
+
+		this->isRoot = true;
+	}
+
+	this->isRoot = true;
+
+	//Define this node as the root.
+}
+
+void Gameobject::AddChild(Gameobject* child)
+{
+	if (child)
+	{
+		//Add the inputed node into this nodes children list.
+		this->children.push_back(child);
+
+		//If the inputed node isnt the root
+		if (!child->isRoot)
+			//Set the inputed nodes parent to this.
+			child->parent = this;
+	}
+}
+
+std::list<Gameobject*> Gameobject::GetChildren()
+{
+	return this->children;
+}
+
+std::list<Gameobject*> Gameobject::GetAllChildren()
+{
+	std::list<Gameobject*> temp;
+	this->ListAllChildren(temp);
+	return temp;
+}
+
+Gameobject* Gameobject::GetParent()
+{
+	return this->parent;
+}
+
+bool Gameobject::hasRoot()
+{
+	return this->isRoot;
+}
+
+std::list<Gameobject*> Gameobject::ListAllChildren(std::list<Gameobject*>& list)
+{
+	for (Gameobject* node : this->children)
+	{
+		//Recursive function to open all children in all childs of this node.
+		if (node != nullptr)
+		{
+			node->ListAllChildren(list);
+		}
+	}
+
+	if (this->parent)
+		list.push_back(this);
+}
+
+//Compare two nodes if they are equal or not.
+bool Gameobject::operator==(Gameobject* other)
+{
+	//Return true if the bytes between this node and the inputed node are the size of the class Node.
+	return memcmp(this, other, sizeof(Gameobject)) == 0;
+}

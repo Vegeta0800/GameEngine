@@ -5,6 +5,8 @@
 #include <stdint.h>
 //INTERNAL INCLUDES
 
+#define M_PI 3.14159265359f
+
 typedef int64_t i64;
 typedef uint64_t ui64;
 typedef int32_t i32;

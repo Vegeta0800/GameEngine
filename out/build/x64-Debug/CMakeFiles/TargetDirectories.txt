@@ -1,0 +1,17 @@
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/CMakeFiles/edit_cache.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/CMakeFiles/rebuild_cache.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/core/CMakeFiles/core.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/core/CMakeFiles/edit_cache.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/core/CMakeFiles/rebuild_cache.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/game/CMakeFiles/game.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/game/CMakeFiles/edit_cache.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/game/CMakeFiles/rebuild_cache.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/renderexample/CMakeFiles/renderexample.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/renderexample/CMakeFiles/edit_cache.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/renderexample/CMakeFiles/rebuild_cache.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/rendering/CMakeFiles/rendering.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/rendering/CMakeFiles/edit_cache.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/rendering/CMakeFiles/rebuild_cache.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/shared/CMakeFiles/shared.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/shared/CMakeFiles/edit_cache.dir
+D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug/shared/CMakeFiles/rebuild_cache.dir
