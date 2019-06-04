@@ -10,32 +10,40 @@
 class Gameobject
 {
 public:
+	Gameobject();
 	void Initialize();
 	void Update();
 	void Cleanup();
 
 	void SetParent(Gameobject* parent);
-	void DeleteParent(Gameobject* parent);
+	void SetName(const char* name = "");
+	void DeleteParent();
 
-	void DeleteChild(Gameobject* child, Gameobject* parent = null);
+	void DeleteChild(Gameobject* child, Gameobject* parent = nullptr);
 	void DeleteChildren();
 
 	void MakeRoot();
 
 	void AddChild(Gameobject* child);
+	void AddComponent(Component* component);
 
 	std::list<Gameobject*> GetChildren();
 	std::list<Gameobject*> GetAllChildren();
+	bool operator==(Gameobject* other);
 	Gameobject* GetParent();
+	Transform& GetTransform();
 
 	bool hasRoot();
+	bool isMoved();
 
 private:
 	void ListAllChildren(std::list<Gameobject*>& list);
 
+	const char* name;
 
 	Transform transform;
 	Math::Vec3 oldPosition;
+	Math::Vec3 oldEulerRotation;
 
 	Gameobject* parent;
 	std::list<Gameobject*> children;

@@ -6,10 +6,12 @@ Gameobject::Gameobject() :
 {
 }
 
-
 void Gameobject::Initialize()
 {
 	this->parent = nullptr;
+	this->transform = Transform();
+	this->oldPosition = Math::Vec3::zero;
+	this->oldEulerRotation = Math::Vec3::zero;
 	this->transform.position = Math::Vec3::zero;
 	this->transform.eulerRotation = Math::Vec3::zero;
 	this->transform.rotation = Math::Quaternion::identity;
@@ -18,7 +20,9 @@ void Gameobject::Initialize()
 
 void Gameobject::Update()
 {
+	this->moved = false;
 	this->oldPosition = this->transform.position;
+	this->oldEulerRotation = this->transform.eulerRotation;
 
 	for (Gameobject* child : this->children)
 	{
@@ -28,15 +32,21 @@ void Gameobject::Update()
 
 	for (Component* component : this->components)
 	{
-
+		this->transform.position.x += 10.0f;
+		this->transform.eulerRotation.x += 10.0f;
 	}
 
-	if (this->moved)
+	if (!(this->transform.position == this->oldPosition))
 	{
+		this->moved = true;
 		for (Gameobject* child : this->GetAllChildren())
 		{
-			child->transform.position += (this->transform.position - this->oldPosition);
-		}
+			if (!child->isMoved())
+			{
+				child->transform.position += (this->transform.position - this->oldPosition);
+				child->transform.eulerRotation += (this->transform.eulerRotation - this->oldEulerRotation);
+			}
+		}	
 	}
 }
 
@@ -68,7 +78,18 @@ void Gameobject::SetParent(Gameobject* parent)
 	this->parent->children.push_back(this);
 }
 
-void Gameobject::DeleteParent(Gameobject* parent)
+void Gameobject::SetName(const char* name)
+{
+	this->name = name;
+}
+
+void Gameobject::AddComponent(Component* component)
+{
+	this->components.push_back(component);
+}
+
+
+void Gameobject::DeleteParent()
 {
 	//If this node has no parent.
 	if (!this->parent)
@@ -167,7 +188,12 @@ bool Gameobject::hasRoot()
 	return this->isRoot;
 }
 
-std::list<Gameobject*> Gameobject::ListAllChildren(std::list<Gameobject*>& list)
+bool Gameobject::isMoved()
+{
+	return this->moved;
+}
+
+void Gameobject::ListAllChildren(std::list<Gameobject*>& list)
 {
 	for (Gameobject* node : this->children)
 	{
@@ -187,4 +213,9 @@ bool Gameobject::operator==(Gameobject* other)
 {
 	//Return true if the bytes between this node and the inputed node are the size of the class Node.
 	return memcmp(this, other, sizeof(Gameobject)) == 0;
+}
+
+Transform& Gameobject::GetTransform()
+{
+	return this->transform;
 }

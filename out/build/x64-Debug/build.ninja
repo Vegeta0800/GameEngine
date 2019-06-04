@@ -61,6 +61,20 @@ build rebuild_cache: phony CMakeFiles\rebuild_cache.util
 # Order-only phony target for core
 
 build cmake_object_order_depends_target_core: phony || core\CMakeFiles\core.dir
+build core\CMakeFiles\core.dir\src\ra_component.cpp.obj: CXX_COMPILER__core ..\..\..\core\src\ra_component.cpp || cmake_object_order_depends_target_core
+  FLAGS = /W3 /EHsc /DWIN32 /D_WINDOWS /DEP_COMPILE_DEBUG /WX /sdl /Zi /fp:fast /GR- /GS /permissive-
+  INCLUDES = -I..\..\..\core\header -I..\..\..\shared\header
+  OBJECT_DIR = core\CMakeFiles\core.dir
+  OBJECT_FILE_DIR = core\CMakeFiles\core.dir\src
+  TARGET_COMPILE_PDB = core\CMakeFiles\core.dir\core.pdb
+  TARGET_PDB = ..\..\..\lib\core.debug.pdb
+build core\CMakeFiles\core.dir\src\ra_gameobject.cpp.obj: CXX_COMPILER__core ..\..\..\core\src\ra_gameobject.cpp || cmake_object_order_depends_target_core
+  FLAGS = /W3 /EHsc /DWIN32 /D_WINDOWS /DEP_COMPILE_DEBUG /WX /sdl /Zi /fp:fast /GR- /GS /permissive-
+  INCLUDES = -I..\..\..\core\header -I..\..\..\shared\header
+  OBJECT_DIR = core\CMakeFiles\core.dir
+  OBJECT_FILE_DIR = core\CMakeFiles\core.dir\src
+  TARGET_COMPILE_PDB = core\CMakeFiles\core.dir\core.pdb
+  TARGET_PDB = ..\..\..\lib\core.debug.pdb
 build core\CMakeFiles\core.dir\src\ra_window.cpp.obj: CXX_COMPILER__core ..\..\..\core\src\ra_window.cpp || cmake_object_order_depends_target_core
   FLAGS = /W3 /EHsc /DWIN32 /D_WINDOWS /DEP_COMPILE_DEBUG /WX /sdl /Zi /fp:fast /GR- /GS /permissive-
   INCLUDES = -I..\..\..\core\header -I..\..\..\shared\header
@@ -76,7 +90,7 @@ build core\CMakeFiles\core.dir\src\ra_window.cpp.obj: CXX_COMPILER__core ..\..\.
 #############################################
 # Link the static library ..\..\..\lib\core.debug.lib
 
-build ..\..\..\lib\core.debug.lib: CXX_STATIC_LIBRARY_LINKER__core core\CMakeFiles\core.dir\src\ra_window.cpp.obj
+build ..\..\..\lib\core.debug.lib: CXX_STATIC_LIBRARY_LINKER__core core\CMakeFiles\core.dir\src\ra_component.cpp.obj core\CMakeFiles\core.dir\src\ra_gameobject.cpp.obj core\CMakeFiles\core.dir\src\ra_window.cpp.obj
   LANGUAGE_COMPILE_FLAGS = /W3 /EHsc /DWIN32 /D_WINDOWS /DEP_COMPILE_DEBUG /WX /sdl /Zi /fp:fast /GR- /GS /permissive-
   LINK_FLAGS = /machine:x64
   OBJECT_DIR = core\CMakeFiles\core.dir
