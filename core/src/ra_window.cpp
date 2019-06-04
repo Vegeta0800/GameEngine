@@ -168,3 +168,8 @@ int Window::GetHeigth(void)
 {
 	return this->height;
 }
+
+HWND& Window::GetHandle(void)
+{
+	return this->handle;
+}

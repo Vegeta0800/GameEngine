@@ -1,0 +1,225 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						2,
+						3,
+						4,
+						5
+					],
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.11"
+					},
+					"projectIndex" : 0,
+					"source" : "."
+				},
+				{
+					"build" : "core",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.11"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 1,
+					"source" : "core",
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"build" : "game",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.11"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 2,
+					"source" : "game",
+					"targetIndexes" : 
+					[
+						1
+					]
+				},
+				{
+					"build" : "renderexample",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.11"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 3,
+					"source" : "renderexample",
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"build" : "rendering",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.11"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 4,
+					"source" : "rendering",
+					"targetIndexes" : 
+					[
+						3
+					]
+				},
+				{
+					"build" : "shared",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.11"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 5,
+					"source" : "shared",
+					"targetIndexes" : 
+					[
+						4
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1,
+						2,
+						3,
+						4,
+						5
+					],
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "EngineProject"
+				},
+				{
+					"directoryIndexes" : 
+					[
+						1
+					],
+					"name" : "core",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						0
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						2
+					],
+					"name" : "game",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						1
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						3
+					],
+					"name" : "renderexample",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						2
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						4
+					],
+					"name" : "rendering",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						3
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						5
+					],
+					"name" : "shared",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						4
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 1,
+					"id" : "core::@57760688d1f824db5d9c",
+					"jsonFile" : "target-core-Debug-db45e998a2537d20d619.json",
+					"name" : "core",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "game::@0c53ff3c4131f9152fd3",
+					"jsonFile" : "target-game-Debug-650d05fa46c01dd56611.json",
+					"name" : "game",
+					"projectIndex" : 2
+				},
+				{
+					"directoryIndex" : 3,
+					"id" : "renderexample::@4c8447dbac6fb84a9fc0",
+					"jsonFile" : "target-renderexample-Debug-83bd0b942c0f71b45322.json",
+					"name" : "renderexample",
+					"projectIndex" : 3
+				},
+				{
+					"directoryIndex" : 4,
+					"id" : "rendering::@0571c450e5d1102b49fa",
+					"jsonFile" : "target-rendering-Debug-0421ff0a561b430b0d18.json",
+					"name" : "rendering",
+					"projectIndex" : 4
+				},
+				{
+					"directoryIndex" : 5,
+					"id" : "shared::@b1f7512934231ee3f25d",
+					"jsonFile" : "target-shared-Debug-0ec47ed353b5be1b1c63.json",
+					"name" : "shared",
+					"projectIndex" : 5
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "D:/Documents/Code/Engine/GameEngine/out/build/x64-Debug",
+		"source" : "D:/Documents/Code/Engine/GameEngine"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 0
+	}
+}

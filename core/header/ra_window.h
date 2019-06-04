@@ -26,6 +26,7 @@ public:
 	WindowState GetState(void);
 	int GetWidth(void);
 	int GetHeigth(void);
+	HWND& GetHandle(void);
 
 private:
 	HWND handle;	

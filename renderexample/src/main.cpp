@@ -10,33 +10,33 @@ int main(int argc, const char* argv[])
 	window->Instantiate(1366, 786, 0, "windowTest");
 
 	Rendering* rendering = new Rendering;
-	rendering->Initialize("RA");
+	rendering->Initialize("RA", window->GetHandle());
 
-	//Gameobject* root = new Gameobject();
-	//root->MakeRoot();
-	//
-	//Gameobject* child = new Gameobject();
-	//child->SetParent(root);
+	Gameobject* root = new Gameobject();
+	root->MakeRoot();
+	
+	Gameobject* child = new Gameobject();
+	child->SetParent(root);
 
-	//Component* component = new Component();
-	//child->AddComponent(component);
-	//child->SetName("child1");
+	Component* component = new Component();
+	child->AddComponent(component);
+	child->SetName("child1");
 
-	//Gameobject* child2 = new Gameobject();
-	//child2->SetParent(child);
-	//child2->SetName("child2");
+	Gameobject* child2 = new Gameobject();
+	child2->SetParent(child);
+	child2->SetName("child2");
 
-	//Gameobject* child3 = new Gameobject();
-	//child3->SetParent(child2);
-	//child3->SetName("child3");
+	Gameobject* child3 = new Gameobject();
+	child3->SetParent(child2);
+	child3->SetName("child3");
 
-	//child->GetTransform().position = Math::Vec3::zero;
-	//child2->GetTransform().position = Math::Vec3{ 10.0f, 0, 3.0f};
-	//child3->GetTransform().position = Math::Vec3{ -10.0f, 0, 3.0f };
+	child->GetTransform().position = Math::Vec3::zero;
+	child2->GetTransform().position = Math::Vec3{ 10.0f, 0, 3.0f};
+	child3->GetTransform().position = Math::Vec3{ -10.0f, 0, 3.0f };
 
-	//child->GetTransform().eulerRotation = Math::Vec3::zero;
-	//child2->GetTransform().eulerRotation = Math::Vec3{ 45.0f, 0, 30.0f };
-	//child3->GetTransform().eulerRotation = Math::Vec3{ -45.0f, 0, 30.0f };
+	child->GetTransform().eulerRotation = Math::Vec3::zero;
+	child2->GetTransform().eulerRotation = Math::Vec3{ 45.0f, 0, 30.0f };
+	child3->GetTransform().eulerRotation = Math::Vec3{ -45.0f, 0, 30.0f };
 
 	while (window && window->GetState() != Window::WindowState::Closed)
 	{
@@ -45,6 +45,8 @@ int main(int argc, const char* argv[])
 			//root->Update();
 		}
 	}
+
+	rendering->Cleanup();
 
 	delete window;
 	delete rendering;
