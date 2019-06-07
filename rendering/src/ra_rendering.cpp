@@ -1,8 +1,8 @@
-
 #define VK_USE_PLATFORM_WIN32_KHR
 // EXTERNAL INCLUDES
 #include <vulkan/vulkan.h>
 #include <vector>
+#include <set>
 // INTERNAL INCLUDES
 #include "ra_rendering.h"
 #include "ra_vkcheck.h"
@@ -10,8 +10,45 @@
 
 void Rendering::Initialize(const char* engineName, HWND windowHandle)
 {
-	this->instance = {};
+	CreateInstance(engineName);
+	CreateSurface(windowHandle);
+	PickPhysicalDevice();
+	CreateDevice();
+}
 
+void Rendering::CreateSurface(HWND windowHandle)
+{
+	VkWin32SurfaceCreateInfoKHR surfaceInfo = {	};
+	surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+	surfaceInfo.pNext = nullptr;
+	surfaceInfo.flags = 0;
+	surfaceInfo.hinstance = GetModuleHandle(nullptr);
+	surfaceInfo.hwnd = windowHandle;
+
+	this->surface = {};
+	VK_CHECK(vkCreateWin32SurfaceKHR(this->instance, &surfaceInfo, nullptr, &this->surface));
+}
+
+void Rendering::PickPhysicalDevice()
+{
+	ui32 deviceCount = 0;
+	VK_CHECK(vkEnumeratePhysicalDevices(this->instance, &deviceCount, nullptr));
+
+	std::vector<VkPhysicalDevice> devices(deviceCount);
+	VK_CHECK(vkEnumeratePhysicalDevices(this->instance, &deviceCount, devices.data()));
+
+	for (VkPhysicalDevice device : devices)
+	{
+		if (isPhysicalDeviceSuitable(device))
+		{
+			this->physicalDevice = device;
+			break;
+		}
+	}
+}
+
+void Rendering::CreateInstance(const char* engineName)
+{
 	VkApplicationInfo appInfo = { };
 	appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	appInfo.pNext = nullptr;
@@ -55,82 +92,114 @@ void Rendering::Initialize(const char* engineName, HWND windowHandle)
 	this->instance = {};
 	VK_CHECK(vkCreateInstance(&instInfo, nullptr, &this->instance));
 
-	VkWin32SurfaceCreateInfoKHR surfaceInfo = {	};
-	surfaceInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-	surfaceInfo.pNext = nullptr;
-	surfaceInfo.flags = 0;
-	surfaceInfo.hinstance = nullptr;
-	surfaceInfo.hwnd = nullptr;
-	
-	this->surface = {};
-	VK_CHECK(vkCreateWin32SurfaceKHR(this->instance, &surfaceInfo, nullptr, &this->surface));
+	delete[] layers;
+	delete[] extensions;
+}
 
-	ui32 deviceCount = 0;
-	VK_CHECK(vkEnumeratePhysicalDevices(this->instance, &deviceCount, nullptr));
+void Rendering::CreateDevice()
+{
+	QueueFamilyStats family = FindFamiliyQueues(this->physicalDevice);
 
-	VkPhysicalDevice* devices = new VkPhysicalDevice[deviceCount];
-	VK_CHECK(vkEnumeratePhysicalDevices(this->instance, &deviceCount, devices));
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+	std::set<uint32_t> uniqueQueueFamilies = { *family.graphicsFamily, *family.presentFamily};
 
-	VkPhysicalDeviceProperties2 devProps = { };
-	devProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-	vkGetPhysicalDeviceProperties2(devices[0], &devProps);
+	float queuePriority = 1.0f;
+	for (uint32_t queueFamily : uniqueQueueFamilies) {
+		VkDeviceQueueCreateInfo queueInfo = { };
+		queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueInfo.pNext = nullptr;
+		queueInfo.flags = 0;
+		queueInfo.queueCount = 1;
+		queueInfo.pQueuePriorities = &queuePriority;
+		queueInfo.queueFamilyIndex = *family.graphicsFamily;
+		queueCreateInfos.push_back(queueInfo);
+	}
 
-	VkPhysicalDeviceMemoryProperties2 memProps = { };
-	memProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
-	vkGetPhysicalDeviceMemoryProperties2(devices[0], &memProps);
-
-	printf("Device found: %s @ %.3f GB\n"
-		, devProps.properties.deviceName
-		, memProps.memoryProperties.memoryHeaps[0].size / 10e8);
-
-	float queuePriorities[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-
-	ui32 amountOfQueueFamilies = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(devices[0], &amountOfQueueFamilies, nullptr);
-
-	VkQueueFamilyProperties* queueFamiliyProps = new VkQueueFamilyProperties[amountOfQueueFamilies];
-	vkGetPhysicalDeviceQueueFamilyProperties(devices[0], &amountOfQueueFamilies, queueFamiliyProps);
-
-	VkDeviceQueueCreateInfo queueInfo = { };
-	queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueInfo.pNext = nullptr;
-	queueInfo.flags = 0;
-	queueInfo.queueCount = 1;
-	queueInfo.pQueuePriorities = queuePriorities;
-	queueInfo.queueFamilyIndex = 0; //TODO
-
-	VkPhysicalDeviceFeatures features = { };
-	vkGetPhysicalDeviceFeatures(devices[0], &features);
+	VkPhysicalDeviceFeatures deviceFeatures = {};
 
 	VkDeviceCreateInfo deviceInfo = { };
 	deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	deviceInfo.pNext = nullptr;
-	deviceInfo.pQueueCreateInfos = &queueInfo;
-	deviceInfo.queueCreateInfoCount = 1;
+	deviceInfo.pQueueCreateInfos = queueCreateInfos.data();
+	deviceInfo.queueCreateInfoCount = static_cast<ui32>(queueCreateInfos.size());
 	deviceInfo.enabledExtensionCount = 0;
 	deviceInfo.enabledLayerCount = 0;
 	deviceInfo.ppEnabledExtensionNames = nullptr;
 	deviceInfo.ppEnabledLayerNames = nullptr;
-	deviceInfo.pEnabledFeatures = &features;
+	deviceInfo.pEnabledFeatures = &deviceFeatures;
 	deviceInfo.flags = 0;
 
-	this->device = {};
-	VK_CHECK(vkCreateDevice(devices[0], &deviceInfo, nullptr, &this->device));
+	this->logicalDevice = {};
+	VK_CHECK(vkCreateDevice(this->physicalDevice, &deviceInfo, nullptr, &this->logicalDevice));
 
-	VkQueue queue = { };
-	vkGetDeviceQueue(this->device, 0, 0, &queue);
+	VkQueue graphicsQueue = { };
+	VkQueue presentQueue = {};
+	vkGetDeviceQueue(this->logicalDevice, *family.graphicsFamily, 0, &graphicsQueue);
+	vkGetDeviceQueue(this->logicalDevice, *family.presentFamily, 0, &presentQueue);
 
-	delete[] layers;
-	delete[] extensions;
-	delete[] queueFamiliyProps;
-	delete[] devices;
+	delete family.graphicsFamily;
+	delete family.presentFamily;
+}
+
+bool Rendering::isPhysicalDeviceSuitable(VkPhysicalDevice device)
+{
+	VkPhysicalDeviceProperties deviceProperties;
+	VkPhysicalDeviceFeatures deviceFeatures;
+	vkGetPhysicalDeviceProperties(device, &deviceProperties);
+	vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+	QueueFamilyStats family = FindFamiliyQueues(device);
+
+	return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader && family.isComplete();
+}
+
+QueueFamilyStats Rendering::FindFamiliyQueues(VkPhysicalDevice device)
+{
+	QueueFamilyStats family;
+
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+	int i = 0;
+	for (VkQueueFamilyProperties& queueFamily : queueFamilies)
+	{
+		if (queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+		{
+			if (family.graphicsFamily == nullptr)
+				family.graphicsFamily = new ui32;
+			*family.graphicsFamily = i;
+
+		}
+
+		VkBool32 presentSupport = false;
+		vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+
+		if (queueFamily.queueCount > 0 && presentSupport) 
+		{
+			if (family.presentFamily == nullptr)
+				family.presentFamily = new ui32;
+			*family.presentFamily = i;
+		}
+
+		if (family.isComplete())
+		{
+			break;
+		}
+
+		i++;
+	}
+
+	return family;
 }
 
 void Rendering::Cleanup()
 {
-	VK_CHECK(vkDeviceWaitIdle(this->device));
+	VK_CHECK(vkDeviceWaitIdle(this->logicalDevice));
 
+	vkDestroyDevice(this->logicalDevice, nullptr);
 	vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
-	vkDestroyDevice(this->device, nullptr);
 	vkDestroyInstance(this->instance, nullptr);
 }
