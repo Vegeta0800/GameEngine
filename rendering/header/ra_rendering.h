@@ -17,6 +17,13 @@ struct QueueFamilyStats
 	}
 };
 
+struct SwapChainSupportDetails 
+{
+	VkSurfaceCapabilitiesKHR capabilities;
+	std::vector<VkSurfaceFormatKHR> formats;
+	std::vector<VkPresentModeKHR> presentModes;
+};
+
 class Rendering 
 {
 public:
@@ -30,10 +37,14 @@ private:
 	void CreateInstance(const char* engineName);
 	void CreateDevice();
 	bool isPhysicalDeviceSuitable(VkPhysicalDevice device);
+	bool areExtensionSupported(VkPhysicalDevice device);
 	QueueFamilyStats FindFamiliyQueues(VkPhysicalDevice device);
+	SwapChainSupportDetails GetSwapChainSupport(VkPhysicalDevice device);
 
 	VkInstance instance;
 	VkPhysicalDevice physicalDevice;
 	VkDevice logicalDevice;
 	VkSurfaceKHR surface;
+
+	std::vector<const char*> deviceExtensions;
 };

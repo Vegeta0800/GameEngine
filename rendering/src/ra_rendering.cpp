@@ -10,6 +10,10 @@
 
 void Rendering::Initialize(const char* engineName, HWND windowHandle)
 {
+	this->deviceExtensions = {
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	};
+
 	CreateInstance(engineName);
 	CreateSurface(windowHandle);
 	PickPhysicalDevice();
@@ -70,11 +74,11 @@ void Rendering::CreateInstance(const char* engineName)
 	VkExtensionProperties* extensions = new VkExtensionProperties[amountOfExtensions];
 	VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &amountOfExtensions, extensions));
 
-	std::vector<const char*> validationLayers = {
+	const std::vector<const char*> validationLayers = {
 		"VK_LAYER_LUNARG_standard_validation"
 	};
 
-	std::vector<const char*> usedExtensions = {
+	const std::vector<const char*> usedExtensions = {
 		"VK_KHR_surface",
 		VK_KHR_WIN32_SURFACE_EXTENSION_NAME
 	};
@@ -122,9 +126,9 @@ void Rendering::CreateDevice()
 	deviceInfo.pNext = nullptr;
 	deviceInfo.pQueueCreateInfos = queueCreateInfos.data();
 	deviceInfo.queueCreateInfoCount = static_cast<ui32>(queueCreateInfos.size());
-	deviceInfo.enabledExtensionCount = 0;
+	deviceInfo.enabledExtensionCount = static_cast<ui32>(this->deviceExtensions.size());
 	deviceInfo.enabledLayerCount = 0;
-	deviceInfo.ppEnabledExtensionNames = nullptr;
+	deviceInfo.ppEnabledExtensionNames = this->deviceExtensions.data();
 	deviceInfo.ppEnabledLayerNames = nullptr;
 	deviceInfo.pEnabledFeatures = &deviceFeatures;
 	deviceInfo.flags = 0;
@@ -141,6 +145,24 @@ void Rendering::CreateDevice()
 	delete family.presentFamily;
 }
 
+bool Rendering::areExtensionSupported(VkPhysicalDevice device)
+{
+	ui32 extensionCount = 0;
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+
+	std::vector<VkExtensionProperties> extensions(extensionCount);
+	vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, extensions.data());
+
+	std::set<std::string> requiredExtensions(this->deviceExtensions.begin(), this->deviceExtensions.end());
+
+	for (const VkExtensionProperties& extension : extensions)
+	{
+		requiredExtensions.erase(extension.extensionName);
+	}
+
+	return requiredExtensions.empty();
+}
+
 bool Rendering::isPhysicalDeviceSuitable(VkPhysicalDevice device)
 {
 	VkPhysicalDeviceProperties deviceProperties;
@@ -150,7 +172,17 @@ bool Rendering::isPhysicalDeviceSuitable(VkPhysicalDevice device)
 
 	QueueFamilyStats family = FindFamiliyQueues(device);
 
-	return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader && family.isComplete();
+	bool extensionsSupported = areExtensionSupported(device);
+
+	bool swapChainSupported = false;
+
+	if (extensionsSupported) 
+	{
+		SwapChainSupportDetails swapChainSupport = GetSwapChainSupport(device);
+		swapChainSupported = !swapChainSupport.formats.empty() && !swapChainSupport.presentModes.empty();
+	}
+
+	return deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && deviceFeatures.geometryShader && family.isComplete() && swapChainSupported;
 }
 
 QueueFamilyStats Rendering::FindFamiliyQueues(VkPhysicalDevice device)
@@ -195,10 +227,35 @@ QueueFamilyStats Rendering::FindFamiliyQueues(VkPhysicalDevice device)
 	return family;
 }
 
+SwapChainSupportDetails Rendering::GetSwapChainSupport(VkPhysicalDevice device)
+{
+	SwapChainSupportDetails details;
+
+	vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, this->surface, &details.capabilities);
+
+	ui32 formatCount = 0;
+	vkGetPhysicalDeviceSurfaceFormatsKHR(device, this->surface, &formatCount, nullptr);
+
+	if (formatCount != 0) 
+	{
+		details.formats.resize(formatCount);
+		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, details.formats.data());
+	}
+
+	ui32 presentModeCount;
+	vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
+
+	if (presentModeCount != 0)
+	{
+		details.presentModes.resize(presentModeCount);
+		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, details.presentModes.data());
+	}
+
+	return details;
+}
+
 void Rendering::Cleanup()
 {
-	VK_CHECK(vkDeviceWaitIdle(this->logicalDevice));
-
 	vkDestroyDevice(this->logicalDevice, nullptr);
 	vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
 	vkDestroyInstance(this->instance, nullptr);
