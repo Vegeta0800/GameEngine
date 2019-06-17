@@ -3,14 +3,14 @@
 #include "ra_gameobject.h"
 #include "ra_transform.h"
 #include "ra_component.h"
+#include "ra_utils.h"
 
 int main(int argc, const char* argv[])
 {
-	Window* window = new Window;
-	window->Instantiate(1366, 786, 0, "windowTest");
+	Window::GetInstancePtr()->Instantiate(1366, 786, 0, "windowTest");
 
 	Rendering* rendering = new Rendering;
-	rendering->Initialize("RA", window->GetHandle());
+	rendering->Initialize("RA");
 
 	Gameobject* root = new Gameobject();
 	root->MakeRoot();
@@ -38,9 +38,9 @@ int main(int argc, const char* argv[])
 	child2->GetTransform().eulerRotation = Math::Vec3{ 45.0f, 0, 30.0f };
 	child3->GetTransform().eulerRotation = Math::Vec3{ -45.0f, 0, 30.0f };
 
-	while (window && window->GetState() != Window::WindowState::Closed)
+	while (Window::GetInstancePtr() && Window::GetInstancePtr()->GetState() != Window::WindowState::Closed)
 	{
-		if (!window->PollEvents())
+		if (!Window::GetInstancePtr()->PollEvents())
 		{
 			//root->Update();
 		}
@@ -48,8 +48,8 @@ int main(int argc, const char* argv[])
 
 	rendering->Cleanup();
 
-	delete window;
 	delete rendering;
+	delete Window::GetInstancePtr();
 
 	return 0;
 }

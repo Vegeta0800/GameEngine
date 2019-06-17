@@ -27,24 +27,37 @@ struct SwapChainSupportDetails
 class Rendering 
 {
 public:
-
-	void Initialize(const char* engineName, HWND windowHandle);
+	void Initialize(const char* engineName);
+	void Update(void);
 	void Cleanup(void);
 
 private:
-	void CreateSurface(HWND windowHandle);
-	void PickPhysicalDevice();
+	void CreateSurface();
+	void PickPhysicalDevice(void);
 	void CreateInstance(const char* engineName);
-	void CreateDevice();
+	void CreateDevice(void);
+	void CreateSwapChain();
+
 	bool isPhysicalDeviceSuitable(VkPhysicalDevice device);
 	bool areExtensionSupported(VkPhysicalDevice device);
+
 	QueueFamilyStats FindFamiliyQueues(VkPhysicalDevice device);
 	SwapChainSupportDetails GetSwapChainSupport(VkPhysicalDevice device);
+
+	VkSurfaceFormatKHR GetSwapChainSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+	VkPresentModeKHR GetSwapChainPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
+	VkExtent2D GetSwapChainExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 
 	VkInstance instance;
 	VkPhysicalDevice physicalDevice;
 	VkDevice logicalDevice;
 	VkSurfaceKHR surface;
 
+	VkSwapchainKHR swapChain;
+	std::vector<VkImage> swapChainImages;
+	VkFormat swapChainImageFormat;
+	VkExtent2D swapChainExtent;
+
 	std::vector<const char*> deviceExtensions;
+	std::vector<const char*> validationLayers;
 };

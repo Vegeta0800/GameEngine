@@ -6,11 +6,14 @@
 //INTERNAL INCLUDES
 #include "ra_types.h"
 #include "ra_display.h"
+#include "ra_utils.h"
 
 
 class Window
 {
+	DEFINE_SINGLETON(Window)
 public:
+
 	enum class WindowState
 	{
 		Started,
@@ -24,14 +27,14 @@ public:
 	
 	Display* GetDisplay(ui32 displayID);
 	WindowState GetState(void);
-	int GetWidth(void);
-	int GetHeigth(void);
+	ui32 GetWidth(void);
+	ui32 GetHeigth(void);
 	HWND& GetHandle(void);
 
 private:
 	HWND handle;	
 	WindowState state;
 
-	int width;
-	int height;
+	ui32 width;
+	ui32 height;
 };

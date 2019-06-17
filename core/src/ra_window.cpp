@@ -1,5 +1,9 @@
-#include "ra_window.h"
+
+//EXTERNAL INCLUDES
 #include <unordered_map>
+//INTERNAL INCLUDES
+#include "ra_window.h"
+
 
 std::vector<Display> g_displays;
 std::unordered_map<HWND, Window*> g_windowMapping;
@@ -49,6 +53,8 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
 
 	return TRUE;
 }
+
+DECLARE_SINGLETON(Window)
 
 void Window::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* title)
 {
@@ -159,12 +165,12 @@ Display* Window::GetDisplay(ui32 displayID)
 	return &g_displays[displayID];
 }
 
-int Window::GetWidth(void)
+ui32 Window::GetWidth(void)
 {
 	return this->width;
 }
 
-int Window::GetHeigth(void)
+ui32 Window::GetHeigth(void)
 {
 	return this->height;
 }
