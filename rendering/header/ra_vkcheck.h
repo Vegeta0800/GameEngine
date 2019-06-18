@@ -121,7 +121,7 @@ inline const char* GetVulkanResultString(const VkResult& result)
     if (x != VK_SUCCESS)                                                    \
     {                                                                       \
         printf("Vulkan error: [%s]\n", GetVulkanResultString(x));           \
-        throw;																\
+        __debugbreak();															\
     }                                                                       \
     else                                                                    \
     {                                                                       \

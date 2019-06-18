@@ -12,6 +12,7 @@
 class Window
 {
 	DEFINE_SINGLETON(Window)
+
 public:
 
 	enum class WindowState
@@ -32,9 +33,9 @@ public:
 	HWND& GetHandle(void);
 
 private:
-	HWND handle;	
-	WindowState state;
+	HWND handle = 0;	
+	WindowState state = WindowState::Started;
 
-	ui32 width;
-	ui32 height;
+	ui32 width = 0;
+	ui32 height = 0;
 };

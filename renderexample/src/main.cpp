@@ -1,3 +1,4 @@
+
 #include "ra_window.h"
 #include "ra_rendering.h"
 #include "ra_gameobject.h"
@@ -10,7 +11,7 @@ int main(int argc, const char* argv[])
 	Window::GetInstancePtr()->Instantiate(1366, 786, 0, "windowTest");
 
 	Rendering* rendering = new Rendering;
-	rendering->Initialize("RA");
+	rendering->Initialize("RenderingExample", VK_MAKE_VERSION(0, 0, 0));
 
 	Gameobject* root = new Gameobject();
 	root->MakeRoot();
