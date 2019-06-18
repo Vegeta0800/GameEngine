@@ -109,7 +109,7 @@ inline const char* GetVulkanResultString(const VkResult& result)
 	return str;
 }
 
-#if defined (AE_COMPILE_RELEASE)
+#if defined (RA_COMPILE_RELEASE)
 #define VK_CHECK(x)															\
     if (x != VK_SUCCESS)                                                    \
     {                                                                       \

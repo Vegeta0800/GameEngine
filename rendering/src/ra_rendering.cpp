@@ -22,7 +22,6 @@ void Rendering::Initialize(const char* engineName)
 
 	this->validationLayers = 
 	{
-	"VK_LAYER_LUNARG_standard_validation",
 	"VK_LAYER_KHRONOS_validation"
 	};
 
@@ -31,6 +30,7 @@ void Rendering::Initialize(const char* engineName)
 	PickPhysicalDevice();
 	CreateDevice();
 	CreateSwapChain();
+	CreateImageViews();
 }
 
 void Rendering::CreateSurface()
@@ -196,6 +196,35 @@ void Rendering::CreateSwapChain()
 	this->swapChainImageFormat = surfaceFormat.format;
 	this->swapChainExtent = extent;
 
+}
+
+void Rendering::CreateImageViews()
+{
+	this->swapChainImageViews.resize(this->swapChainImages.size());
+
+	for (ui32 i = 0; i < this->swapChainImages.size(); i++) 
+	{
+		this->swapChainImageViews[i] = CreateImageView(this->swapChainImages[i], this->swapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT, 1);
+	}
+}
+
+VkImageView Rendering::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, ui32 mipLevels) 
+{
+	VkImageViewCreateInfo viewInfo = {};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image = image;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = format;
+	viewInfo.subresourceRange.aspectMask = aspectFlags;
+	viewInfo.subresourceRange.baseMipLevel = 0;
+	viewInfo.subresourceRange.levelCount = mipLevels;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount = 1;
+
+	VkImageView imageView;
+	VK_CHECK(vkCreateImageView(this->logicalDevice, &viewInfo, nullptr, &imageView));
+
+	return imageView;
 }
 
 VkSurfaceFormatKHR Rendering::GetSwapChainSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) 

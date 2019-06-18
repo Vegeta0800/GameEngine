@@ -32,11 +32,12 @@ public:
 	void Cleanup(void);
 
 private:
-	void CreateSurface();
+	void CreateSurface(void);
 	void PickPhysicalDevice(void);
 	void CreateInstance(const char* engineName);
 	void CreateDevice(void);
-	void CreateSwapChain();
+	void CreateSwapChain(void);
+	void CreateImageViews(void);
 
 	bool isPhysicalDeviceSuitable(VkPhysicalDevice device);
 	bool areExtensionSupported(VkPhysicalDevice device);
@@ -44,6 +45,7 @@ private:
 	QueueFamilyStats FindFamiliyQueues(VkPhysicalDevice device);
 	SwapChainSupportDetails GetSwapChainSupport(VkPhysicalDevice device);
 
+	VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags, ui32 mipLevels);
 	VkSurfaceFormatKHR GetSwapChainSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR GetSwapChainPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
 	VkExtent2D GetSwapChainExtent(const VkSurfaceCapabilitiesKHR& capabilities);
@@ -60,4 +62,6 @@ private:
 
 	std::vector<const char*> deviceExtensions;
 	std::vector<const char*> validationLayers;
+	std::vector<VkImageView> swapChainImageViews;
+	std::vector<VkFramebuffer> swapChainFramebuffers;
 };
