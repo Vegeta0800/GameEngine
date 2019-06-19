@@ -11,12 +11,14 @@
 #include "ra_utils.h"
 #include "ra_window.h"
 
+
 void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 {
 	this->CreateInstance(applicationName, applicationVersion);
 	this->CreatePhysicalDevice();
 	this->CreateSurface();
 	this->CreateLogicalDevice();
+	this->CreateSwapChain();
 }
 
 void Rendering::CreateInstance(const char* applicationName, ui32 applicationVersion)
@@ -164,6 +166,15 @@ void Rendering::CreateLogicalDevice()
 	queueInfo.pQueuePriorities = &queuePriority;
 
 	VkPhysicalDeviceFeatures enabledFeatures = { };
+	
+	//const std::vector<const char*> deviceValidationLayers =
+	//{
+	//};
+
+	const std::vector<const char*> deviceExtensions =
+	{
+		VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	};
 
 	VkDeviceCreateInfo deviceInfo;
 	deviceInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
@@ -173,8 +184,8 @@ void Rendering::CreateLogicalDevice()
 	deviceInfo.pQueueCreateInfos = &queueInfo;
 	deviceInfo.enabledLayerCount = 0;
 	deviceInfo.ppEnabledLayerNames = nullptr;
-	deviceInfo.enabledExtensionCount = 0;
-	deviceInfo.ppEnabledExtensionNames = nullptr;
+	deviceInfo.enabledExtensionCount = static_cast<ui32>(deviceExtensions.size());
+	deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
 	deviceInfo.pEnabledFeatures = &enabledFeatures;
 
 	VK_CHECK(vkCreateDevice(this->physicalDevice, &deviceInfo, nullptr, &this->logicalDevice));
@@ -194,35 +205,78 @@ void Rendering::CreateSurface()
 	surfaceInfo.hwnd = Window::GetInstancePtr()->GetHandle();
 
 	VK_CHECK(vkCreateWin32SurfaceKHR(this->instance, &surfaceInfo, nullptr, &this->surface));
+}
 
+void Rendering::CreateSwapChain(void)
+{
 	VkSurfaceCapabilitiesKHR surfaceCapabilities;
 	VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(this->physicalDevice, this->surface, &surfaceCapabilities));
-	
-	//std::cout << "Surface Capabilities: " << std::endl;
-	//std::cout << "\tminImageCount: " << surfaceCapabilities.minImageCount << std::endl;
-	//std::cout << "\tmaxImageCount: " << surfaceCapabilities.maxImageCount << std::endl;
-	//std::cout << "\tcurrentExtent: " << surfaceCapabilities.currentExtent.width << "/" << surfaceCapabilities.currentExtent.height << std::endl;
-	//std::cout << "\tminImageExtent: " << surfaceCapabilities.minImageExtent.width << "/" << surfaceCapabilities.minImageExtent.height << std::endl;
-	//std::cout << "\tmaxImageExtent: " << surfaceCapabilities.maxImageExtent.width << "/" << surfaceCapabilities.maxImageExtent.height << std::endl;
-	//std::cout << "\tmaxImageArrayLayers: " << surfaceCapabilities.maxImageArrayLayers << std::endl;
-	//std::cout << "\tsupportedTransforms: " << surfaceCapabilities.supportedTransforms << std::endl;
-	//std::cout << "\tcurrentTransform: " << surfaceCapabilities.currentTransform << std::endl;
-	//std::cout << "\tsupportedCompositeAlpha: " << surfaceCapabilities.supportedCompositeAlpha << std::endl;
-	//std::cout << "\tsupportedUsageFlags: " << surfaceCapabilities.supportedUsageFlags << std::endl;
 
 	ui32 formatsCount = 0;
 	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(this->physicalDevice, this->surface, &formatsCount, nullptr));
-
 	std::vector<VkSurfaceFormatKHR> surfaceFormats(formatsCount);
 	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(this->physicalDevice, this->surface, &formatsCount, surfaceFormats.data()));
 
+	ui32 presentationModeCount = 0;
+	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(this->physicalDevice, this->surface, &presentationModeCount, nullptr));
+	std::vector<VkPresentModeKHR> presentModes(presentationModeCount);
+	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(this->physicalDevice, this->surface, &presentationModeCount, presentModes.data()));
 
+	VkBool32 surfaceSupported = false;
+	VK_CHECK(vkGetPhysicalDeviceSurfaceSupportKHR(this->physicalDevice, 0, this->surface, &surfaceSupported));
+
+	if (!surfaceSupported)
+	{
+		printf("Surface not supported!");
+		__debugbreak();
+	}
+
+	VkSwapchainCreateInfoKHR swapchainInfo;
+	swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapchainInfo.pNext = nullptr;
+	swapchainInfo.flags = 0; //TODO
+	swapchainInfo.surface = this->surface;
+	swapchainInfo.minImageCount = surfaceCapabilities.maxImageCount >= 3 ? 3 : 2;
+	swapchainInfo.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
+	swapchainInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+	swapchainInfo.imageExtent = surfaceCapabilities.currentExtent;
+	swapchainInfo.imageArrayLayers = 1;
+	swapchainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; //Change if more than one queue
+	swapchainInfo.queueFamilyIndexCount = 0; //TODO if more queues
+	swapchainInfo.pQueueFamilyIndices = nullptr; //TODO if more queuess
+	swapchainInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+	swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	swapchainInfo.presentMode = this->isModeSupported(presentModes, VK_PRESENT_MODE_MAILBOX_KHR) ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_FIFO_KHR;
+	swapchainInfo.clipped = VK_TRUE;
+	swapchainInfo.oldSwapchain = VK_NULL_HANDLE;
+
+	VK_CHECK(vkCreateSwapchainKHR(this->logicalDevice, &swapchainInfo, nullptr, &this->swapchain)); //TODO Some weird bug saying an extension could not be validated. Check if this gets an issue.
+
+	ui32 swapchainImageCount = 0;
+	VK_CHECK(vkGetSwapchainImagesKHR(this->logicalDevice, this->swapchain, &swapchainImageCount, nullptr));
+
+	std::vector<VkImage> swapchainImages(swapchainImageCount);
+	VK_CHECK(vkGetSwapchainImagesKHR(this->logicalDevice, this->swapchain, &swapchainImageCount, swapchainImages.data()));
+
+	}
+
+bool Rendering::isModeSupported(const std::vector<VkPresentModeKHR>& supportedPresentModes, VkPresentModeKHR presentMode)
+{
+	for (const VkPresentModeKHR& supportedPresentMode : supportedPresentModes)
+	{
+		if (supportedPresentMode == presentMode)
+			return true;
+	}
+
+	return false;
 }
 
 void Rendering::Cleanup()
 {
 	VK_CHECK(vkDeviceWaitIdle(this->logicalDevice));
 
+	vkDestroySwapchainKHR(this->logicalDevice, this->swapchain, nullptr);
 	vkDestroyDevice(this->logicalDevice, nullptr);
 	vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
 	vkDestroyInstance(this->instance, nullptr);

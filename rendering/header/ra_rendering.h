@@ -23,8 +23,15 @@ private:
 
 	void CreateSurface(void);
 
+	void CreateSwapChain(void);
+	bool isModeSupported(const std::vector<VkPresentModeKHR>& supportedPresentModes, VkPresentModeKHR presentMode);
+
 	VkInstance instance;
 	VkPhysicalDevice physicalDevice;
 	VkDevice logicalDevice;
 	VkSurfaceKHR surface;
+	VkSwapchainKHR swapchain;
+
+	const ui32 swapChainImageWidth = 400;
+	const ui32 swapChainImageHeight = 300;
 };
