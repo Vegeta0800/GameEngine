@@ -21,6 +21,8 @@ public:
 	void Cleanup(void);
 
 private:
+	void DrawFrame(void);
+
 	void CreateInstance(const char* applicationName, ui32 applicationVersion);
 
 	void CreatePhysicalDevice(void);
@@ -39,16 +41,44 @@ private:
 
 	void CreatePipeline(void);
 
+	void CreateFramebuffers(void);
+
+	void CreateCommandbuffer(void);
+
+	void RecordCommands(void);
+
+	void CreateSemaphores(void);
+
 	std::vector<byte> GetBuffer(RenderingBuffer bufferType);
+
+	ui16 indexOfGraphicsQueue;
+
+	VkQueue queue;
 
 	VkInstance instance;
 	VkPhysicalDevice physicalDevice;
 	VkDevice logicalDevice;
 	VkSurfaceKHR surface;
 
+	VkSurfaceCapabilitiesKHR surfaceCapabilities;
+
 	VkSwapchainKHR swapchain;
 	std::vector<VkImageView> imageViews;
+	std::vector<VkImage> swapchainImages;
 
 	VkShaderModule vertexModule;
 	VkShaderModule fragmentModule;
+
+	VkRenderPass renderpass;
+	VkPipelineLayout pipelineLayout;
+	VkPipeline pipeline;
+
+	VkCommandPool commandPool;
+	std::vector<VkCommandBuffer> commandBuffers;
+
+	std::vector<VkFramebuffer> framebuffers;
+	std::vector<VkPipelineStageFlags> waitStageMask;
+
+	VkSemaphore imageAvailableSemaphore;
+	VkSemaphore renderingFinishedSemaphore;
 };

@@ -23,7 +23,7 @@ int main(int argc, const char* argv[])
 	CVar gamepath = { "gamepath", gamepathstr.c_str() };
 	Console::GetInstancePtr()->SetCVar(gamepath);
 
-	Window::GetInstancePtr()->Instantiate(1366, 786, 0, "windowTest");
+	Window::GetInstancePtr()->Instantiate(800, 600, 0, "windowTest");
 
 	Rendering* rendering = new Rendering;
 	rendering->Initialize("RenderingExample", VK_MAKE_VERSION(0, 0, 0));
@@ -54,12 +54,19 @@ int main(int argc, const char* argv[])
 	child2->GetTransform().eulerRotation = Math::Vec3{ 45.0f, 0, 30.0f };
 	child3->GetTransform().eulerRotation = Math::Vec3{ -45.0f, 0, 30.0f };
 
+	INIT_TIMER;
+
+
 	while (Window::GetInstancePtr() && Window::GetInstancePtr()->GetState() != Window::WindowState::Closed)
 	{
+		//START_TIMER;
 		if (!Window::GetInstancePtr()->PollEvents())
 		{
 			//root->Update();
 		}
+
+		rendering->Update();
+		//STOP_TIMER("Loop took: ");
 	}
 
 	rendering->Cleanup();
