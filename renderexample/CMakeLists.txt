@@ -28,3 +28,18 @@ target_include_directories(${TARGET_NAME} PUBLIC
 	"${CMAKE_CURRENT_SOURCE_DIR}/header"
 	"${CMAKE_SOURCE_DIR}/rendering/header"
 )
+
+add_custom_target(
+    "directories" ALL
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/bin"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/bin/data"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/bin/data/shader"
+)
+
+add_custom_command(
+	TARGET ${TARGET_NAME}
+	COMMAND "$ENV{VK_SDK_PATH}/Bin/glslangValidator.exe -V ${CMAKE_SOURCE_DIR}/shader/shader.vert"
+	COMMAND "$ENV{VK_SDK_PATH}/Bin/glslangValidator.exe -V ${CMAKE_SOURCE_DIR}/shader/shader.frag"
+	COMMENT "Generating shaders"
+	WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}/bin/data/shader"
+)

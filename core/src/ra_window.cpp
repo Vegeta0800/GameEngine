@@ -58,6 +58,8 @@ DECLARE_SINGLETON(Window)
 
 void Window::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* title)
 {
+	this->filesystem = new Filesystem();
+
 	//Initialize variable
 	ui32 style = 0;
 	this->width = width;
@@ -94,14 +96,14 @@ void Window::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* ti
 	//Fill the RECT struct with data.
 	RECT adjustedRect = RECT
 	{
-		static_cast<LONG>(posX),
-		static_cast<LONG>(posY),
+		static_cast<LONG>(0),
+		static_cast<LONG>(0),
 		static_cast<LONG>(width),
 		static_cast<LONG>(height)
 	};
 
 	//Adjust the Window. If that fails crash the program.
-	if (!AdjustWindowRectEx(&adjustedRect, style, FALSE, NULL))
+	if (!AdjustWindowRect(&adjustedRect, style, FALSE))
 		throw;
 
 	//Create a handle onto a newly created window.
@@ -111,8 +113,8 @@ void Window::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* ti
 		title,
 		title,
 		style,
-		adjustedRect.left,
-		adjustedRect.top,
+		static_cast<int>(posX),
+		static_cast<int>(posY),
 		adjustedRect.right,
 		adjustedRect.bottom,
 		NULL,
@@ -178,4 +180,9 @@ ui32 Window::GetHeigth(void)
 HWND& Window::GetHandle(void)
 {
 	return this->handle;
+}
+
+Filesystem* Window::GetFileSystem(void)
+{
+	return this->filesystem;
 }

@@ -6,8 +6,16 @@
 //INTERNAL INCLUDES
 #include "ra_types.h"
 
+
 class Rendering 
 {
+	enum class RenderingBuffer
+	{
+		VERTEX = 0,
+		FRAGMENT = 1,
+		GEOMETRY = 2
+	};
+
 public:
 	void Initialize(const char* applicationName, ui32 applicationVersion);
 	void Update(void);
@@ -24,14 +32,22 @@ private:
 	void CreateSurface(void);
 
 	void CreateSwapChain(void);
+	void CreateImageViews(void);
 	bool isModeSupported(const std::vector<VkPresentModeKHR>& supportedPresentModes, VkPresentModeKHR presentMode);
+
+	void CreateShaderModules(void);
+	void CreateShaderModule(const std::vector<byte>& code, VkShaderModule* shaderModule);
+
+	std::vector<byte> GetBuffer(RenderingBuffer bufferType);
 
 	VkInstance instance;
 	VkPhysicalDevice physicalDevice;
 	VkDevice logicalDevice;
 	VkSurfaceKHR surface;
-	VkSwapchainKHR swapchain;
 
-	const ui32 swapChainImageWidth = 400;
-	const ui32 swapChainImageHeight = 300;
+	VkSwapchainKHR swapchain;
+	std::vector<VkImageView> imageViews;
+
+	VkShaderModule vertexModule;
+	VkShaderModule fragmentModule;
 };

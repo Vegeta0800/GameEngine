@@ -7,6 +7,7 @@
 #include "ra_types.h"
 #include "ra_display.h"
 #include "ra_utils.h"
+#include "filesystem/ra_filesystem.h"
 
 
 class Window
@@ -31,10 +32,13 @@ public:
 	ui32 GetWidth(void);
 	ui32 GetHeigth(void);
 	HWND& GetHandle(void);
+	Filesystem* GetFileSystem(void);
 
 private:
 	HWND handle = 0;	
 	WindowState state = WindowState::Started;
+	
+	Filesystem* filesystem;  //TODO
 
 	ui32 width = 0;
 	ui32 height = 0;

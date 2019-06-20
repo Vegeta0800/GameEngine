@@ -2,7 +2,6 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 // EXTERNAL INCLUDES
 #include <vulkan/vulkan.h>
-#include <iostream>
 
 // INTERNAL INCLUDES
 #include "ra_rendering.h"
@@ -10,7 +9,8 @@
 #include "ra_types.h"
 #include "ra_utils.h"
 #include "ra_window.h"
-
+#include "filesystem/ra_filesystem.h"
+#include "filesystem/ra_winfile.h"
 
 void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 {
@@ -19,6 +19,8 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 	this->CreateSurface();
 	this->CreateLogicalDevice();
 	this->CreateSwapChain();
+	this->CreateImageViews();
+	this->CreateShaderModules();
 }
 
 void Rendering::CreateInstance(const char* applicationName, ui32 applicationVersion)
@@ -43,21 +45,6 @@ void Rendering::CreateInstance(const char* applicationName, ui32 applicationVers
 	appInfo.engineVersion = VK_MAKE_VERSION(0, 0, 0);
 	appInfo.apiVersion = VK_API_VERSION_1_1;
 
-	//ui32 supportedLayerCount = 0;
-	//VK_CHECK(vkEnumerateInstanceLayerProperties(&supportedLayerCount, nullptr));
-
-	//VkLayerProperties* layers = new VkLayerProperties[supportedLayerCount];
-	//VK_CHECK(vkEnumerateInstanceLayerProperties(&supportedLayerCount, layers));
-
-	//ui32 extensionCount = 0;
-	//VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr));
-
-	//VkExtensionProperties* extensions = new VkExtensionProperties[extensionCount];
-	//VK_CHECK(vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions));
-
-	//for (ui32 i = 0; i < extensionCount; i++)
-	//	printf("Name:    %s \n", extensions[i].extensionName);
-
 	VkInstanceCreateInfo instanceInfo;
 	instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 	instanceInfo.pNext = nullptr;
@@ -69,15 +56,12 @@ void Rendering::CreateInstance(const char* applicationName, ui32 applicationVers
 	instanceInfo.ppEnabledExtensionNames = instanceExtensions.data(); 
 
 	VK_CHECK(vkCreateInstance(&instanceInfo, nullptr, &this->instance));
-
-	//delete[] layers;
-	//delete[] extensions;
 }
 
 void Rendering::CreatePhysicalDevice()
 {
 	ui32 physicalDeviceCount = 0;
-	VK_CHECK(vkEnumeratePhysicalDevices(this->instance, &physicalDeviceCount, nullptr));
+	vkEnumeratePhysicalDevices(this->instance, &physicalDeviceCount, nullptr);
 
 	std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
 	VK_CHECK(vkEnumeratePhysicalDevices(this->instance, &physicalDeviceCount, physicalDevices.data()));
@@ -192,7 +176,6 @@ void Rendering::CreateLogicalDevice()
 
 	VkQueue queue = { };
 	vkGetDeviceQueue(this->logicalDevice, 0, 0, &queue);
-
 }
 
 void Rendering::CreateSurface()
@@ -213,12 +196,12 @@ void Rendering::CreateSwapChain(void)
 	VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(this->physicalDevice, this->surface, &surfaceCapabilities));
 
 	ui32 formatsCount = 0;
-	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(this->physicalDevice, this->surface, &formatsCount, nullptr));
+	vkGetPhysicalDeviceSurfaceFormatsKHR(this->physicalDevice, this->surface, &formatsCount, nullptr);
 	std::vector<VkSurfaceFormatKHR> surfaceFormats(formatsCount);
 	VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(this->physicalDevice, this->surface, &formatsCount, surfaceFormats.data()));
 
 	ui32 presentationModeCount = 0;
-	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(this->physicalDevice, this->surface, &presentationModeCount, nullptr));
+	vkGetPhysicalDeviceSurfacePresentModesKHR(this->physicalDevice, this->surface, &presentationModeCount, nullptr);
 	std::vector<VkPresentModeKHR> presentModes(presentationModeCount);
 	VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(this->physicalDevice, this->surface, &presentationModeCount, presentModes.data()));
 
@@ -239,7 +222,8 @@ void Rendering::CreateSwapChain(void)
 	swapchainInfo.minImageCount = surfaceCapabilities.maxImageCount >= 3 ? 3 : 2;
 	swapchainInfo.imageFormat = VK_FORMAT_B8G8R8A8_UNORM;
 	swapchainInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-	swapchainInfo.imageExtent = surfaceCapabilities.currentExtent;
+	swapchainInfo.imageExtent.height = surfaceCapabilities.currentExtent.height;
+	swapchainInfo.imageExtent.width = surfaceCapabilities.currentExtent.width;
 	swapchainInfo.imageArrayLayers = 1;
 	swapchainInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE; //Change if more than one queue
@@ -251,15 +235,64 @@ void Rendering::CreateSwapChain(void)
 	swapchainInfo.clipped = VK_TRUE;
 	swapchainInfo.oldSwapchain = VK_NULL_HANDLE;
 
-	VK_CHECK(vkCreateSwapchainKHR(this->logicalDevice, &swapchainInfo, nullptr, &this->swapchain)); //TODO Some weird bug saying an extension could not be validated. Check if this gets an issue.
+	VK_CHECK(vkCreateSwapchainKHR(this->logicalDevice, &swapchainInfo, nullptr, &this->swapchain));
+}
 
+void Rendering::CreateImageViews(void)
+{
 	ui32 swapchainImageCount = 0;
-	VK_CHECK(vkGetSwapchainImagesKHR(this->logicalDevice, this->swapchain, &swapchainImageCount, nullptr));
+	vkGetSwapchainImagesKHR(this->logicalDevice, this->swapchain, &swapchainImageCount, nullptr);
 
-	std::vector<VkImage> swapchainImages(swapchainImageCount);
+	std::vector<VkImage> swapchainImages;
+
+	swapchainImages.resize(swapchainImageCount);
 	VK_CHECK(vkGetSwapchainImagesKHR(this->logicalDevice, this->swapchain, &swapchainImageCount, swapchainImages.data()));
 
+	this->imageViews.resize(swapchainImageCount);
+
+	for (ui32 i = 0; i < swapchainImageCount; i++)
+	{
+		VkImageViewCreateInfo imageViewInfo;
+		imageViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		imageViewInfo.pNext = nullptr;
+		imageViewInfo.flags = 0; //TODO
+		imageViewInfo.image = swapchainImages[i];
+		imageViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		imageViewInfo.format = VK_FORMAT_B8G8R8A8_UNORM;
+		imageViewInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		imageViewInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		imageViewInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		imageViewInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+		imageViewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageViewInfo.subresourceRange.baseMipLevel = 0;
+		imageViewInfo.subresourceRange.levelCount = 1;
+		imageViewInfo.subresourceRange.baseArrayLayer = 0;
+		imageViewInfo.subresourceRange.layerCount = 1;
+
+		VK_CHECK(vkCreateImageView(this->logicalDevice, &imageViewInfo, nullptr, &this->imageViews[i]));
 	}
+}
+
+void Rendering::CreateShaderModules()
+{
+	std::vector<byte> vertexCode = GetBuffer(RenderingBuffer::VERTEX); // TODO if shader dont work.
+	std::vector<byte> fragmentCode = GetBuffer(RenderingBuffer::FRAGMENT);
+
+	this->CreateShaderModule(vertexCode, &this->vertexModule);
+	this->CreateShaderModule(fragmentCode, &this->fragmentModule);
+}
+
+void Rendering::CreateShaderModule(const std::vector<byte>& code, VkShaderModule* shaderModule)
+{
+	VkShaderModuleCreateInfo shaderInfo;
+	shaderInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	shaderInfo.pNext = nullptr;
+	shaderInfo.flags = 0;
+	shaderInfo.codeSize = code.size() % 4 + code.size();
+	shaderInfo.pCode = (ui32*)code.data();
+
+	VK_CHECK(vkCreateShaderModule(this->logicalDevice, &shaderInfo, nullptr, shaderModule));
+}
 
 bool Rendering::isModeSupported(const std::vector<VkPresentModeKHR>& supportedPresentModes, VkPresentModeKHR presentMode)
 {
@@ -272,12 +305,48 @@ bool Rendering::isModeSupported(const std::vector<VkPresentModeKHR>& supportedPr
 	return false;
 }
 
+std::vector<byte> Rendering::GetBuffer(RenderingBuffer bufferType)
+{
+	std::vector<byte> buffer;
+
+	switch (bufferType)
+	{
+		case RenderingBuffer::VERTEX:
+		{
+			WinFile* vertexShaderFile = new WinFile(Window::GetInstancePtr()->GetFileSystem()->FileInDirectory("shader", "vert.spv").c_str());
+			buffer.assign(vertexShaderFile->Read(), vertexShaderFile->Read() + vertexShaderFile->GetSize());
+			vertexShaderFile->Cleanup();
+			break;
+		}
+		case RenderingBuffer::FRAGMENT:
+		{
+			WinFile* fragmentShaderFile = new WinFile(Window::GetInstancePtr()->GetFileSystem()->FileInDirectory("shader", "frag.spv").c_str());
+			buffer.assign(fragmentShaderFile->Read(), fragmentShaderFile->Read() + fragmentShaderFile->GetSize());
+			fragmentShaderFile->Cleanup();
+			break;
+		}
+	}
+
+	return buffer;
+}
+
 void Rendering::Cleanup()
 {
 	VK_CHECK(vkDeviceWaitIdle(this->logicalDevice));
 
+	for (ui32 i = 0; i < this->imageViews.size(); i++)
+	{
+		vkDestroyImageView(this->logicalDevice, this->imageViews[i], nullptr);
+	}
+
+	this->imageViews.clear();
+
+	vkDestroyShaderModule(this->logicalDevice, this->vertexModule, nullptr);
+	vkDestroyShaderModule(this->logicalDevice, this->fragmentModule, nullptr);
 	vkDestroySwapchainKHR(this->logicalDevice, this->swapchain, nullptr);
 	vkDestroyDevice(this->logicalDevice, nullptr);
 	vkDestroySurfaceKHR(this->instance, this->surface, nullptr);
 	vkDestroyInstance(this->instance, nullptr);
+
+	Window::GetInstancePtr()->GetFileSystem()->Cleanup();
 } 

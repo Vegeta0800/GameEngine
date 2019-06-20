@@ -5,9 +5,24 @@
 #include "ra_transform.h"
 #include "ra_component.h"
 #include "ra_utils.h"
+#include "console/ra_cvar.h"
+#include "console/ra_console.h"
 
 int main(int argc, const char* argv[])
 {
+
+	std::string gamepathstr = static_cast<std::string>(argv[0]);
+	for (char& sign : gamepathstr)
+	{
+		if (sign == '\\')
+		{
+			sign = '/';
+		}
+	}
+	gamepathstr = gamepathstr.substr(0, gamepathstr.find_last_of("/") + 1);
+	CVar gamepath = { "gamepath", gamepathstr.c_str() };
+	Console::GetInstancePtr()->SetCVar(gamepath);
+
 	Window::GetInstancePtr()->Instantiate(1366, 786, 0, "windowTest");
 
 	Rendering* rendering = new Rendering;

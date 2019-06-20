@@ -111,20 +111,26 @@ inline const char* GetVulkanResultString(const VkResult& result)
 
 #if defined (RA_COMPILE_RELEASE)
 #define VK_CHECK(x)															\
-    if (x != VK_SUCCESS)                                                    \
+{																			\
+	auto hr = x;															\
+    if (hr != VK_SUCCESS)                                                   \
     {                                                                       \
-        printf("Vulkan error: [%s]\n", GetVulkanResultString(x));           \
+        printf("Vulkan error: [%s]\n", GetVulkanResultString(hr));          \
         return;                                                             \
-    }
+    }																		\
+}
 #else
 #define VK_CHECK(x)															\
-    if (x != VK_SUCCESS)                                                    \
+{																			\
+	auto hr = x;															\
+    if (hr != VK_SUCCESS)                                                   \
     {                                                                       \
-        printf("Vulkan error: [%s]\n", GetVulkanResultString(x));           \
-        __debugbreak();															\
+        printf("Vulkan error: [%s]\n", GetVulkanResultString(hr));          \
+        __debugbreak();														\
     }                                                                       \
     else                                                                    \
     {                                                                       \
-        printf("Vulkan action: %s [%s]\n", #x, GetVulkanResultString(x));   \
-    }
+        printf("Vulkan action: %s [%s]\n", #x, GetVulkanResultString(hr));	\
+    }																		\
+}
 #endif
