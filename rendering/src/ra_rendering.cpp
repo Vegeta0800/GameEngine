@@ -21,6 +21,7 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 	this->CreateSwapChain();
 	this->CreateImageViews();
 	this->CreateShaderModules();
+	this->CreatePipeline();
 }
 
 void Rendering::CreateInstance(const char* applicationName, ui32 applicationVersion)
@@ -292,6 +293,101 @@ void Rendering::CreateShaderModule(const std::vector<byte>& code, VkShaderModule
 	shaderInfo.pCode = (ui32*)code.data();
 
 	VK_CHECK(vkCreateShaderModule(this->logicalDevice, &shaderInfo, nullptr, shaderModule));
+}
+
+void Rendering::CreatePipeline()
+{
+	//SHADERSTAGE INFOS
+	VkPipelineShaderStageCreateInfo vertShaderStageInfo;
+	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertShaderStageInfo.pNext = nullptr;
+	vertShaderStageInfo.flags = 0; //TODO
+	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertShaderStageInfo.module = this->vertexModule;
+	vertShaderStageInfo.pName = "main";
+	vertShaderStageInfo.pSpecializationInfo = nullptr; //Constant variables
+
+	VkPipelineShaderStageCreateInfo fragShaderStageInfo;
+	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragShaderStageInfo.pNext = nullptr;
+	fragShaderStageInfo.flags = 0; //TODO
+	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragShaderStageInfo.module = this->fragmentModule;
+	fragShaderStageInfo.pName = "main";
+	fragShaderStageInfo.pSpecializationInfo = nullptr; //Constant variables
+
+	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+
+	//VERTEX INPUT
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo;
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.pNext = nullptr;
+	vertexInputInfo.flags = 0;
+	vertexInputInfo.vertexBindingDescriptionCount = 0;
+	vertexInputInfo.pVertexBindingDescriptions = nullptr; //for mesh instancing
+	vertexInputInfo.vertexAttributeDescriptionCount = 0;
+	vertexInputInfo.pVertexAttributeDescriptions = nullptr; //For data
+
+	//INPUT ASSEMBLY
+	VkPipelineInputAssemblyStateCreateInfo inputAsseblyInfo;
+	inputAsseblyInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAsseblyInfo.pNext = nullptr;
+	inputAsseblyInfo.flags = 0;
+	inputAsseblyInfo.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAsseblyInfo.primitiveRestartEnable = VK_FALSE;
+
+	//VIEWPORT
+	VkViewport viewport;
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = static_cast<float>(Window::GetInstancePtr()->GetWidth());
+	viewport.height = static_cast<float>(Window::GetInstancePtr()->GetHeight());
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	VkRect2D scissor;
+	scissor.offset = { 0, 0 };
+	scissor.extent = { Window::GetInstancePtr()->GetWidth(), Window::GetInstancePtr()->GetHeight() };
+
+	VkPipelineViewportStateCreateInfo viewportInfo;
+	viewportInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportInfo.pNext = nullptr;
+	viewportInfo.flags = 0;
+	viewportInfo.viewportCount = 1;
+	viewportInfo.pViewports = &viewport;
+	viewportInfo.scissorCount = 1;
+	viewportInfo.pScissors = &scissor;
+
+	//RASTERIZATION
+	VkPipelineRasterizationStateCreateInfo rasterizationInfo;
+	rasterizationInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterizationInfo.pNext = nullptr;
+	rasterizationInfo.flags = 0;
+	rasterizationInfo.depthClampEnable = VK_FALSE;
+	rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
+	rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
+	rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizationInfo.depthBiasEnable = VK_FALSE; //Add constant value onto fragment depth
+	rasterizationInfo.depthBiasConstantFactor = 0.0f;
+	rasterizationInfo.depthBiasClamp = 0.0f;
+	rasterizationInfo.depthBiasSlopeFactor = 0.0f;
+	rasterizationInfo.lineWidth = 1.0f;
+
+	//MULTISAMPLING
+	VkPipelineMultisampleStateCreateInfo multisampleInfo;
+	multisampleInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampleInfo.pNext = nullptr;
+	multisampleInfo.flags = 0;
+	multisampleInfo.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampleInfo.sampleShadingEnable = VK_FALSE;
+	multisampleInfo.minSampleShading = 1.0f;
+	multisampleInfo.pSampleMask = nullptr;
+	multisampleInfo.alphaToCoverageEnable = VK_FALSE;
+	multisampleInfo.alphaToOneEnable = VK_FALSE;
+
+	//BlendMode
+	VkPipelineColorBlendAttachmentState colorBlendState;
 }
 
 bool Rendering::isModeSupported(const std::vector<VkPresentModeKHR>& supportedPresentModes, VkPresentModeKHR presentMode)

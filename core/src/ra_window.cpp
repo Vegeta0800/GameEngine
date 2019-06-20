@@ -172,7 +172,7 @@ ui32 Window::GetWidth(void)
 	return this->width;
 }
 
-ui32 Window::GetHeigth(void)
+ui32 Window::GetHeight(void)
 {
 	return this->height;
 }

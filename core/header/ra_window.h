@@ -30,7 +30,7 @@ public:
 	Display* GetDisplay(ui32 displayID);
 	WindowState GetState(void);
 	ui32 GetWidth(void);
-	ui32 GetHeigth(void);
+	ui32 GetHeight(void);
 	HWND& GetHandle(void);
 	Filesystem* GetFileSystem(void);
 

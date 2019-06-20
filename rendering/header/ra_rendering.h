@@ -12,8 +12,7 @@ class Rendering
 	enum class RenderingBuffer
 	{
 		VERTEX = 0,
-		FRAGMENT = 1,
-		GEOMETRY = 2
+		FRAGMENT = 1
 	};
 
 public:
@@ -37,6 +36,8 @@ private:
 
 	void CreateShaderModules(void);
 	void CreateShaderModule(const std::vector<byte>& code, VkShaderModule* shaderModule);
+
+	void CreatePipeline(void);
 
 	std::vector<byte> GetBuffer(RenderingBuffer bufferType);
 
