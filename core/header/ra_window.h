@@ -32,14 +32,10 @@ public:
 	ui32 GetWidth(void);
 	ui32 GetHeight(void);
 	HWND& GetHandle(void);
-	Filesystem* GetFileSystem(void);
-
 private:
 	HWND handle = 0;	
 	WindowState state = WindowState::Started;
 	
-	Filesystem* filesystem;  //TODO
-
 	ui32 width = 0;
 	ui32 height = 0;
 };

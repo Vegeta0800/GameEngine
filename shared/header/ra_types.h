@@ -1,5 +1,6 @@
 
 #pragma once
+
 // EXTERNAL INCLUDES
 #include <stdint.h>
 
@@ -67,10 +68,4 @@ struct fColorRGBA
 	real g;
 	real b;
 	real a;
-};
-
-struct Vertex
-{
-	fColorRGBA position;
-	fColorRGBA color;
 };

@@ -4,6 +4,7 @@
 //EXTERNAL INCLUDES
 #include <list>
 //INTERNAL INCLUDES
+#include "math/ra_mat4x4.h"
 #include "ra_component.h"
 #include "ra_transform.h"
 
@@ -32,6 +33,7 @@ public:
 	bool operator==(Gameobject* other);
 	Gameobject* GetParent();
 	Transform& GetTransform();
+	Math::Mat4x4 GetModelMatrix();
 
 	bool hasRoot();
 	bool isMoved();
@@ -45,7 +47,10 @@ private:
 	Math::Vec3 oldPosition;
 	Math::Vec3 oldEulerRotation;
 
+	Math::Mat4x4 modelMatrix;
+
 	Gameobject* parent;
+
 	std::list<Gameobject*> children;
 	
 	std::list<Component*> components;

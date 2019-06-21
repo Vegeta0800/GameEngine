@@ -25,4 +25,6 @@ set_target_properties(${TARGET_NAME} PROPERTIES LINKER_LANGUAGE CXX DEBUG_POSTFI
 target_include_directories(${TARGET_NAME} PUBLIC
 	"${CMAKE_CURRENT_SOURCE_DIR}/header"
 	"${CMAKE_SOURCE_DIR}/shared/header"
+	"${CMAKE_SOURCE_DIR}/rendering/header"
+	"${Vulkan_INCLUDE_DIR}"
 )

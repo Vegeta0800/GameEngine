@@ -1,4 +1,6 @@
 #include "ra_gameobject.h"
+#include "ra_rendering.h"
+#include "ra_application.h"
 
 Gameobject::Gameobject() :
 	isRoot(false),
@@ -65,6 +67,7 @@ void Gameobject::Cleanup()
 	{
 		delete component;
 	}
+
 
 	delete this;
 }
@@ -218,4 +221,10 @@ bool Gameobject::operator==(Gameobject* other)
 Transform& Gameobject::GetTransform()
 {
 	return this->transform;
+}
+
+Math::Mat4x4 Gameobject::GetModelMatrix()
+{
+	this->modelMatrix = Math::CreateTranslationMatrix(this->transform.position);
+	return this->modelMatrix;
 }

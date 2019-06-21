@@ -3,6 +3,8 @@
 #include <unordered_map>
 //INTERNAL INCLUDES
 #include "ra_window.h"
+#include "ra_application.h"
+#include "ra_rendering.h"
 
 
 std::vector<Display> g_displays;
@@ -14,7 +16,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	switch (msg)
 	{
 	case WM_SIZE:
-
+	{
+		if(Application::GetInstancePtr()->GetRenderer()->GetInitStatus())
+			Application::GetInstancePtr()->GetRenderer()->RecreateSwapchain();
+		break;
+	}
 		//If the message is destroy, destroy the window.
 	case WM_DESTROY:
 		DestroyWindow(hwnd);
@@ -60,8 +66,6 @@ DECLARE_SINGLETON(Window)
 
 void Window::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* title)
 {
-	this->filesystem = new Filesystem();
-
 	//Initialize variable
 	ui32 style = 0;
 	this->width = width;
@@ -182,9 +186,4 @@ ui32 Window::GetHeight(void)
 HWND& Window::GetHandle(void)
 {
 	return this->handle;
-}
-
-Filesystem* Window::GetFileSystem(void)
-{
-	return this->filesystem;
 }
