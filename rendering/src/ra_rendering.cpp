@@ -30,7 +30,9 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 
 void Rendering::Update()
 {
-	this->DrawFrame();
+	//this->DrawFrame();
+
+	printf("%d, %d \n", this->surfaceCapabilities.currentExtent.width, this->surfaceCapabilities.currentExtent.height);
 }
 
 void Rendering::DrawFrame()
@@ -278,9 +280,48 @@ void Rendering::CreateSwapChain(void)
 	swapchainInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	swapchainInfo.presentMode = this->isModeSupported(presentModes, VK_PRESENT_MODE_MAILBOX_KHR) ? VK_PRESENT_MODE_MAILBOX_KHR : VK_PRESENT_MODE_FIFO_KHR;
 	swapchainInfo.clipped = VK_TRUE;
-	swapchainInfo.oldSwapchain = VK_NULL_HANDLE;
+	swapchainInfo.oldSwapchain = this->swapchain;
 
 	VK_CHECK(vkCreateSwapchainKHR(this->logicalDevice, &swapchainInfo, nullptr, &this->swapchain));
+}
+
+void Rendering::RecreateSwapChain()
+{
+	vkDeviceWaitIdle(this->logicalDevice);
+
+	vkFreeCommandBuffers(this->logicalDevice, this->commandPool, static_cast<ui32>(this->commandBuffers.size()), this->commandBuffers.data());
+	vkDestroyCommandPool(this->logicalDevice, this->commandPool, nullptr);
+
+	for (size_t i = 0; i < this->framebuffers.size(); i++)
+	{
+		vkDestroyFramebuffer(this->logicalDevice, this->framebuffers[i], nullptr);
+	}
+	this->framebuffers.clear();
+
+	for (size_t i = 0; i < this->imageViews.size(); i++)
+	{
+		vkDestroyImageView(this->logicalDevice, this->imageViews[i], nullptr);
+	}
+	this->imageViews.clear();
+	this->swapchainImages.clear();
+
+	vkDestroyPipeline(this->logicalDevice, this->pipeline, nullptr);
+	vkDestroyRenderPass(this->logicalDevice, this->renderpass, nullptr);
+	vkDestroyPipelineLayout(this->logicalDevice, this->pipelineLayout, nullptr);
+	vkDestroyShaderModule(this->logicalDevice, this->vertexModule, nullptr);
+	vkDestroyShaderModule(this->logicalDevice, this->fragmentModule, nullptr);
+	
+	VkSwapchainKHR oldSwapchain = this->swapchain;
+
+	this->CreateSwapChain();
+	this->CreateImageViews();
+	this->CreateShaderModules();
+	this->CreatePipeline();
+	this->CreateFramebuffers();
+	this->CreateCommandbuffer();
+	this->RecordCommands();
+
+	vkDestroySwapchainKHR(this->logicalDevice, oldSwapchain, nullptr);
 }
 
 void Rendering::CreateImageViews(void)

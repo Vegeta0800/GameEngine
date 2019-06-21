@@ -13,6 +13,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	//Handle the messages in the window.
 	switch (msg)
 	{
+	case WM_SIZE:
+
 		//If the message is destroy, destroy the window.
 	case WM_DESTROY:
 		DestroyWindow(hwnd);
@@ -84,7 +86,7 @@ void Window::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* ti
 		throw;
 
 	//Set the window style.
-	style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_CLIPCHILDREN | WS_CLIPSIBLINGS;
+	style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_THICKFRAME;
 
 	//Get the selected display.
 	Display* selectedDisplay = GetDisplay(displayID);

@@ -33,6 +33,7 @@ private:
 	void CreateSurface(void);
 
 	void CreateSwapChain(void);
+	void RecreateSwapChain(void);
 	void CreateImageViews(void);
 	bool isModeSupported(const std::vector<VkPresentModeKHR>& supportedPresentModes, VkPresentModeKHR presentMode);
 
@@ -62,7 +63,7 @@ private:
 
 	VkSurfaceCapabilitiesKHR surfaceCapabilities;
 
-	VkSwapchainKHR swapchain;
+	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
 	std::vector<VkImageView> imageViews;
 	std::vector<VkImage> swapchainImages;
 
