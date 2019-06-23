@@ -11,4 +11,4 @@ const Math::Vec3 Math::Vec3::unit_z		= { 0.0f, 0.0f, 1.0f };		//Front
 const Math::Vec3 Math::Vec3::neg_unit_x = { -1.0f, 0.0f, 0.0f };	//Left
 const Math::Vec3 Math::Vec3::neg_unit_y = { 0.0f, -1.0f, 0.0f };	//Down 
 const Math::Vec3 Math::Vec3::neg_unit_z = { 0.0f, 0.0f, -1.0f };	//Behind
-const Math::Vec3 Math::Vec3::unit_scale = { 1.0f, 1.0f, 0.0f };		//Scale
+const Math::Vec3 Math::Vec3::unit_scale = { 1.0f, 1.0f, 1.0f };		//Scale

@@ -5,6 +5,7 @@
 #include <cmath>
 //INTERNAL INCLUDES
 #include "ra_types.h"
+#include "ra_utils.h"
 #include "ra_vector3.h"
 #include "ra_quaternion.h"
 
@@ -189,10 +190,10 @@ namespace Math
 	{
 		return Mat4x4
 		{
-			1, 0, 0, 0,
-			0, 1, 0, 0,
-			0, 0, 1, 0,
-			transformVec.x, transformVec.y, transformVec.z, 1
+			1, 0, 0, transformVec.x,
+			0, 1, 0, -transformVec.y,
+			0, 0, 1, transformVec.z,
+			0, 0, 0, 1
 		};
 	}
 
@@ -209,30 +210,45 @@ namespace Math
 
 	inline Mat4x4 CreateRotationXMatrix(float thetha)
 	{
+		if (thetha == 0.0f)
+			return Mat4x4::identity;
+
+		thetha = DegToRad(thetha);
+
 		return Mat4x4
 		{
 			1, 0, 0, 0,
-			0, cos(thetha), sin(thetha), 0,
-			0, -sin(thetha), cos(thetha), 0,
+			0, cos(thetha), -sin(thetha), 0,
+			0, sin(thetha), cos(thetha), 0,
 			0, 0, 0, 1
 		};
 	}
 	inline Mat4x4 CreateRotationYMatrix(float thetha)
 	{
+		if (thetha == 0.0f)
+			return Mat4x4::identity;
+
+		thetha = DegToRad(thetha);
+
 		return Mat4x4
 		{
-			cos(thetha), 0, -sin(thetha), 0,
+			cos(thetha), 0, sin(thetha), 0,
 			0, 1, 0, 0,
-			sin(thetha), 0, cos(thetha), 0,
+			-sin(thetha), 0, cos(thetha), 0,
 			0, 0, 0, 1
 		};
 	}
 	inline Mat4x4 CreateRotationZMatrix(float thetha)
 	{
+		if (thetha == 0.0f)
+			return Mat4x4::identity;
+
+		thetha = DegToRad(thetha);
+
 		return Mat4x4
 		{
-			cos(thetha), sin(thetha), 0, 0,
-			-sin(thetha), cos(thetha), 0, 0,
+			cos(thetha), -sin(thetha), 0, 0,
+			sin(thetha), cos(thetha), 0, 0,
 			0, 0, 1, 0,
 			0, 0, 0, 1
 		};
@@ -251,25 +267,47 @@ namespace Math
 
 	inline Mat4x4 CreateRotationMatrix(const Vec3& eulerRotation)
 	{
-		float thetha = eulerRotation.x * M_PI / 180.0f;
-		float psi = eulerRotation.y * M_PI / 180.0f;
-		float kappa = eulerRotation.z * M_PI / 180.0f;
+		float thetha = eulerRotation.x;
+		float psi = eulerRotation.y;
+		float kappa = eulerRotation.z;
 
-		Mat4x4 rot = Math::CreateRotationXMatrix(thetha) * Math::CreateRotationYMatrix(psi) * Math::CreateRotationZMatrix(kappa);
+		Mat4x4 rot = Mat4x4::identity;
+		rot = rot * Math::CreateRotationZMatrix(kappa);
+		rot = rot * Math::CreateRotationYMatrix(psi);
+		rot = rot * Math::CreateRotationXMatrix(psi);
 
 		return rot;
 	}
 
 
-	inline Mat4x4 CreateProjectionMatrix(float width, float height, float nearC, float farC)
+	inline Mat4x4 CreateProjectionMatrix(float fovY, float aspect, float zNear, float zFar)
 	{
+		float const tanHalfFovY = tan(fovY / 2.0f);
 
 		return Mat4x4
 		{
-			2.0f / width, 0, 0, 0,
-			0, 2.0f / height, 0, 0,
-			0, 0, 1.0f / (farC - nearC), 0,
-			0, 0, nearC / (farC - nearC), 1,
+			1.0f / (aspect * tanHalfFovY), 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f / (tanHalfFovY), 0.0f, 0.0f,
+			0.0f, 0.0f, -(zFar + zNear) / (zFar - zNear), -1.0f,
+			0.0f, 0.0f, -(2.0f * zFar * zNear) / (zFar - zNear), 0.0f
+		};
+
+	}
+
+	inline Mat4x4 CreateViewMatrixLookAt(const Vec3& eye, const Vec3& center, const Vec3& up)
+	{
+		Vec3 f(center - eye);
+		Math::Normalize(f);
+		Vec3 s(Math::Cross(f, up));
+		Math::Normalize(s);
+		Vec3 u(Math::Cross(s, f));
+
+		return Mat4x4
+		{
+			s.x, u.x, -f.x, 0.0f,
+			s.y, u.y, -f.y, 0.0f,
+			s.z, u.z, -f.z, 0.0f,
+			-Math::Dot(s, eye), -Math::Dot(u, eye), Math::Dot(f, eye), 1.0f
 		};
 	}
 }

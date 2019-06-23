@@ -6,6 +6,13 @@
 #include <iostream>
 #include <chrono>
 
+
+// Converts degrees to radians.
+#define DegToRad(angleDegrees) (angleDegrees * M_PI / 180.0f)
+
+// Converts radians to degrees.
+#define RadToDeg(angleRadians) (angleRadians * 180.0f / M_PI)
+
 #define TIMING
 
 #ifdef TIMING

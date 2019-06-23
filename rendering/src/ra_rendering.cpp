@@ -2,9 +2,11 @@
 #define VK_USE_PLATFORM_WIN32_KHR
 // EXTERNAL INCLUDES
 #include <vulkan/vulkan.h>
+#include <list>
 
 // INTERNAL INCLUDES
 #include "ra_gameobject.h"
+#include "ra_mesh.h"
 #include "ra_rendering.h"
 #include "ra_vkcheck.h"
 #include "ra_types.h"
@@ -14,26 +16,43 @@
 #include "filesystem/ra_filesystem.h"
 #include "filesystem/ra_winfile.h"
 #include "math/ra_mat4x4.h"
+#include "input/ra_inputhandler.h"
 
 void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 {
 	this->root = new Gameobject;
+	this->root->Initialize();
 	this->root->MakeRoot();
 
 	this->testObject = new Gameobject;
+	this->testObject->Initialize();
 	this->testObject->SetParent(this->root);
+
+	this->cameraPos = Math::Vec3{ 2.0f, 2.0f, 2.0f };
+
+	//this->testObject2->GetMesh()->vertices =
+	//{
+	//	Vertex{{-0.75f, -0.75f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+	//	Vertex{{0.75f, 0.75f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+	//	Vertex{{-0.75f, 0.75f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+	//	Vertex{{0.75f, -0.75f, 0.0f}, {0.0f, 0.0f, 1.0f}}
+	//};
 
 	this->testObject->GetTransform().position = Math::Vec3{0.0f, 0.0f, 0.0f};
 
-	this->vertices =
+	for (Gameobject* gb : this->root->GetAllChildren())
 	{
-		Vertex{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-		Vertex{{0.5f, 0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-		Vertex{{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-		Vertex{{0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}}
-	};
+		if (!gb->hasRoot())
+		{
+			this->gameObjects.push_back(gb);
+		}
+	}
 
-	this->indicies = {0, 1, 2, 0, 3, 1};
+	this->vertexBuffers.resize(this->gameObjects.size());
+	this->indexBuffers.resize(this->gameObjects.size());
+
+	this->vertexBufferMemories.resize(this->gameObjects.size());
+	this->indexBufferMemories.resize(this->gameObjects.size());
 
 	this->CreateInstance(applicationName, applicationVersion);
 	this->CreatePhysicalDevice();
@@ -46,8 +65,8 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 	this->CreatePipeline();
 	this->CreateFramebuffers();
 	this->CreateCommandbuffer();
-	this->CreateVertexbuffer();
-	this->CreateIndexbuffer();
+	this->CreateVertexbuffers();
+	this->CreateIndexbuffers();
 	this->CreateUniformbuffer();
 	this->CreateDescriptorPool();
 	this->CreateDescriptorSet();
@@ -56,17 +75,61 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 	this->initialized = true;
 }
 
-void Rendering::Update()
+void Rendering::Update(float time)
 {
-
-
-
+	this->UpdateMVP(time);
 	this->DrawFrame();
 }
 
-void Rendering::UpdateMVP()
+void Rendering::UpdateMVP(float time)
 {
+	if (Input::GetInstancePtr()->GetKey(KeyCode::D))
+	{
+		this->cameraPos.x -= 0.0002f * time;
+	}
 
+	if (Input::GetInstancePtr()->GetKey(KeyCode::A))
+	{
+		this->cameraPos.x += 0.0002f * time;
+	}
+
+	if (Input::GetInstancePtr()->GetKey(KeyCode::W))
+	{
+		this->cameraPos.z -= 0.0002f * time;
+	}
+
+	if (Input::GetInstancePtr()->GetKey(KeyCode::S))
+	{
+		this->cameraPos.z += 0.0002f * time;
+	}
+
+	if (Input::GetInstancePtr()->GetKey(KeyCode::Q))
+	{
+		this->cameraPos.y -= 0.0002f * time;
+	}
+
+	if (Input::GetInstancePtr()->GetKey(KeyCode::E))
+	{
+		this->cameraPos.y += 0.0002f * time;
+	}
+
+	this->testObject->GetTransform().eulerRotation.z = time * 20.0f;
+
+
+	printf("%f, %f, %f \n", this->cameraPos.x, this->cameraPos.y, this->cameraPos.z);
+
+	Math::Mat4x4 modelMatrix = this->testObject->GetModelMatrix();
+	Math::Mat4x4 viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, Math::Vec3::zero, Math::Vec3::unit_z);
+	Math::Mat4x4 projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
+	projectionMatrix.m22 *= -1.0f;
+	this->mvp = modelMatrix;
+	this->mvp = this->mvp * viewMatrix;
+	this->mvp = this->mvp * projectionMatrix;
+
+	void* data;
+	vkMapMemory(this->logicalDevice, this->uniformBufferMemory, 0, sizeof(this->mvp), 0, &data);
+	memcpy(data, &this->mvp, sizeof(this->mvp));
+	vkUnmapMemory(this->logicalDevice, this->uniformBufferMemory);
 }
 
 void Rendering::DrawFrame()
@@ -109,13 +172,13 @@ void Rendering::CreateInstance(const char* applicationName, ui32 applicationVers
 {
 	const std::vector<const char*> instanceValidationLayers =
 	{
-		"VK_LAYER_LUNARG_standard_validation"
+		"VK_LAYER_LUNARG_standard_validation",
 	};
 
 	const std::vector<const char*> instanceExtensions =
 	{
 		VK_KHR_SURFACE_EXTENSION_NAME,
-		VK_KHR_WIN32_SURFACE_EXTENSION_NAME
+		VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 	};
 
 	VkApplicationInfo appInfo;
@@ -527,7 +590,7 @@ void Rendering::CreateDescriptorSet()
 	VkDescriptorBufferInfo descriptorBufferInfo;
 	descriptorBufferInfo.buffer = this->uniformBuffer;
 	descriptorBufferInfo.offset = 0;
-	descriptorBufferInfo.range = sizeof(Math::Mat4x4) * 2;
+	descriptorBufferInfo.range = sizeof(Math::Mat4x4);
 
 	VkWriteDescriptorSet descriptorWrite;
 	descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -621,7 +684,7 @@ void Rendering::CreatePipeline()
 	rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
 	rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-	rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizationInfo.depthBiasEnable = VK_FALSE; //Add constant value onto fragment depth
 	rasterizationInfo.depthBiasConstantFactor = 0.0f;
 	rasterizationInfo.depthBiasClamp = 0.0f;
@@ -951,20 +1014,26 @@ void Rendering::CreateBufferOnGPU(std::vector<T> data, VkBufferUsageFlags usage,
 	vkFreeMemory(this->logicalDevice, stagingBufferMemory, nullptr);
 }
 
-void Rendering::CreateVertexbuffer()
-{
-	this->CreateBufferOnGPU(this->vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, this->vertexBuffer, this->vertexBufferMemory);
-}
-
-void Rendering::CreateIndexbuffer()
-{
-	this->CreateBufferOnGPU(this->indicies, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, this->indexBuffer, this->indexBufferMemory);
-}
-
 void Rendering::CreateUniformbuffer()
 {
-	VkDeviceSize bufferSize = sizeof(Math::Mat4x4) * 2;
+	VkDeviceSize bufferSize = sizeof(Math::Mat4x4);
 	this->CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, this->uniformBuffer, (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT), this->uniformBufferMemory);
+}
+
+void Rendering::CreateVertexbuffers()
+{
+	for (size_t i = 0; i < this->gameObjects.size(); i++)
+	{
+		this->CreateBufferOnGPU(this->gameObjects[i]->GetMesh()->vertices, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, this->vertexBuffers[i], this->vertexBufferMemories[i]);
+	}
+}
+
+void Rendering::CreateIndexbuffers()
+{
+	for (size_t i = 0; i < this->gameObjects.size(); i++)
+	{
+		this->CreateBufferOnGPU(this->gameObjects[i]->GetMesh()->indices, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, this->indexBuffers[i], this->indexBufferMemories[i]);
+	}
 }
 
 void Rendering::RecordCommands()
@@ -1012,10 +1081,15 @@ void Rendering::RecordCommands()
 		vkCmdSetScissor(this->commandBuffers[i], 0, 1, &scissor);
 
 		VkDeviceSize offsets[] = {0};
-		vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &this->vertexBuffer, offsets);
-		vkCmdBindIndexBuffer(this->commandBuffers[i],  this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-		vkCmdDrawIndexed(this->commandBuffers[i], static_cast<ui32>(indicies.size()), 1, 0, 0, 0);
+		vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, this->vertexBuffers.data(), offsets);
+
+		for (size_t j = 0; j < this->vertexBuffers.size(); j++)
+		{
+			vkCmdBindIndexBuffer(this->commandBuffers[i],  this->indexBuffers[j], 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSet, 0, nullptr);
+			vkCmdDrawIndexed(this->commandBuffers[i], 6, 1, 0, 0, 0);
+		}
 
 		vkCmdEndRenderPass(this->commandBuffers[i]);
 		
@@ -1104,11 +1178,14 @@ void Rendering::Cleanup()
 	vkFreeMemory(this->logicalDevice, this->uniformBufferMemory, nullptr);
 	vkDestroyBuffer(this->logicalDevice, this->uniformBuffer, nullptr);
 
-	vkFreeMemory(this->logicalDevice, this->indexBufferMemory, nullptr);
-	vkDestroyBuffer(this->logicalDevice, this->indexBuffer, nullptr);
+	for (size_t i = 0; i < this->gameObjects.size(); i++)
+	{
+		vkFreeMemory(this->logicalDevice, this->indexBufferMemories[i], nullptr);
+		vkDestroyBuffer(this->logicalDevice, this->indexBuffers[i], nullptr);
 	
-	vkFreeMemory(this->logicalDevice, this->vertexBufferMemory, nullptr);
-	vkDestroyBuffer(this->logicalDevice, this->vertexBuffer, nullptr);
+		vkFreeMemory(this->logicalDevice, this->vertexBufferMemories[i], nullptr);
+		vkDestroyBuffer(this->logicalDevice, this->vertexBuffers[i], nullptr);
+	}
 
 	this->waitStageMask.clear();
 	vkDestroySemaphore(this->logicalDevice, this->imageAvailableSemaphore, nullptr);

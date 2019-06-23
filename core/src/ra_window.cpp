@@ -5,6 +5,7 @@
 #include "ra_window.h"
 #include "ra_application.h"
 #include "ra_rendering.h"
+#include "input/ra_inputhandler.h"
 
 
 std::vector<Display> g_displays;
@@ -15,6 +16,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	//Handle the messages in the window.
 	switch (msg)
 	{
+	case WM_KEYDOWN:
+		Input::GetInstancePtr()->RegisterKey(static_cast<KeyCode>(wParam), 0);
+		return 0;
+	case WM_KEYUP:
+		Input::GetInstancePtr()->RegisterKey(static_cast<KeyCode>(wParam), 1);
+		Input::GetInstancePtr()->EradicateKey(static_cast<KeyCode>(wParam), 1);
+		return 0;
 	case WM_SIZE:
 	{
 		if(Application::GetInstancePtr()->GetRenderer()->GetInitStatus())

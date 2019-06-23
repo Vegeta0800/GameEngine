@@ -178,7 +178,7 @@ namespace Math
 	//Get square length with pythagoras without the square root.
 	inline float SquareLength(const Vec3& vec)
 	{
-		return (vec.x * vec.x) + (vec.y * vec.y);
+		return (vec.x * vec.x) + (vec.y * vec.y) + (vec.z * vec.z);
 	}
 
 	//Get square length with pythagoras.

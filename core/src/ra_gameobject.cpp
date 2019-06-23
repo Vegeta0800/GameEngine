@@ -15,9 +15,22 @@ void Gameobject::Initialize()
 	this->oldPosition = Math::Vec3::zero;
 	this->oldEulerRotation = Math::Vec3::zero;
 	this->transform.position = Math::Vec3::zero;
-	this->transform.eulerRotation = Math::Vec3::zero;
+	this->transform.eulerRotation = Math::Vec3{0, 0, 0};
 	this->transform.rotation = Math::Quaternion::identity;
 	this->transform.scaling = Math::Vec3::unit_scale;
+
+	this->mesh = new Mesh;
+	this->mesh->indicesCount = 6;
+
+	this->mesh->vertices =
+	{
+		Vertex{{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},
+		Vertex{{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},
+		Vertex{{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}},
+		Vertex{{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}}
+	};
+
+	this->mesh->indices = { 0, 1, 2, 2, 3, 0 };
 }
 
 void Gameobject::Update()
@@ -68,6 +81,7 @@ void Gameobject::Cleanup()
 		delete component;
 	}
 
+	delete this->mesh;
 
 	delete this;
 }
@@ -225,6 +239,15 @@ Transform& Gameobject::GetTransform()
 
 Math::Mat4x4 Gameobject::GetModelMatrix()
 {
-	this->modelMatrix = Math::CreateTranslationMatrix(this->transform.position);
+	this->modelMatrix = Math::Mat4x4::identity;
+	this->modelMatrix = this->modelMatrix * Math::CreateRotationMatrix(this->transform.eulerRotation);
+	this->modelMatrix = this->modelMatrix * Math::CreateScalingMatrix(this->transform.scaling);
+	this->modelMatrix = this->modelMatrix * Math::Transpose(Math::CreateTranslationMatrix(this->transform.position));
+
 	return this->modelMatrix;
+}
+
+Mesh* Gameobject::GetMesh()
+{
+	return this->mesh;
 }

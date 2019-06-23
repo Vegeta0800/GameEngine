@@ -6,8 +6,10 @@
 #include <chrono>
 
 //INTERNAL INCLUDES
+#include "ra_vertex.h"
 #include "ra_types.h"
 #include "math/ra_vector3.h"
+#include "math/ra_mat4x4.h"
 
 class Gameobject;
 
@@ -19,43 +21,9 @@ class Rendering
 		FRAGMENT = 1
 	};
 
-	struct Vertex
-	{
-		Math::Vec3 position;
-		Math::Vec3 color;
-
-		static VkVertexInputBindingDescription GetBindingDescription()
-		{
-			VkVertexInputBindingDescription vertexInputBindingDescription;
-			vertexInputBindingDescription.binding = 0;
-			vertexInputBindingDescription.stride = sizeof(Vertex);
-			vertexInputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-			return vertexInputBindingDescription;
-
-		}
-
-		static std::vector<VkVertexInputAttributeDescription> GetAttributeDescriptions()
-		{
-			std::vector<VkVertexInputAttributeDescription> vertexInputAttributeDescription(2);
-
-			vertexInputAttributeDescription[0].location = 0;
-			vertexInputAttributeDescription[0].binding = 0;
-			vertexInputAttributeDescription[0].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-			vertexInputAttributeDescription[0].offset = offsetof(Vertex, position);
-
-			vertexInputAttributeDescription[1].location = 1;
-			vertexInputAttributeDescription[1].binding = 0;
-			vertexInputAttributeDescription[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-			vertexInputAttributeDescription[1].offset = offsetof(Vertex, color);
-
-			return vertexInputAttributeDescription;
-		}
-	};
-
 public:
 	void Initialize(const char* applicationName, ui32 applicationVersion);
-	void Update(void);
+	void Update(float time);
 	void Cleanup(void);
 
 	void RecreateSwapchain(void);
@@ -63,7 +31,7 @@ public:
 	bool GetInitStatus(void);
 private:
 	void DrawFrame(void);
-	void UpdateMVP(void); //TODO
+	void UpdateMVP(float time); //TODO
 
 	void CreateInstance(const char* applicationName, ui32 applicationVersion);
 
@@ -100,10 +68,10 @@ private:
 	template <typename T>
 	void CreateBufferOnGPU(std::vector<T> data, VkBufferUsageFlags usage, VkBuffer& buffer, VkDeviceMemory& memory);
 
-	void CreateVertexbuffer(void);
-	void CreateIndexbuffer(void);
 	void CreateUniformbuffer(void);
 
+	void CreateVertexbuffers();
+	void CreateIndexbuffers();
 
 	void RecordCommands(void);
 
@@ -120,6 +88,8 @@ private:
 
 	bool canGraphicsQueuePresent = false;
 
+	std::vector<Gameobject*> gameObjects;
+	
 	ui16 queueCount = 0;
 
 	VkInstance instance;
@@ -151,18 +121,20 @@ private:
 	std::vector<VkFramebuffer> framebuffers;
 	std::vector<VkPipelineStageFlags> waitStageMask;
 
-	std::vector<Vertex> vertices;
-	std::vector<ui32> indicies;
-
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderingFinishedSemaphore;
 
-	VkBuffer vertexBuffer;
-	VkBuffer indexBuffer;
+	std::vector<VkBuffer> vertexBuffers;
+	std::vector<VkBuffer> indexBuffers;
+	std::vector<VkBuffer> uniformBuffers;
+
+
+	std::vector<VkDeviceMemory> indexBufferMemories;
+	std::vector<VkDeviceMemory> vertexBufferMemories;
+	std::vector<VkDeviceMemory> uniformBufferMemories;
+
 	VkBuffer uniformBuffer;
 
-	VkDeviceMemory indexBufferMemory;
-	VkDeviceMemory vertexBufferMemory;
 	VkDeviceMemory uniformBufferMemory;
 
 	VkDescriptorSetLayout descriptorSetLayout;
@@ -171,5 +143,8 @@ private:
 
 	Gameobject* root;
 	Gameobject* testObject;
+	Gameobject* testObject2;
 
+	Math::Mat4x4 mvp;
+	Math::Vec3 cameraPos;
 };

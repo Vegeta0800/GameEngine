@@ -5,6 +5,7 @@
 #include "console/ra_console.h"
 #include "ra_window.h"
 #include "ra_rendering.h"
+#include "input/ra_inputhandler.h"
 
 DECLARE_SINGLETON(Application)
 
@@ -33,18 +34,29 @@ void Application::Initialize(const char* path, iVec2 resolution, const char* tit
 
 void Application::Update()
 {
-	//INIT_TIMER;
+	//INIT_TIMER  
+
+	auto gameStartTime = std::chrono::high_resolution_clock::now();
 
 	while (Window::GetInstancePtr() && Window::GetInstancePtr()->GetState() != Window::WindowState::Closed)
 	{
-		//START_TIMER;
+		//START_TIMER
+
+		auto frameTime = std::chrono::high_resolution_clock::now();
+
+		float timeDifference = std::chrono::duration_cast<std::chrono::milliseconds>(gameStartTime - frameTime).count() / 1000.0f;
+
 		if (!Window::GetInstancePtr()->PollEvents())
 		{
 			//root->Update();
 		}
 
-		this->renderer->Update();
-		//STOP_TIMER("Loop took: ");
+		this->renderer->Update(timeDifference);
+
+		if (Input::GetInstancePtr()->GetUpState())
+			Input::GetInstancePtr()->EradicateUpKeys();
+
+		//STOP_TIMER("Loop took")
 	}
 
 }
