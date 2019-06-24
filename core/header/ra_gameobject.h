@@ -7,7 +7,7 @@
 #include "math/ra_mat4x4.h"
 #include "ra_component.h"
 #include "ra_transform.h"
-#include "ra_mesh.h"
+
 
 class Gameobject
 {
@@ -39,8 +39,6 @@ public:
 	bool hasRoot();
 	bool isMoved();
 
-	Mesh* GetMesh();
-
 private:
 	void ListAllChildren(std::list<Gameobject*>& list);
 
@@ -53,7 +51,6 @@ private:
 	Math::Mat4x4 modelMatrix;
 
 	Gameobject* parent;
-	Mesh* mesh;
 
 	std::list<Gameobject*> children;
 	

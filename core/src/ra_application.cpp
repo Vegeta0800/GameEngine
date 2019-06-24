@@ -24,12 +24,9 @@ void Application::Initialize(const char* path, iVec2 resolution, const char* tit
 	Console::GetInstancePtr()->SetCVar(gamepath);
 
 	this->filesystem = new Filesystem;
-	this->renderer = new Rendering;
-
 	Window::GetInstancePtr()->Instantiate(800, 600, 0, "windowTest");
 
-
-	this->renderer->Initialize("RenderingExample", VK_MAKE_VERSION(0, 0, 0));
+	Rendering::GetInstancePtr()->Initialize("RenderingExample", VK_MAKE_VERSION(0, 0, 0));
 }
 
 void Application::Update()
@@ -51,7 +48,7 @@ void Application::Update()
 			//root->Update();
 		}
 
-		this->renderer->Update(timeDifference);
+		Rendering::GetInstancePtr()->Update(timeDifference);
 
 		if (Input::GetInstancePtr()->GetUpState())
 			Input::GetInstancePtr()->EradicateUpKeys();
@@ -63,21 +60,15 @@ void Application::Update()
 
 void Application::Cleanup()
 {
-	this->renderer->Cleanup();
+	Rendering::GetInstancePtr()->Cleanup();
 	this->filesystem->Cleanup();
 	Window::GetInstancePtr()->Release();
 	Console::GetInstancePtr()->CleanUp();
 	Console::GetInstancePtr()->Release();
-
-	delete this->renderer;
+	Rendering::GetInstancePtr()->Release();
 }
 
 Filesystem* Application::GetFilesystem()
 {
 	return this->filesystem;
-}
-
-Rendering* Application::GetRenderer()
-{
-	return this->renderer;
 }

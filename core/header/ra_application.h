@@ -5,7 +5,6 @@
 #include "ra_utils.h"
 #include "ra_types.h"
 
-class Rendering;
 class Filesystem;
 
 class Application
@@ -17,10 +16,8 @@ public:
 	void Cleanup();
 
 	Filesystem* GetFilesystem();
-	Rendering* GetRenderer();
 private:
 
-	Rendering* renderer;
 	Filesystem* filesystem;
 
 };
