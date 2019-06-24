@@ -25,6 +25,13 @@ namespace Math
 		static const Vec2 unit_scale;
 	};
 
+	inline bool operator==(const Vec2& lhs, const Vec2& rhs)
+	{
+		if (lhs.x == rhs.x && lhs.y == rhs.y)
+			return true;
+		return false;
+	}
+
 	//Add each vector2 value with its counterpart.
 	inline Vec2 operator+(const Vec2& lhs, const Vec2& rhs)
 	{
