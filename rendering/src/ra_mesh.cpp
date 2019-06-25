@@ -7,24 +7,25 @@
 #include "math/ra_vector3.h"
 #include "math/ra_vector2.h"
 
-Mesh::Mesh()
+Mesh::Mesh(const char* p)
 {
+	this->path = p;
 }
 
-void Mesh::Create(const char * path)
+void Mesh::Create(const char* p)
 {
 	tinyobj::attrib_t vertexAttributes;
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
 	std::string errorString;
-	std::string warnString;
 
-	bool meshLoaded = tinyobj::LoadObj(&vertexAttributes, &shapes, &materials, &warnString, &errorString, path);
+	bool meshLoaded = tinyobj::LoadObj(&vertexAttributes, &shapes, &materials, nullptr, &errorString, p);
 
 	if (!meshLoaded)
 		throw errorString;
 
 	std::unordered_map<Vertex, ui32> tempVertices;
+
 
 	for(tinyobj::shape_t shape : shapes)
 	{
@@ -46,7 +47,7 @@ void Mesh::Create(const char * path)
 			Vertex vertex =
 			{
 				position,
-				Math::Vec3{0.874f, 0.749f, 0.164f},
+				Math::Vec3{0.0f, 1.0f, 0.0f},
 				texCoords
 			};
 
@@ -58,7 +59,11 @@ void Mesh::Create(const char * path)
 			this->indices.push_back(tempVertices[vertex]);
 		}
 	}
+}
 
+void Mesh::SetPath(const char* p)
+{
+	this->path = p;
 }
 
 std::vector<Vertex> Mesh::GetVertices()

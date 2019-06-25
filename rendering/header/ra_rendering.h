@@ -54,18 +54,15 @@ private:
 
 	void CreateInstance(const char* applicationName, ui32 applicationVersion);
 
+	void CreateSurface(void);
+
 	void CreatePhysicalDevice(void);
 	void PickIdealPhysicalDevice(std::vector<VkPhysicalDevice>& physicalDevices);
 
-	void SetupQueues(void);
-
 	void CreateLogicalDevice(void);
-
-	void CreateSurface(void);
 
 	void CreateSwapChain(void);
 	void CreateImageViews(void);
-	bool isModeSupported(const std::vector<VkPresentModeKHR>& supportedPresentModes, VkPresentModeKHR presentMode);
 
 	void CreateShaderModules(void);
 	void CreateShaderModule(const std::vector<byte>& code, VkShaderModule* shaderModule);
@@ -92,8 +89,8 @@ private:
 	void LoadTexture(void);
 	void LoadModels(void);
 
-	void CreateVertexbuffers();
-	void CreateIndexbuffers();
+	void CreateVertexbuffer(void);
+	void CreateIndexbuffer(void);
 
 	void RecordCommands(void);
 
@@ -102,20 +99,20 @@ private:
 	void CreateDepthImage(void);
 
 	bool isFormatSupported(VkPhysicalDevice phyDevice, VkFormat format, VkImageTiling tiling, VkFormatFeatureFlags featureFlags);
-
+	bool isModeSupported(const std::vector<VkPresentModeKHR>& supportedPresentModes, VkPresentModeKHR presentMode);
+	VkFormat GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatKHR> supportedSurfaceFormats);
+	VkColorSpaceKHR GetSupportedSurfaceColorSpace(const std::vector<VkSurfaceFormatKHR> supportedSurfaceFormats);
 	std::vector<byte> GetBuffer(RenderingBuffer bufferType);
 
 
 	int indexOfGraphicsQueue = INT_MAX;
 	int indexOfPresentQueue = INT_MAX;
 	int indexOfTransferQueue = INT_MAX;
-	bool initialized = false;
 
+	bool initialized = false;
 	bool canGraphicsQueuePresent = false;
 
 	std::vector<Gameobject*> gameObjects;
-	
-	ui16 queueCount = 0;
 
 	VkInstance vkInstance;
 	VkPhysicalDevice physicalDevice;
@@ -125,13 +122,14 @@ private:
 	VkQueue graphicsQueue = VK_NULL_HANDLE;
 	VkQueue presentQueue = VK_NULL_HANDLE;
 	VkQueue transferQueue = VK_NULL_HANDLE;
-	std::vector<ui32> queueFamilyIndices;
+	ui16 queueCount = 0;
 
 	VkSurfaceCapabilitiesKHR surfaceCapabilities;
 
 	VkSwapchainKHR swapchain = VK_NULL_HANDLE;
 	std::vector<VkImageView> imageViews;
 	std::vector<VkImage> swapchainImages;
+	VkFormat supportedColorFormat;
 
 	VkShaderModule vertexModule;
 	VkShaderModule fragmentModule;
@@ -143,23 +141,22 @@ private:
 	VkCommandPool m_commandPool;
 	std::vector<VkCommandBuffer> commandBuffers;
 
+	VkViewport viewport;
+	VkRect2D screenScissor;
+
 	std::vector<VkFramebuffer> framebuffers;
 	std::vector<VkPipelineStageFlags> waitStageMask;
 
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderingFinishedSemaphore;
 
-	std::vector<VkBuffer> vertexBuffers; //TODO
-	std::vector<VkBuffer> indexBuffers;
-	std::vector<VkBuffer> uniformBuffers;
-
-
-	std::vector<VkDeviceMemory> indexBufferMemories;
-	std::vector<VkDeviceMemory> vertexBufferMemories;
-	std::vector<VkDeviceMemory> uniformBufferMemories;
-
+	VkBuffer vertexBuffer;
+	VkBuffer indexBuffer;
 	VkBuffer uniformBuffer;
 
+
+	VkDeviceMemory indexBufferMemory;
+	VkDeviceMemory vertexBufferMemory;
 	VkDeviceMemory uniformBufferMemory;
 
 	VkDescriptorSetLayout descriptorSetLayout;
@@ -168,7 +165,6 @@ private:
 
 	Gameobject* root;
 	Gameobject* testObject;
-	Gameobject* testObject2;
 
 	Math::Mat4x4 mvp;
 	Math::Vec3 cameraPos;

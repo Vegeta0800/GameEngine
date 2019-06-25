@@ -5,8 +5,10 @@
 class Mesh
 {
 public:
-	Mesh();
-	void Create(const char* path);
+	Mesh(const char* p = "");
+	void Create(const char* p);
+
+	void SetPath(const char* p);
 
 	std::vector<Vertex> GetVertices();
 	std::vector<ui32> GetIndices();
@@ -14,4 +16,6 @@ public:
 private:
 	std::vector<Vertex> vertices;
 	std::vector<ui32> indices;
+
+	const char* path;
 };

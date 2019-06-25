@@ -19,9 +19,9 @@
 #define INIT_TIMER auto start = std::chrono::high_resolution_clock::now();
 #define START_TIMER  start = std::chrono::high_resolution_clock::now();
 #define STOP_TIMER(name)  std::cout << "RUNTIME of " << name << ": " << \
-    std::chrono::duration_cast<std::chrono::nanoseconds>( \
+    std::chrono::duration_cast<std::chrono::milliseconds>( \
             std::chrono::high_resolution_clock::now()-start \
-    ).count() << " ns " << std::endl; 
+    ).count() << " ms " << std::endl; 
 #else
 #define INIT_TIMER
 #define START_TIMER
@@ -90,3 +90,5 @@ Type* Type::instance = nullptr;
 
 //Define a function that is able to give the error message of an HRESULT to the ERR define. That way the HRESULT Error is getting outputted.
 #define V_RETURN(x) hr = x; if (hr != S_OK) { _com_error err(hr); LPCTSTR errMsg = err.ErrorMessage(); ERR("%s", errMsg); throw; }
+
+#define GetVariableName(var) #var

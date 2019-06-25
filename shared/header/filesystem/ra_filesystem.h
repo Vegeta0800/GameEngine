@@ -16,9 +16,12 @@ public:
 	void ListDirectories(const char* startPath, std::vector<std::string>& temp);
 	std::string DirectoryPath(const char* directoryName);
 	std::string FileInDirectory(const char* directoryName, const char* fileName);
+	const char* GetStartDirectory();
 	void Cleanup();
 private:
 	std::vector<std::string> FilesInDirectory(const char* directoryName);
 	std::vector<std::string> directories;
 	std::vector<std::string> files;
+
+	std::string startDirectory;
 };

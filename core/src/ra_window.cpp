@@ -142,9 +142,11 @@ void Window::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* ti
 
 	g_windowMapping[this->handle] = this;
 
-	this->state = Window::WindowState::Started;
+	this->state = Window::WindowState::Pending;
+}
 
-	//Show and update the window.
+void Window::ShowActiveWindow()
+{
 	ShowWindow(this->handle, SW_SHOW);
 	UpdateWindow(this->handle);
 }

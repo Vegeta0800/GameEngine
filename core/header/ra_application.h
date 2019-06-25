@@ -17,7 +17,5 @@ public:
 
 	Filesystem* GetFilesystem();
 private:
-
 	Filesystem* filesystem;
-
 };

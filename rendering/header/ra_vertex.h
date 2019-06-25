@@ -68,9 +68,9 @@ namespace std {
 			size_t UVX = std::hash<float>()(k.uvCoord.x);
 			size_t UVY = std::hash<float>()(k.uvCoord.y);
 
-			size_t h1 = posX + posY + posZ;
-			size_t h2 = colorX + colorY + colorZ;
-			size_t h3 = UVX + UVY;
+			size_t h1 = ((posX ^ (posY << 1)) >> 1) ^ posZ;
+			size_t h2 = ((colorX ^ (colorY << 1)) >> 1) ^ colorZ;
+			size_t h3 = ((UVX ^ (UVY << 1)) >> 1);
 
 			return ((h1 ^ (h2 << 1)) >> 1) ^ h3;
 		}

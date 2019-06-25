@@ -6,6 +6,7 @@
 #include "ra_window.h"
 #include "ra_rendering.h"
 #include "input/ra_inputhandler.h"
+#include "ra_scenemanager.h"
 
 DECLARE_SINGLETON(Application)
 
@@ -60,6 +61,7 @@ void Application::Update()
 
 void Application::Cleanup()
 {
+	SceneManager::GetInstancePtr()->Cleanup();
 	Rendering::GetInstancePtr()->Cleanup();
 	this->filesystem->Cleanup();
 	Window::GetInstancePtr()->Release();

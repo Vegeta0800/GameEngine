@@ -1,14 +1,13 @@
 #include "ra_gameobject.h"
-#include "ra_rendering.h"
 #include "ra_application.h"
 
 Gameobject::Gameobject() :
-	isRoot(false),
-	parent(nullptr)
+	isRoot(false)
 {
+	this->Initialize();
 }
 
-void Gameobject::Initialize()
+void Gameobject::Initialize(MeshType meshtype, Gameobject* parent, const char* name)
 {
 	this->parent = nullptr;
 	this->transform = Transform();
@@ -19,6 +18,33 @@ void Gameobject::Initialize()
 	this->transform.rotation = Math::Quaternion::identity;
 	this->transform.scaling = Math::Vec3::unit_scale;
 
+	this->name = name;
+
+	this->meshType = meshtype;
+	this->meshColor = Math::Vec3::zero;
+
+	if (parent != nullptr)
+		this->SetParent(parent);
+}
+
+void Gameobject::Initialize(Gameobject* copyGb, const char* name)
+{
+	this->parent = nullptr;
+	this->transform = copyGb->GetTransform();
+	this->oldPosition = copyGb->GetTransform().position;
+	this->oldEulerRotation = copyGb->GetTransform().eulerRotation;
+	this->transform.position = copyGb->GetTransform().position;
+	this->transform.eulerRotation = copyGb->GetTransform().eulerRotation;
+	this->transform.rotation = copyGb->GetTransform().rotation;
+	this->transform.scaling = copyGb->GetTransform().scaling;
+
+	this->name = name;
+
+	this->meshType = copyGb->GetMeshtype();
+	this->meshColor = Math::Vec3::zero;
+
+	if (copyGb->GetParent() != nullptr)
+		this->SetParent(copyGb->GetParent());
 }
 
 void Gameobject::Update()
@@ -60,7 +86,6 @@ void Gameobject::Cleanup()
 		if (child != nullptr)
 		{
 			child->Cleanup();
-			delete child;
 		}
 	}
 
@@ -70,6 +95,11 @@ void Gameobject::Cleanup()
 	}
 
 	delete this;
+}
+
+void Gameobject::SetMeshColor(Math::Vec3 color)
+{
+	this->meshColor = color;
 }
 
 void Gameobject::SetParent(Gameobject* parent)
@@ -90,7 +120,6 @@ void Gameobject::AddComponent(Component* component)
 {
 	this->components.push_back(component);
 }
-
 
 void Gameobject::DeleteParent()
 {
@@ -231,5 +260,20 @@ Math::Mat4x4 Gameobject::GetModelMatrix()
 	this->modelMatrix = this->modelMatrix * Math::Transpose(Math::CreateTranslationMatrix(this->transform.position));
 
 	return this->modelMatrix;
+}
+
+MeshType Gameobject::GetMeshtype()
+{
+	return this->meshType;
+}
+
+Math::Vec3 Gameobject::GetMeshColor()
+{
+	return this->meshColor;
+}
+
+const char* Gameobject::GetName()
+{
+	return this->name;
 }
 

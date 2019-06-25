@@ -21,6 +21,7 @@ void Texture::Load(const char* texturePath)
 
 void Texture::Upload(VkCommandPool commandPool, VkQueue queue)
 {
+	//TODO
 	if (!this->loaded)
 		throw printf("Image not loaded!");
 	else if (this->uploaded)

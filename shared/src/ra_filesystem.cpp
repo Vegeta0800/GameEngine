@@ -4,7 +4,11 @@
 
 Filesystem::Filesystem()
 {
+
 	ListDirectories(Console::GetInstancePtr()->GetCVar("gamepath").cvarValue, this->directories);
+
+	std::string temp = Console::GetInstancePtr()->GetCVar("gamepath").cvarValue;
+	this->startDirectory = temp.substr(0, temp.find_last_of("/") - 4);
 }
 
 void Filesystem::ListDirectories(const char* startPath, std::vector<std::string>& temp)
@@ -16,7 +20,7 @@ void Filesystem::ListDirectories(const char* startPath, std::vector<std::string>
 
 	sprintf_s(path, "%s*", startPath);
 
-	temp.push_back(startPath);
+	temp.push_back(path);
 
 	if ((handle = FindFirstFile(path, &data)) == INVALID_HANDLE_VALUE) 
 	{
@@ -76,6 +80,11 @@ std::string Filesystem::FileInDirectory(const char* directoryName, const char* f
 	}
 
 	return "file wasnt found!";
+}
+
+const char* Filesystem::GetStartDirectory()
+{
+	return this->startDirectory.c_str();
 }
 
 std::vector<std::string> Filesystem::FilesInDirectory(const char* directoryName)

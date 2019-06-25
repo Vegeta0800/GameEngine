@@ -15,9 +15,9 @@ class Window
 	DEFINE_SINGLETON(Window)
 
 public:
-
 	enum class WindowState
 	{
+		Pending,
 		Started,
 		Closed
 	};
@@ -26,6 +26,7 @@ public:
 	bool PollEvents(void);
 	void AddDisplay(Display& display);
 	void SetState(WindowState state);
+	void ShowActiveWindow();
 	
 	Display* GetDisplay(ui32 displayID);
 	WindowState GetState(void);
