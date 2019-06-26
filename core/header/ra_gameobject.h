@@ -7,6 +7,7 @@
 #include "math/ra_mat4x4.h"
 #include "ra_component.h"
 #include "ra_transform.h"
+#include "ra_material.h"
 
 enum class MeshType
 {
@@ -23,8 +24,6 @@ public:
 	void Update();
 	void Cleanup();
 	
-	void SetMeshColor(Math::Vec3 color);
-
 	void SetParent(Gameobject* parent);
 	void SetName(const char* name = "");
 	void DeleteParent();
@@ -44,7 +43,7 @@ public:
 	Transform& GetTransform();
 	Math::Mat4x4 GetModelMatrix();
 	MeshType GetMeshtype();
-	Math::Vec3 GetMeshColor();
+	Material GetMaterial();
 
 	const char* GetName();
 
@@ -58,8 +57,6 @@ private:
 
 	Transform transform;
 	
-	Math::Vec3 meshColor;
-
 	Math::Vec3 oldPosition;
 	Math::Vec3 oldEulerRotation;
 
@@ -68,6 +65,7 @@ private:
 	Gameobject* parent;
 
 	MeshType meshType;
+	Material material;
 
 	std::list<Gameobject*> children;
 	std::list<Component*> components;

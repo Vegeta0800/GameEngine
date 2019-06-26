@@ -44,10 +44,17 @@ void Mesh::Create(const char* p)
 				vertexAttributes.texcoords[2 * index.texcoord_index + 1]
 			};
 
+			Math::Vec3 normals =
+			{
+				vertexAttributes.normals[3 * index.normal_index + 0],
+				vertexAttributes.normals[3 * index.normal_index + 2],
+				vertexAttributes.normals[3 * index.normal_index + 1]
+			};
+
 			Vertex vertex =
 			{
 				position,
-				Math::Vec3{0.0f, 1.0f, 0.0f},
+				normals,
 				texCoords
 			};
 

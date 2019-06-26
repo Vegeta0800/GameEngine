@@ -9,7 +9,7 @@
 struct Vertex
 {
 	Math::Vec3 position;
-	Math::Vec3 color;
+	Math::Vec3 normal;
 	Math::Vec2 uvCoord;
 
 	static VkVertexInputBindingDescription GetBindingDescription()
@@ -20,12 +20,11 @@ struct Vertex
 		vertexInputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 		return vertexInputBindingDescription;
-
 	}
 
 	bool operator== (const Vertex& other) const
 	{
-		return position == other.position && color == other.color && uvCoord == other.uvCoord;
+		return position == other.position && normal == other.normal && uvCoord == other.uvCoord;
 	}
 
 	static std::vector<VkVertexInputAttributeDescription> GetAttributeDescriptions()
@@ -40,7 +39,7 @@ struct Vertex
 		vertexInputAttributeDescription[1].location = 1;
 		vertexInputAttributeDescription[1].binding = 0;
 		vertexInputAttributeDescription[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-		vertexInputAttributeDescription[1].offset = offsetof(Vertex, color);
+		vertexInputAttributeDescription[1].offset = offsetof(Vertex, normal);
 
 		vertexInputAttributeDescription[2].location = 2;
 		vertexInputAttributeDescription[2].binding = 0;
@@ -61,9 +60,9 @@ namespace std {
 			size_t posY = std::hash<float>()(k.position.y);
 			size_t posZ = std::hash<float>()(k.position.z);
 
-			size_t colorX = std::hash<float>()(k.color.x);
-			size_t colorY = std::hash<float>()(k.color.y);
-			size_t colorZ = std::hash<float>()(k.color.z);
+			size_t colorX = std::hash<float>()(k.normal.x);
+			size_t colorY = std::hash<float>()(k.normal.y);
+			size_t colorZ = std::hash<float>()(k.normal.z);
 
 			size_t UVX = std::hash<float>()(k.uvCoord.x);
 			size_t UVY = std::hash<float>()(k.uvCoord.y);

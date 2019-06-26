@@ -26,6 +26,14 @@ class Rendering
 		FRAGMENT = 1
 	};
 
+	struct VertexInputInfo
+	{
+		Math::Mat4x4 modelMatrix;
+		Math::Mat4x4 viewMatrix;
+		Math::Mat4x4 projectionMatrix;
+		Math::Vec3 lightPosition;
+	};
+
 public:
 	void Initialize(const char* applicationName, ui32 applicationVersion);
 	void Update(float time);
@@ -154,7 +162,6 @@ private:
 	VkBuffer indexBuffer;
 	VkBuffer uniformBuffer;
 
-
 	VkDeviceMemory indexBufferMemory;
 	VkDeviceMemory vertexBufferMemory;
 	VkDeviceMemory uniformBufferMemory;
@@ -166,7 +173,6 @@ private:
 	Gameobject* root;
 	Gameobject* testObject;
 
-	Math::Mat4x4 mvp;
 	Math::Vec3 cameraPos;
 
 	Texture texture;

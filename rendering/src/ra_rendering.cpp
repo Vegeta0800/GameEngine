@@ -109,17 +109,21 @@ void Rendering::UpdateMVP(float time)
 
 	//printf("%f, %f, %f \n", this->cameraPos.x, this->cameraPos.y, this->cameraPos.z);
 
-	Math::Mat4x4 modelMatrix = this->testObject->GetModelMatrix();
-	Math::Mat4x4 viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, Math::Vec3::zero, Math::Vec3::unit_z);
-	Math::Mat4x4 projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
-	projectionMatrix.m22 *= -1.0f;
-	this->mvp = modelMatrix;
-	this->mvp = this->mvp * viewMatrix;
-	this->mvp = this->mvp * projectionMatrix;
+	VertexInputInfo vertexInfo;
+
+	vertexInfo.modelMatrix = this->testObject->GetModelMatrix();
+	vertexInfo.lightPosition = this->cameraPos;
+	vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, Math::Vec3::zero, Math::Vec3::unit_z);
+	vertexInfo.projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
+	vertexInfo.projectionMatrix.m22 *= -1.0f;
+	//vertexInfo.colorIn = this->testObject->GetMaterial().fragColor;
+	//vertexInfo.specularColor = this->testObject->GetMaterial().specularColor;
+	//vertexInfo.ambientValue = 0.1f;
+	//vertexInfo.specularValue = 10.0f;
 
 	void* data;
-	vkMapMemory(this->logicalDevice, this->uniformBufferMemory, 0, sizeof(this->mvp), 0, &data);
-	memcpy(data, &this->mvp, sizeof(this->mvp));
+	vkMapMemory(this->logicalDevice, this->uniformBufferMemory, 0, sizeof(vertexInfo), 0, &data);
+	memcpy(data, &vertexInfo, sizeof(vertexInfo));
 	vkUnmapMemory(this->logicalDevice, this->uniformBufferMemory);
 }
 
@@ -768,7 +772,7 @@ void Rendering::CreateDescriptorSet()
 	VkDescriptorBufferInfo uniformDescriptorBufferInfo;
 	uniformDescriptorBufferInfo.buffer = this->uniformBuffer;
 	uniformDescriptorBufferInfo.offset = 0;
-	uniformDescriptorBufferInfo.range = sizeof(Math::Mat4x4);
+	uniformDescriptorBufferInfo.range = sizeof(VertexInputInfo);
 
 	//Uniform buffer write using uniformDescriptorBufferInfo.
 	VkWriteDescriptorSet uniformDescriptorWrite;
@@ -896,7 +900,7 @@ void Rendering::CreatePipeline()
 	rasterizationInfo.rasterizerDiscardEnable = VK_FALSE;
 	rasterizationInfo.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizationInfo.cullMode = VK_CULL_MODE_BACK_BIT;
-	rasterizationInfo.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	rasterizationInfo.frontFace = VK_FRONT_FACE_CLOCKWISE;
 	rasterizationInfo.depthBiasEnable = VK_FALSE; //Add constant value onto fragment depth
 	rasterizationInfo.depthBiasConstantFactor = 0.0f;
 	rasterizationInfo.depthBiasClamp = 0.0f;
@@ -1282,7 +1286,7 @@ void Rendering::CreateBufferOnGPU(std::vector<T> data, VkBufferUsageFlags usage,
 void Rendering::CreateUniformbuffer()
 {
 	//Create uniform buffer for vertex shader (mvp matrix).
-	VkDeviceSize bufferSize = sizeof(Math::Mat4x4);
+	VkDeviceSize bufferSize = sizeof(VertexInputInfo);
 	this->CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, this->uniformBuffer, (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT), this->uniformBufferMemory);
 }
 

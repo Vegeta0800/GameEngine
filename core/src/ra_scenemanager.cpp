@@ -16,12 +16,12 @@ void SceneManager::Initialize()
 		testObject->Initialize(MeshType::MESH_DRAGON, mainSceneRoot, GetVariableName(testObject));
 		testObject->GetTransform().scaling *= 0.1f;
 		testObject->GetTransform().position.z -= 1.0f;
-		testObject->SetMeshColor(Math::Vec3{ 0.2f, 0.349f, 0.964f });
+		//testObject->SetMeshColor(Math::Vec3{ 0.2f, 0.349f, 0.964f });
 
 		Gameobject* testObject2 = new Gameobject;
 		testObject2->Initialize(testObject, GetVariableName(testObject2));
 
-		testObject2->SetMeshColor(Math::Vec3{ 0.874f, 0.749f, 0.164f });
+		//testObject2->SetMeshColor(Math::Vec3{ 0.874f, 0.749f, 0.164f });
 
 		mainSceneName = GetVariableName(mainSceneRoot);
 		this->scenes[mainSceneName] = mainSceneRoot;
