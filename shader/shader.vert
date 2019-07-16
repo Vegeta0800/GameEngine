@@ -14,8 +14,8 @@ layout(location = 0) out vec2 fragUVCoord;
 layout(location = 1) out vec3 fragNormal;
 layout(location = 2) out vec3 fragView;
 layout(location = 3) out vec3 fragLight;
-layout(location = 4) out vec3 fragColor;
-layout(location = 5) out vec3 fragSpecularColor;
+layout(location = 4) out vec4 fragColor;
+layout(location = 5) out vec4 fragSpecularColor;
 layout(location = 6) out float fragAmbientValue;
 layout(location = 7) out float fragSpecularValue;
 
@@ -24,9 +24,9 @@ layout(binding = 0) uniform UniformStruct
 	mat4 model;
 	mat4 view;
 	mat4 projection;
+	vec4 colorIn;
+	vec4 specularColor;
 	vec3 lightPos;
-	vec3 colorIn;
-	vec3 specularColor;
 	float ambientValue;
 	float specularValue;
 } uniformObject;

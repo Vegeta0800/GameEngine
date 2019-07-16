@@ -43,7 +43,7 @@ public:
 	Transform& GetTransform();
 	Math::Mat4x4 GetModelMatrix();
 	MeshType GetMeshtype();
-	Material GetMaterial();
+	Material& GetMaterial();
 
 	const char* GetName();
 

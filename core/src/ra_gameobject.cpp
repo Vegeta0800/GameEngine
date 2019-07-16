@@ -21,10 +21,11 @@ void Gameobject::Initialize(MeshType meshtype, Gameobject* parent, const char* n
 	this->name = name;
 	this->meshType = meshtype;
 
-	this->material.fragColor = Math::Vec3{ 0.164f, 0.749f, 0.874f };
-	this->material.specularColor = Math::Vec3{1.4f, 1.4f, 1.4f};
+	//this->material.fragColor = Math::Vec3{ 0.164f, 0.749f, 0.874f };
+	this->material.fragColor = fColorRGBA{ 0, 1, 0, 1 };
+	this->material.specularColor = fColorRGBA{1.4f, 1.4f, 1.4f, 1};
 	this->material.ambientValue = 0.1f;
-	this->material.specularValue = 100.0f;
+	this->material.specularValue = 16.0f;
 
 	if (parent != nullptr)
 		this->SetParent(parent);
@@ -45,10 +46,11 @@ void Gameobject::Initialize(Gameobject* copyGb, const char* name)
 
 	this->meshType = copyGb->GetMeshtype();
 
-	this->material.fragColor = Math::Vec3{ 0.164f, 0.749f, 0.874f };
-	this->material.specularColor = Math::Vec3{ 1.0f, 1.0f, 1.0f };
+	//this->material.fragColor = Math::Vec3{ 0.164f, 0.749f, 0.874f };
+	this->material.fragColor = fColorRGBA{ 0, 1, 0, 1 };
+	this->material.specularColor = fColorRGBA{ 1.4f, 1.4f, 1.4f, 1 };
 	this->material.ambientValue = 0.1f;
-	this->material.specularValue = 100.0f;
+	this->material.specularValue = 16.0f;
 
 	if (copyGb->GetParent() != nullptr)
 		this->SetParent(copyGb->GetParent());
@@ -269,7 +271,7 @@ MeshType Gameobject::GetMeshtype()
 	return this->meshType;
 }
 
-Material Gameobject::GetMaterial()
+Material& Gameobject::GetMaterial()
 {
 	return this->material;
 }

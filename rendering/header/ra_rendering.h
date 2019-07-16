@@ -26,12 +26,16 @@ class Rendering
 		FRAGMENT = 1
 	};
 
-	struct VertexInputInfo
+	struct alignas(16) VertexInputInfo
 	{
 		Math::Mat4x4 modelMatrix;
 		Math::Mat4x4 viewMatrix;
 		Math::Mat4x4 projectionMatrix;
+		fColorRGBA color;
+		fColorRGBA specColor;
 		Math::Vec3 lightPosition;
+		float ambientVal;
+		float specularVal;
 	};
 
 public:

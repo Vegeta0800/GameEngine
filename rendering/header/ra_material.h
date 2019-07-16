@@ -4,8 +4,8 @@
 
 struct Material
 {
-	Math::Vec3 fragColor;
-	Math::Vec3 specularColor;
+	fColorRGBA fragColor;
+	fColorRGBA specularColor;
 	float ambientValue;
 	float specularValue;
 };

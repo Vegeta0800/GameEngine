@@ -47,7 +47,6 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 	this->CreateCommandPool();
 	this->CreateDepthImage();
 	this->CreateFramebuffers();
-	this->CreateCommandbuffer();
 	this->LoadTexture();
 	this->LoadModels();
 	this->CreateVertexbuffer();
@@ -55,6 +54,7 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 	this->CreateUniformbuffer();
 	this->CreateDescriptorPool();
 	this->CreateDescriptorSet();
+	this->CreateCommandbuffer();
 	this->RecordCommands();
 	this->CreateSemaphores();
 
@@ -104,10 +104,14 @@ void Rendering::UpdateMVP(float time)
 		this->cameraPos.y += 0.0002f * time;
 	}
 
+	if (Input::GetInstancePtr()->GetKeyUp(KeyCode::G))
+	{
+		this->testObject->GetMaterial().fragColor = fColorRGBA{ 0.921f, 0.764f, 0.058f, 1.0f };
+	}
+
 	this->testObject->GetTransform().eulerRotation.z = time * 20.0f;
 
-
-	//printf("%f, %f, %f \n", this->cameraPos.x, this->cameraPos.y, this->cameraPos.z);
+	printf("%f, %f \n", this->viewport.width, this->viewport.height);
 
 	VertexInputInfo vertexInfo;
 
@@ -116,10 +120,10 @@ void Rendering::UpdateMVP(float time)
 	vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, Math::Vec3::zero, Math::Vec3::unit_z);
 	vertexInfo.projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
 	vertexInfo.projectionMatrix.m22 *= -1.0f;
-	//vertexInfo.colorIn = this->testObject->GetMaterial().fragColor;
-	//vertexInfo.specularColor = this->testObject->GetMaterial().specularColor;
-	//vertexInfo.ambientValue = 0.1f;
-	//vertexInfo.specularValue = 10.0f;
+	vertexInfo.color = this->testObject->GetMaterial().fragColor;
+	vertexInfo.specColor = this->testObject->GetMaterial().specularColor;
+	vertexInfo.ambientVal = 0.1f;
+	vertexInfo.specularVal = 16.0f;
 
 	void* data;
 	vkMapMemory(this->logicalDevice, this->uniformBufferMemory, 0, sizeof(vertexInfo), 0, &data);
@@ -189,22 +193,34 @@ void Rendering::ChangeLayout(VkCommandPool commandPool, VkQueue queue, VkImage i
 	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	imageMemoryBarrier.pNext = nullptr;
 
+	VkPipelineStageFlags sourceStage;
+	VkPipelineStageFlags destinationStage;
+
 	//First time being called change to transfer data. Next time change to let shader read information.
 	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
 	{
-		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+		imageMemoryBarrier.srcAccessMask = 0;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 	}
 	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
 	{
 		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+		sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 	}
 	//For depth buffer and stencil buffer.
 	else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
 	{
 		imageMemoryBarrier.srcAccessMask = 0;
 		imageMemoryBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	}
 	else
 		throw;
@@ -236,7 +252,7 @@ void Rendering::ChangeLayout(VkCommandPool commandPool, VkQueue queue, VkImage i
 	imageMemoryBarrier.subresourceRange.layerCount = 1;
 
 	//Put barrier inside the pipeline at the beginning.
-	vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
+	vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
 
 	//Stop recording of command buffer.
 	this->StopRecording(queue, commandBuffer, commandPool);
@@ -318,10 +334,8 @@ void Rendering::CreateInstance(const char* applicationName, ui32 applicationVers
 	instanceInfo.pApplicationInfo = &appInfo;
 	instanceInfo.enabledExtensionCount = static_cast<ui32>(instanceExtensions.size());
 	instanceInfo.ppEnabledExtensionNames = instanceExtensions.data();
-#if defined(_DEBUG)
 	instanceInfo.enabledLayerCount = static_cast<ui32>(instanceValidationLayers.size());
 	instanceInfo.ppEnabledLayerNames = instanceValidationLayers.data();
-#endif
 
 	//Create instance with instance info.
 	VK_CHECK(vkCreateInstance(&instanceInfo, nullptr, &this->vkInstance));
@@ -756,6 +770,8 @@ void Rendering::CreateDescriptorPool()
 //Update descriptorset using writes size and data.
 void Rendering::CreateDescriptorSet()
 {
+	//TODO for each object, create new descriptorsets and pools.
+
 	//Allocate space for descriptorset using the descriptorpool and descriptorsetlayout.
 	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo;
 	descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -768,7 +784,7 @@ void Rendering::CreateDescriptorSet()
 	//Store write infos needed for shader data.
 	std::vector<VkWriteDescriptorSet> descriptorSetWrites;
 
-	//Uniform buffer info (for mvp matrix in vertex shader).
+	//Uniform buffer info (for mvp matrix and fragInfos in vertex shader).
 	VkDescriptorBufferInfo uniformDescriptorBufferInfo;
 	uniformDescriptorBufferInfo.buffer = this->uniformBuffer;
 	uniformDescriptorBufferInfo.offset = 0;
@@ -799,7 +815,7 @@ void Rendering::CreateDescriptorSet()
 	descriptorSamplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	descriptorSamplerWrite.pNext = nullptr;
 	descriptorSamplerWrite.dstSet = this->descriptorSet;
-	descriptorSamplerWrite.dstBinding = 0;
+	descriptorSamplerWrite.dstBinding = 1;
 	descriptorSamplerWrite.dstArrayElement = 0;
 	descriptorSamplerWrite.descriptorCount = 1;
 	descriptorSamplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1007,7 +1023,7 @@ void Rendering::CreateRenderpass()
 	//Attachment description for normal color representation.
 	VkAttachmentDescription attachmentDescription;
 	attachmentDescription.flags = 0;
-	attachmentDescription.format = VK_FORMAT_B8G8R8A8_UNORM;
+	attachmentDescription.format = VK_FORMAT_B8G8R8A8_UNORM; //TODO swapcahin format
 	attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
 	attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1335,7 +1351,7 @@ void Rendering::RecordCommands()
 		//Start recording.
 		VK_CHECK(vkBeginCommandBuffer(this->commandBuffers[i], &commandBufferBeginInfo));
 
-		//Declare and store clear values of normal backround and depth image.
+		//Declare and store clear values of normal color image and depth image.
 		std::vector <VkClearValue> clearValues;
 
 		VkClearValue clearValue = { };
@@ -1364,14 +1380,16 @@ void Rendering::RecordCommands()
 		vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline);
 
 		//Set viewport and scissors.
+		this->viewport.width = static_cast<float>(this->surfaceCapabilities.currentExtent.width);
+		this->viewport.height = static_cast<float>(this->surfaceCapabilities.currentExtent.height);
+		this->screenScissor.extent = { this->surfaceCapabilities.currentExtent.width, this->surfaceCapabilities.currentExtent.height };
+
 		vkCmdSetViewport(this->commandBuffers[i], 0, 1, &this->viewport);
 		vkCmdSetScissor(this->commandBuffers[i], 0, 1, &this->screenScissor);
 
 		//Define offset for drawing the mesh instances.
 		VkDeviceSize offsets[] = {0};
 		
-		//For every renderable gameobject, get mesh type and draw that mesh type using its offset.
-
 		vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &this->vertexBuffer, offsets);
 		vkCmdBindIndexBuffer(this->commandBuffers[i],  this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSet, 0, nullptr);
@@ -1437,7 +1455,7 @@ VkFormat Rendering::GetSupportedFormats(VkPhysicalDevice phyDevice, const std::v
 			return format;
 	}
 
-	return VkFormat();
+	return formats[0];
 }
 
 //Check if a present mode is supported.
@@ -1459,11 +1477,9 @@ VkColorSpaceKHR Rendering::GetSupportedSurfaceColorSpace(const std::vector<VkSur
 	{
 		if (supportedSurfaceFormats[i].colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
 			return VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-		else
-			return supportedSurfaceFormats[i].colorSpace;
 	}
 
-	return VkColorSpaceKHR();
+	return supportedSurfaceFormats[0].colorSpace;
 }
 
 //Get the optimal supported surface color format.
@@ -1473,11 +1489,9 @@ VkFormat Rendering::GetSupportedSurfaceFormat(const std::vector<VkSurfaceFormatK
 	{
 		if (supportedSurfaceFormats[i].format == VK_FORMAT_B8G8R8A8_UNORM)
 			return VK_FORMAT_B8G8R8A8_UNORM;
-		else
-			return supportedSurfaceFormats[i].format;
 	}
 
-	return VkFormat();
+	return supportedSurfaceFormats[0].format;
 }
 
 //Get Buffer in bytes (unsigned char).
