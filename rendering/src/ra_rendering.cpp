@@ -1023,7 +1023,7 @@ void Rendering::CreateRenderpass()
 	//Attachment description for normal color representation.
 	VkAttachmentDescription attachmentDescription;
 	attachmentDescription.flags = 0;
-	attachmentDescription.format = VK_FORMAT_B8G8R8A8_UNORM; //TODO swapcahin format
+	attachmentDescription.format = this->supportedColorFormat;
 	attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
 	attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1310,15 +1310,21 @@ void Rendering::CreateUniformbuffer()
 void Rendering::LoadTexture(void)
 {
 	//Load texture and submit it to the graphics queue.
-	this->texture.Load("D:/Documents/Code/Engine/GameEngine/textures/texture.jpg"); //TODO
+	std::string path = Application::GetInstancePtr()->GetFilesystem()->GetStartDirectory();
+	path += "/texture.jpg";
+
+	this->texture.Load(path.c_str());
 	this->texture.Upload(this->m_commandPool, this->graphicsQueue);
 }
 
 //Load models.
 void Rendering::LoadModels(void)
 {
+	std::string path = Application::GetInstancePtr()->GetFilesystem()->GetStartDirectory();
+	path += "/dragon.obj";
+
 	//Create mesh data.
-	this->mesh.Create("D:/Documents/Code/Engine/GameEngine/meshes/dragon.obj"); //TODO
+	this->mesh.Create(path.c_str());
 }
 
 //Create vertex buffer.
