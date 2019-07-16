@@ -1311,7 +1311,7 @@ void Rendering::LoadTexture(void)
 {
 	//Load texture and submit it to the graphics queue.
 	std::string path = Application::GetInstancePtr()->GetFilesystem()->GetStartDirectory();
-	path += "/texture.jpg";
+	path += "/textures/texture.jpg";
 
 	this->texture.Load(path.c_str());
 	this->texture.Upload(this->m_commandPool, this->graphicsQueue);
@@ -1321,7 +1321,7 @@ void Rendering::LoadTexture(void)
 void Rendering::LoadModels(void)
 {
 	std::string path = Application::GetInstancePtr()->GetFilesystem()->GetStartDirectory();
-	path += "/dragon.obj";
+	path += "/meshes/dragon.obj";
 
 	//Create mesh data.
 	this->mesh.Create(path.c_str());
