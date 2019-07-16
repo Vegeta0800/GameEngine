@@ -310,4 +310,14 @@ namespace Math
 			-Math::Dot(s, eye), -Math::Dot(u, eye), Math::Dot(f, eye), 1.0f
 		};
 	}
+
+	inline Mat4x4 CreateModelMatrix(const Vec3& position, const Vec3& scaling, const Vec3& eulerRotation)
+	{
+		Math::Mat4x4 modelMatrix = Math::Mat4x4::identity;
+		modelMatrix = modelMatrix * Math::CreateRotationMatrix(eulerRotation);
+		modelMatrix = modelMatrix * Math::CreateScalingMatrix(scaling);
+		modelMatrix = modelMatrix * Math::Transpose(Math::CreateTranslationMatrix(position));
+
+		return modelMatrix;
+	}
 }

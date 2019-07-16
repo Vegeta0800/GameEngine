@@ -101,10 +101,13 @@ private:
 	void LoadTexture(void);
 	void LoadModels(void);
 
+	void CreateInstanceData(void);
+	void CreateInstanceBuffer(void);
 	void CreateVertexbuffer(void);
 	void CreateIndexbuffer(void);
 
 	void RecordCommands(void);
+	void ReRecordCommands(void);
 
 	void CreateSemaphores(void);
 
@@ -116,7 +119,7 @@ private:
 	VkColorSpaceKHR GetSupportedSurfaceColorSpace(const std::vector<VkSurfaceFormatKHR> supportedSurfaceFormats);
 	std::vector<byte> GetBuffer(RenderingBuffer bufferType);
 
-
+	int maxInts = 2;
 	int indexOfGraphicsQueue = INT_MAX;
 	int indexOfPresentQueue = INT_MAX;
 	int indexOfTransferQueue = INT_MAX;
@@ -163,10 +166,12 @@ private:
 	VkSemaphore renderingFinishedSemaphore;
 
 	VkBuffer vertexBuffer;
+	VkBuffer instanceBuffer;
 	VkBuffer indexBuffer;
 	VkBuffer uniformBuffer;
 
 	VkDeviceMemory indexBufferMemory;
+	VkDeviceMemory instanceBufferMemory;
 	VkDeviceMemory vertexBufferMemory;
 	VkDeviceMemory uniformBufferMemory;
 
@@ -178,6 +183,8 @@ private:
 	Gameobject* testObject;
 
 	Math::Vec3 cameraPos;
+
+	std::vector<InstanceData> instanceData;
 
 	Texture texture;
 	DepthImage depthImage;

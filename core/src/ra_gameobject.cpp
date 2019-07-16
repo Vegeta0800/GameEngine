@@ -258,12 +258,7 @@ Transform& Gameobject::GetTransform()
 
 Math::Mat4x4 Gameobject::GetModelMatrix()
 {
-	this->modelMatrix = Math::Mat4x4::identity;
-	this->modelMatrix = this->modelMatrix * Math::CreateRotationMatrix(this->transform.eulerRotation);
-	this->modelMatrix = this->modelMatrix * Math::CreateScalingMatrix(this->transform.scaling);
-	this->modelMatrix = this->modelMatrix * Math::Transpose(Math::CreateTranslationMatrix(this->transform.position));
-
-	return this->modelMatrix;
+	return Math::CreateModelMatrix(this->transform.position, this->transform.scaling, this->transform.eulerRotation);
 }
 
 MeshType Gameobject::GetMeshtype()

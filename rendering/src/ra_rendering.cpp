@@ -50,6 +50,8 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 	this->LoadTexture();
 	this->LoadModels();
 	this->CreateVertexbuffer();
+	this->CreateInstanceData();
+	this->CreateInstanceBuffer();
 	this->CreateIndexbuffer();
 	this->CreateUniformbuffer();
 	this->CreateDescriptorPool();
@@ -68,6 +70,7 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 //Update function called every frame.
 void Rendering::Update(float time)
 {
+
 	this->UpdateMVP(time);
 	this->DrawFrame();
 }
@@ -107,11 +110,11 @@ void Rendering::UpdateMVP(float time)
 	if (Input::GetInstancePtr()->GetKeyUp(KeyCode::G))
 	{
 		this->testObject->GetMaterial().fragColor = fColorRGBA{ 0.921f, 0.764f, 0.058f, 1.0f };
+		this->maxInts++;
+		this->ReRecordCommands();
 	}
 
 	this->testObject->GetTransform().eulerRotation.z = time * 20.0f;
-
-	printf("%f, %f \n", this->viewport.width, this->viewport.height);
 
 	VertexInputInfo vertexInfo;
 
@@ -859,16 +862,26 @@ void Rendering::CreatePipeline()
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
 	//Get bindings and attributes of a vertex point.
-	auto bindings = Vertex::GetBindingDescription();
-	auto attributes = Vertex::GetAttributeDescriptions();
+	std::vector<VkVertexInputBindingDescription> bindings;
+
+	VkVertexInputBindingDescription binding = Vertex::GetBindingDescription();
+	VkVertexInputBindingDescription bindingInstance = InstanceData::GetBindingDescriptionOfInstance();
+	bindings.push_back(binding);
+	bindings.push_back(bindingInstance);
+	std::vector<VkVertexInputAttributeDescription> attributes = Vertex::GetAttributeDescriptions();
+
+	for (int i = 0; i < InstanceData::GetAttributeDescriptionsOfInstance().size(); i++)
+	{
+		attributes.push_back(InstanceData::GetAttributeDescriptionsOfInstance()[i]);
+	}
 
 	//VERTEX INPUT
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo;
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputInfo.pNext = nullptr;
 	vertexInputInfo.flags = 0;
-	vertexInputInfo.vertexBindingDescriptionCount = 1;
-	vertexInputInfo.pVertexBindingDescriptions = &bindings; //for mesh instancing
+	vertexInputInfo.vertexBindingDescriptionCount = 2;
+	vertexInputInfo.pVertexBindingDescriptions = bindings.data(); //for mesh instancing
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<ui32>(attributes.size());
 	vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
 
@@ -1327,6 +1340,22 @@ void Rendering::LoadModels(void)
 	this->mesh.Create(path.c_str());
 }
 
+void Rendering::CreateInstanceBuffer()
+{
+	this->CreateBufferOnGPU(this->instanceData, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, this->instanceBuffer, this->instanceBufferMemory);
+}
+
+void Rendering::CreateInstanceData()
+{
+	this->instanceData.resize(maxInts);
+
+	for (int i = 0; i < maxInts; i++)
+	{
+		this->instanceData[i].instancePos = this->testObject->GetTransform().position;
+		this->instanceData[i].instancePos.z -= 10.0f * i;
+	}
+}
+
 //Create vertex buffer.
 void Rendering::CreateVertexbuffer()
 {
@@ -1397,9 +1426,10 @@ void Rendering::RecordCommands()
 		VkDeviceSize offsets[] = {0};
 		
 		vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &this->vertexBuffer, offsets);
-		vkCmdBindIndexBuffer(this->commandBuffers[i],  this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindVertexBuffers(this->commandBuffers[i], 1, 1, &this->instanceBuffer, offsets);
+		vkCmdBindIndexBuffer(this->commandBuffers[i], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSet, 0, nullptr);
-		vkCmdDrawIndexed(this->commandBuffers[i], static_cast<ui32>(this->mesh.GetIndices().size()), 1, 0, 0, 0);
+		vkCmdDrawIndexed(this->commandBuffers[i], static_cast<ui32>(this->mesh.GetIndices().size()), this->maxInts, 0, 0, 0);
 
 		//End renderpass.
 		vkCmdEndRenderPass(this->commandBuffers[i]);
@@ -1408,6 +1438,21 @@ void Rendering::RecordCommands()
 		VK_CHECK(vkEndCommandBuffer(this->commandBuffers[i]));
 	}
 
+}
+
+void Rendering::ReRecordCommands(void)
+{
+	vkDeviceWaitIdle(this->logicalDevice);
+
+	vkFreeMemory(this->logicalDevice, this->instanceBufferMemory, nullptr);
+	vkDestroyBuffer(this->logicalDevice, this->instanceBuffer, nullptr);
+
+	vkFreeCommandBuffers(this->logicalDevice, this->m_commandPool, static_cast<ui32>(this->commandBuffers.size()), this->commandBuffers.data());
+	
+	this->CreateInstanceData();
+	this->CreateInstanceBuffer();
+	this->CreateCommandbuffer();
+	this->RecordCommands();
 }
 
 //Create semaphores.
@@ -1641,6 +1686,10 @@ void Rendering::Cleanup()
 	vkFreeMemory(this->logicalDevice, this->indexBufferMemory, nullptr);
 	vkDestroyBuffer(this->logicalDevice, this->indexBuffer, nullptr);
 	
+	//Free memory and delete vertex buffer.
+	vkFreeMemory(this->logicalDevice, this->instanceBufferMemory, nullptr);
+	vkDestroyBuffer(this->logicalDevice, this->instanceBuffer, nullptr);
+
 	//Free memory and delete vertex buffer.
 	vkFreeMemory(this->logicalDevice, this->vertexBufferMemory, nullptr);
 	vkDestroyBuffer(this->logicalDevice, this->vertexBuffer, nullptr);
