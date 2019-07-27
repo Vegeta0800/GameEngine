@@ -18,6 +18,9 @@ public:
 	int GetHeight();
 	int GetChannels();
 	int GetByteSize();
+
+	const char* GetName();
+
 	bool isLoaded();
 
 	VkSampler GetSampler();
@@ -31,6 +34,8 @@ private:
 	int channels = 0;
 
 	byte* pixels = nullptr;
+	const char* name;
+
 
 	bool loaded = false;
 	bool uploaded = false;

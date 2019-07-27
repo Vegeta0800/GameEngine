@@ -13,6 +13,12 @@ void Texture::Load(const char* texturePath)
 	this->pixels = stbi_load(texturePath, &this->width, &this->height, &this->channels, STBI_rgb_alpha);
 	this->logicalDeviceHandle = Rendering::GetInstancePtr()->GetLogicalDevice();
 
+	std::string tempName(texturePath);
+
+	tempName = tempName.substr(tempName.find_last_of("/") + 1);
+
+	this->name = tempName.c_str();
+
 	if (this->pixels == nullptr)
 		throw;
 
@@ -141,6 +147,11 @@ int Texture::GetChannels()
 int Texture::GetByteSize()
 {
 	return this->width * this->height * 4;
+}
+
+const char* Texture::GetName()
+{
+	return this->name;
 }
 
 bool Texture::isLoaded()

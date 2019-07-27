@@ -38,7 +38,8 @@ add_custom_target(
 
 add_custom_command(
 	TARGET ${TARGET_NAME}
-	COMMAND $ENV{VK_SDK_PATH}/Bin/glslangValidator.exe -V ${CMAKE_SOURCE_DIR}/shader/shader.vert
-	COMMAND $ENV{VK_SDK_PATH}/Bin/glslangValidator.exe -V ${CMAKE_SOURCE_DIR}/shader/shader.frag
+	COMMAND $ENV{VK_SDK_PATH}/Bin/glslangValidator.exe -V ${CMAKE_SOURCE_DIR}/shader/shader.vert -o shader.vert
+	COMMAND $ENV{VK_SDK_PATH}/Bin/glslangValidator.exe -V ${CMAKE_SOURCE_DIR}/shader/instance.vert -o instance.vert
+	COMMAND $ENV{VK_SDK_PATH}/Bin/glslangValidator.exe -V ${CMAKE_SOURCE_DIR}/shader/shader.frag -o shader.frag
 	WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/data/shader
 )

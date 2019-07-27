@@ -6,7 +6,7 @@
 
 // INTERNAL INCLUDES
 #include "ra_gameobject.h"
-#include "ra_mesh.h"
+#include "ra_model.h"
 #include "ra_rendering.h"
 #include "ra_vkcheck.h"
 #include "ra_types.h"
@@ -47,11 +47,9 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 	this->CreateCommandPool();
 	this->CreateDepthImage();
 	this->CreateFramebuffers();
-	this->LoadTexture();
+	this->LoadTextures();
 	this->LoadModels();
 	this->CreateVertexbuffer();
-	this->CreateInstanceData();
-	this->CreateInstanceBuffer();
 	this->CreateIndexbuffer();
 	this->CreateUniformbuffer();
 	this->CreateDescriptorPool();
@@ -809,8 +807,8 @@ void Rendering::CreateDescriptorSet()
 
 	//Sampler info (for texcoords in fragment shader).
 	VkDescriptorImageInfo descriptorSamplerInfo;
-	descriptorSamplerInfo.sampler = this->texture.GetSampler();
-	descriptorSamplerInfo.imageView = this->texture.GetImageView();
+	//descriptorSamplerInfo.sampler = this->texture.GetSampler();
+	//descriptorSamplerInfo.imageView = this->texture.GetImageView();
 	descriptorSamplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	//Sampler write using descriptorSamplerInfo.
@@ -1320,24 +1318,32 @@ void Rendering::CreateUniformbuffer()
 }
 
 //Load texture.
-void Rendering::LoadTexture(void)
+void Rendering::LoadTextures(void)
 {
-	//Load texture and submit it to the graphics queue.
-	std::string path = Application::GetInstancePtr()->GetFilesystem()->GetStartDirectory();
-	path += "/textures/texture.jpg";
+	std::vector<std::string> paths = Application::GetInstancePtr()->GetFilesystem()->FilesInDirectory("textures");
 
-	this->texture.Load(path.c_str());
-	this->texture.Upload(this->m_commandPool, this->graphicsQueue);
+	this->textures.resize(paths.size());
+
+	for (size_t i = 0; i < paths.size(); i++)
+	{
+		this->textures[i] = new Texture;
+		this->textures[i]->Load(paths[i].c_str());
+		this->textures[i]->Upload(this->m_commandPool, this->graphicsQueue);
+	}
 }
 
 //Load models.
 void Rendering::LoadModels(void)
 {
-	std::string path = Application::GetInstancePtr()->GetFilesystem()->GetStartDirectory();
-	path += "/meshes/dragon.obj";
+	std::vector<std::string> paths = Application::GetInstancePtr()->GetFilesystem()->FilesInDirectory("models");
 
-	//Create mesh data.
-	this->mesh.Create(path.c_str());
+	this->models.resize(paths.size());
+
+	for(size_t i = 0; i < paths.size(); i++)
+	{
+		this->models[i] = new Model;
+		this->models[i]->Create(paths[i].c_str());
+	}
 }
 
 void Rendering::CreateInstanceBuffer()
@@ -1359,15 +1365,16 @@ void Rendering::CreateInstanceData()
 //Create vertex buffer.
 void Rendering::CreateVertexbuffer()
 {
+
 	//Create vertex buffer on gpu side with vertex data.
-	this->CreateBufferOnGPU(this->mesh.GetVertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, this->vertexBuffer, this->vertexBufferMemory);
+	//this->CreateBufferOnGPU(this->mesh.GetVertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, this->vertexBuffer, this->vertexBufferMemory);
 }
 
 //Create index buffer.
 void Rendering::CreateIndexbuffer()
 {
 	//Create index buffer on gpu using index data.
-	this->CreateBufferOnGPU(this->mesh.GetIndices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, this->indexBuffer, this->indexBufferMemory);
+	//this->CreateBufferOnGPU(this->mesh.GetIndices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, this->indexBuffer, this->indexBufferMemory);
 }
 
 //Record commands for the graphics queue.
@@ -1429,7 +1436,7 @@ void Rendering::RecordCommands()
 		vkCmdBindVertexBuffers(this->commandBuffers[i], 1, 1, &this->instanceBuffer, offsets);
 		vkCmdBindIndexBuffer(this->commandBuffers[i], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSet, 0, nullptr);
-		vkCmdDrawIndexed(this->commandBuffers[i], static_cast<ui32>(this->mesh.GetIndices().size()), this->maxInts, 0, 0, 0);
+		//vkCmdDrawIndexed(this->commandBuffers[i], static_cast<ui32>(this->mesh.GetIndices().size()), this->maxInts, 0, 0, 0);
 
 		//End renderpass.
 		vkCmdEndRenderPass(this->commandBuffers[i]);
@@ -1555,14 +1562,14 @@ std::vector<byte> Rendering::GetBuffer(RenderingBuffer bufferType)
 	{
 		case RenderingBuffer::VERTEX:
 		{
-			WinFile* vertexShaderFile = new WinFile(Application::GetInstancePtr()->GetFilesystem()->FileInDirectory("shader", "vert.spv").c_str());
+			WinFile* vertexShaderFile = new WinFile(Application::GetInstancePtr()->GetFilesystem()->FileInDirectory("shader", "shader.vert").c_str());
 			buffer.assign(vertexShaderFile->Read(), vertexShaderFile->Read() + vertexShaderFile->GetSize()); //trick to copy data to vector using pointer arithmetic.
 			vertexShaderFile->Cleanup();
 			break;
 		}
 		case RenderingBuffer::FRAGMENT:
 		{
-			WinFile* fragmentShaderFile = new WinFile(Application::GetInstancePtr()->GetFilesystem()->FileInDirectory("shader", "frag.spv").c_str());
+			WinFile* fragmentShaderFile = new WinFile(Application::GetInstancePtr()->GetFilesystem()->FileInDirectory("shader", "shader.frag").c_str());
 			buffer.assign(fragmentShaderFile->Read(), fragmentShaderFile->Read() + fragmentShaderFile->GetSize()); //trick to copy data to vector using pointer arithmetic.
 			fragmentShaderFile->Cleanup();
 			break;
@@ -1695,7 +1702,17 @@ void Rendering::Cleanup()
 	vkDestroyBuffer(this->logicalDevice, this->vertexBuffer, nullptr);
 
 	//Release texture.
-	this->texture.Release();
+
+	for (Texture* tex : this->textures)
+	{
+		tex->Release();
+		delete tex;
+	}
+
+	for (Model* model : this->models)
+	{
+		delete model;
+	}
 
 	//Destroy semaphores and clear waitstage mask.
 	this->waitStageMask.clear();

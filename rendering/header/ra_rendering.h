@@ -12,7 +12,7 @@
 #include "math/ra_mat4x4.h"
 #include "ra_texture.h"
 #include "ra_depthimage.h"
-#include "ra_mesh.h"
+#include "ra_model.h"
 
 class Gameobject;
 
@@ -98,7 +98,7 @@ private:
 
 	void CreateUniformbuffer(void);
 
-	void LoadTexture(void);
+	void LoadTextures(void);
 	void LoadModels(void);
 
 	void CreateInstanceData(void);
@@ -186,7 +186,7 @@ private:
 
 	std::vector<InstanceData> instanceData;
 
-	Texture texture;
+	std::vector<Texture*> textures;
 	DepthImage depthImage;
-	Mesh mesh;
+	std::vector<Model*> models;
 };

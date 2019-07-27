@@ -4,11 +4,9 @@
 
 Filesystem::Filesystem()
 {
-
-	ListDirectories(Console::GetInstancePtr()->GetCVar("gamepath").cvarValue, this->directories);
-
 	std::string temp = Console::GetInstancePtr()->GetCVar("gamepath").cvarValue;
-	this->startDirectory = temp.substr(0, temp.find_last_of("/") - 4);
+	this->startDirectory = temp.substr(0, temp.find_last_of("/") - 3);
+	ListDirectories(this->startDirectory.c_str(), this->directories);
 }
 
 void Filesystem::ListDirectories(const char* startPath, std::vector<std::string>& temp)
@@ -22,15 +20,16 @@ void Filesystem::ListDirectories(const char* startPath, std::vector<std::string>
 
 	temp.push_back(path);
 
-	if ((handle = FindFirstFile(path, &data)) == INVALID_HANDLE_VALUE) 
+	if ((handle = FindFirstFile(path, &data)) == INVALID_HANDLE_VALUE)
 	{
 		LOG("Nothing found in this directory!");
 		return;
 	}
 	
+	//TODO exclude unnecessary folders and files.
 	while (FindNextFile(handle, &data))
 	{
-		if ((strncmp(".", data.cFileName, 1) != 0) && (strncmp("..", data.cFileName, 2) != 0) && (strncmp("includes", data.cFileName, 8) != 0) && (strncmp("src", data.cFileName, 3) != 0))
+		if ((strncmp(".", data.cFileName, 1) != 0) && (strncmp("..", data.cFileName, 2) != 0) && (strncmp("header", data.cFileName, 6) != 0) && (strncmp("src", data.cFileName, 3) != 0) && (strncmp("out", data.cFileName, 3) != 0) && (strncmp("lib", data.cFileName, 3) != 0))
 		{
 			if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
 			{
