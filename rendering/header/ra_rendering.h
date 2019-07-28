@@ -44,9 +44,12 @@ public:
 	void Cleanup(void);
 
 	void RecreateSwapchain(void);
-	void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags bufferUsageFlags, VkBuffer& buffer, VkMemoryPropertyFlags memoryFlags, VkDeviceMemory& memory);
 	
 	ui32 FindMemoryTypeIndex(ui32 typeFilter, VkMemoryPropertyFlags properties);
+
+	std::vector<Vertex> GetVerticesOfObject(const char* name);
+	std::vector<ui32> GetIndicesOfObject(const char* name);
+	std::vector<Texture*> GetTextures();
 
 	VkDevice GetLogicalDevice(void);
 	VkFormat GetSupportedFormats(VkPhysicalDevice phyDevice, const std::vector<VkFormat>& formats, VkImageTiling tiling, VkFormatFeatureFlags featureFlags);
@@ -60,6 +63,11 @@ public:
 	void StopRecording(VkQueue queue, VkCommandBuffer commandBuffer, VkCommandPool commandPool);
 
 	void ChangeLayout(VkCommandPool commandPool, VkQueue queue, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+
+	void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags bufferUsageFlags, VkBuffer& buffer, VkMemoryPropertyFlags memoryFlags, VkDeviceMemory& memory);
+	template <typename T>
+	void CreateBufferOnGPU(std::vector<T> data, VkBufferUsageFlags usage, VkBuffer& buffer, VkDeviceMemory& memory);
+	void CreateDescriptorSets();
 private:
 	void DrawFrame(void);
 	void UpdateMVP(float time); //TODO
@@ -81,7 +89,6 @@ private:
 
 	void CreateDescriptorSetLayout(void);
 	void CreateDescriptorPool(void);
-	void CreateDescriptorSet(void);
 
 	void CreatePipeline(void);
 	void CreateRenderpass(void);
@@ -93,18 +100,12 @@ private:
 
 	void CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 
-	template <typename T>
-	void CreateBufferOnGPU(std::vector<T> data, VkBufferUsageFlags usage, VkBuffer& buffer, VkDeviceMemory& memory);
-
-	void CreateUniformbuffer(void);
+	void CreateObjectBuffers(VkBuffer& vertexBuffer, VkBuffer& indexBuffer, VkBuffer& uniformBuffer, VkDeviceMemory& vertexBufferMemory, VkDeviceMemory& indexBufferMemory, VkDeviceMemory& uniformBufferMemory, const char* meshName);
 
 	void LoadTextures(void);
 	void LoadModels(void);
 
-	void CreateInstanceData(void);
-	void CreateInstanceBuffer(void);
-	void CreateVertexbuffer(void);
-	void CreateIndexbuffer(void);
+	void CreateBuffersForObjects(void);
 
 	void RecordCommands(void);
 	void ReRecordCommands(void);
@@ -162,31 +163,17 @@ private:
 	std::vector<VkFramebuffer> framebuffers;
 	std::vector<VkPipelineStageFlags> waitStageMask;
 
+	std::vector<VkDescriptorSet> descriptorSets;
+
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderingFinishedSemaphore;
 
-	VkBuffer vertexBuffer;
-	VkBuffer instanceBuffer;
-	VkBuffer indexBuffer;
-	VkBuffer uniformBuffer;
-
-	VkDeviceMemory indexBufferMemory;
-	VkDeviceMemory instanceBufferMemory;
-	VkDeviceMemory vertexBufferMemory;
-	VkDeviceMemory uniformBufferMemory;
-
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorPool descriptorPool;
-	VkDescriptorSet descriptorSet;
-
-	Gameobject* root;
-	Gameobject* testObject;
 
 	Math::Vec3 cameraPos;
 
-	std::vector<InstanceData> instanceData;
-
-	std::vector<Texture*> textures;
 	DepthImage depthImage;
+	std::vector<Texture*> textures;
 	std::vector<Model*> models;
 };

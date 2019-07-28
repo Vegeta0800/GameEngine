@@ -5,8 +5,9 @@
 #include <list>
 
 // INTERNAL INCLUDES
-#include "ra_gameobject.h"
 #include "ra_model.h"
+#include "ra_mesh.h"
+#include "ra_gameobject.h"
 #include "ra_rendering.h"
 #include "ra_vkcheck.h"
 #include "ra_types.h"
@@ -18,22 +19,14 @@
 #include "math/ra_mat4x4.h"
 #include "input/ra_inputhandler.h"
 #include "ra_depthimage.h"
+#include "ra_scenemanager.h"
 
 DECLARE_SINGLETON(Rendering)
 
 //Initialize Rendering class, setting up vulkan.
 void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 {
-	this->root = new Gameobject;
-	this->root->MakeRoot();
-
-	this->testObject = new Gameobject();
-	this->testObject->SetParent(this->root);
-
 	this->cameraPos = Math::Vec3{ 2.0f, 2.0f, 2.0f };
-
-	this->testObject->GetTransform().position = Math::Vec3{0.0f, 0.0f, 0.0f};
-	this->testObject->GetTransform().scaling *= 0.1f;
 
 	this->CreateInstance(applicationName, applicationVersion);
 	this->CreateSurface();
@@ -49,11 +42,9 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 	this->CreateFramebuffers();
 	this->LoadTextures();
 	this->LoadModels();
-	this->CreateVertexbuffer();
-	this->CreateIndexbuffer();
-	this->CreateUniformbuffer();
 	this->CreateDescriptorPool();
-	this->CreateDescriptorSet();
+	this->CreateBuffersForObjects();
+	this->CreateDescriptorSets();
 	this->CreateCommandbuffer();
 	this->RecordCommands();
 	this->CreateSemaphores();
@@ -107,29 +98,34 @@ void Rendering::UpdateMVP(float time)
 
 	if (Input::GetInstancePtr()->GetKeyUp(KeyCode::G))
 	{
-		this->testObject->GetMaterial().fragColor = fColorRGBA{ 0.921f, 0.764f, 0.058f, 1.0f };
 		this->maxInts++;
 		this->ReRecordCommands();
 	}
 
-	this->testObject->GetTransform().eulerRotation.z = time * 20.0f;
+	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+	{
+		if (gb->GetIsRenderable() && gb->GetIsActive())
+		{
+			gb->GetTransform().eulerRotation.z = time * 20.0f;	
 
-	VertexInputInfo vertexInfo;
+			VertexInputInfo vertexInfo;
 
-	vertexInfo.modelMatrix = this->testObject->GetModelMatrix();
-	vertexInfo.lightPosition = this->cameraPos;
-	vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, Math::Vec3::zero, Math::Vec3::unit_z);
-	vertexInfo.projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
-	vertexInfo.projectionMatrix.m22 *= -1.0f;
-	vertexInfo.color = this->testObject->GetMaterial().fragColor;
-	vertexInfo.specColor = this->testObject->GetMaterial().specularColor;
-	vertexInfo.ambientVal = 0.1f;
-	vertexInfo.specularVal = 16.0f;
+			vertexInfo.modelMatrix = gb->GetModelMatrix();
+			vertexInfo.lightPosition = this->cameraPos;
+			vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, Math::Vec3::zero, Math::Vec3::unit_z);
+			vertexInfo.projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
+			vertexInfo.projectionMatrix.m22 *= -1.0f;
+			vertexInfo.color = gb->GetMaterial().fragColor;
+			vertexInfo.specColor = gb->GetMaterial().specularColor;
+			vertexInfo.ambientVal = 0.1f;
+			vertexInfo.specularVal = 16.0f;
 
-	void* data;
-	vkMapMemory(this->logicalDevice, this->uniformBufferMemory, 0, sizeof(vertexInfo), 0, &data);
-	memcpy(data, &vertexInfo, sizeof(vertexInfo));
-	vkUnmapMemory(this->logicalDevice, this->uniformBufferMemory);
+			void* data;
+			vkMapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
+			memcpy(data, &vertexInfo, sizeof(vertexInfo));
+			vkUnmapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem());
+		}
+	}
 }
 
 //Begin recording of a command buffer using inputed information.
@@ -760,7 +756,7 @@ void Rendering::CreateDescriptorPool()
 	descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	descriptorPoolInfo.pNext = nullptr;
 	descriptorPoolInfo.flags = 0;
-	descriptorPoolInfo.maxSets = 1;
+	descriptorPoolInfo.maxSets = static_cast<ui32>(SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size());
 	descriptorPoolInfo.poolSizeCount = static_cast<ui32>(descriptorPoolSizes.size());
 	descriptorPoolInfo.pPoolSizes = descriptorPoolSizes.data();
 
@@ -769,64 +765,79 @@ void Rendering::CreateDescriptorPool()
 }
 
 //Update descriptorset using writes size and data.
-void Rendering::CreateDescriptorSet()
+void Rendering::CreateDescriptorSets()
 {
-	//TODO for each object, create new descriptorsets and pools.
-
 	//Allocate space for descriptorset using the descriptorpool and descriptorsetlayout.
+	std::vector<Gameobject*> tempGbs;
+	std::vector<VkDescriptorSetLayout> layouts;
+
+	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+	{
+		tempGbs.push_back(gb);
+		layouts.push_back(this->descriptorSetLayout);
+	}
+
+	this->descriptorSets.resize(tempGbs.size());
+
 	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo;
 	descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	descriptorSetAllocateInfo.pNext = nullptr;
 	descriptorSetAllocateInfo.descriptorPool = this->descriptorPool;
-	descriptorSetAllocateInfo.descriptorSetCount = 1;
-	descriptorSetAllocateInfo.pSetLayouts = &this->descriptorSetLayout;
-	VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &descriptorSetAllocateInfo, &this->descriptorSet));
+	descriptorSetAllocateInfo.descriptorSetCount = static_cast<ui32>(this->descriptorSets.size());
+	descriptorSetAllocateInfo.pSetLayouts = layouts.data();
+	VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &descriptorSetAllocateInfo, this->descriptorSets.data()));
 
 	//Store write infos needed for shader data.
-	std::vector<VkWriteDescriptorSet> descriptorSetWrites;
+	for (ui32 i = 0; i < tempGbs.size(); i++)
+	{
+		if (tempGbs[i]->GetIsRenderable())
+		{
+			std::vector<VkWriteDescriptorSet> descriptorSetWrites;
+			//Uniform buffer info (for mvp matrix and fragInfos in vertex shader).
+			VkDescriptorBufferInfo uniformDescriptorBufferInfo;
+			uniformDescriptorBufferInfo.buffer = tempGbs[i]->GetMesh().GetUniformBuffer();
+			uniformDescriptorBufferInfo.offset = 0;
+			uniformDescriptorBufferInfo.range = sizeof(VertexInputInfo);
 
-	//Uniform buffer info (for mvp matrix and fragInfos in vertex shader).
-	VkDescriptorBufferInfo uniformDescriptorBufferInfo;
-	uniformDescriptorBufferInfo.buffer = this->uniformBuffer;
-	uniformDescriptorBufferInfo.offset = 0;
-	uniformDescriptorBufferInfo.range = sizeof(VertexInputInfo);
+			//Uniform buffer write using uniformDescriptorBufferInfo.
+			VkWriteDescriptorSet uniformDescriptorWrite;
+			uniformDescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			uniformDescriptorWrite.pNext = nullptr;
+			uniformDescriptorWrite.dstSet = this->descriptorSets[i];
+			uniformDescriptorWrite.dstBinding = 0;
+			uniformDescriptorWrite.dstArrayElement = 0;
+			uniformDescriptorWrite.descriptorCount = 1;
+			uniformDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			uniformDescriptorWrite.pImageInfo = nullptr;
+			uniformDescriptorWrite.pBufferInfo = &uniformDescriptorBufferInfo;
+			uniformDescriptorWrite.pTexelBufferView = nullptr;
+			descriptorSetWrites.push_back(uniformDescriptorWrite);
 
-	//Uniform buffer write using uniformDescriptorBufferInfo.
-	VkWriteDescriptorSet uniformDescriptorWrite;
-	uniformDescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	uniformDescriptorWrite.pNext = nullptr;
-	uniformDescriptorWrite.dstSet = this->descriptorSet;
-	uniformDescriptorWrite.dstBinding = 0;
-	uniformDescriptorWrite.dstArrayElement = 0;
-	uniformDescriptorWrite.descriptorCount = 1;
-	uniformDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uniformDescriptorWrite.pImageInfo = nullptr;
-	uniformDescriptorWrite.pBufferInfo = &uniformDescriptorBufferInfo;
-	uniformDescriptorWrite.pTexelBufferView = nullptr;
-	descriptorSetWrites.push_back(uniformDescriptorWrite);
+			//Sampler info (for texcoords in fragment shader).
+			VkDescriptorImageInfo descriptorSamplerInfo;
+			descriptorSamplerInfo.sampler = tempGbs[i]->GetTexture()->GetSampler();
+			descriptorSamplerInfo.imageView = tempGbs[i]->GetTexture()->GetImageView();
+			descriptorSamplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-	//Sampler info (for texcoords in fragment shader).
-	VkDescriptorImageInfo descriptorSamplerInfo;
-	//descriptorSamplerInfo.sampler = this->texture.GetSampler();
-	//descriptorSamplerInfo.imageView = this->texture.GetImageView();
-	descriptorSamplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+			//Sampler write using descriptorSamplerInfo.
+			VkWriteDescriptorSet descriptorSamplerWrite;
+			descriptorSamplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			descriptorSamplerWrite.pNext = nullptr;
+			descriptorSamplerWrite.dstSet = this->descriptorSets[i];
+			descriptorSamplerWrite.dstBinding = 1;
+			descriptorSamplerWrite.dstArrayElement = 0;
+			descriptorSamplerWrite.descriptorCount = 1;
+			descriptorSamplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			descriptorSamplerWrite.pImageInfo = &descriptorSamplerInfo;
+			descriptorSamplerWrite.pBufferInfo = nullptr;
+			descriptorSamplerWrite.pTexelBufferView = nullptr;
+			descriptorSetWrites.push_back(descriptorSamplerWrite);
 
-	//Sampler write using descriptorSamplerInfo.
-	VkWriteDescriptorSet descriptorSamplerWrite;
-	descriptorSamplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	descriptorSamplerWrite.pNext = nullptr;
-	descriptorSamplerWrite.dstSet = this->descriptorSet;
-	descriptorSamplerWrite.dstBinding = 1;
-	descriptorSamplerWrite.dstArrayElement = 0;
-	descriptorSamplerWrite.descriptorCount = 1;
-	descriptorSamplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	descriptorSamplerWrite.pImageInfo = &descriptorSamplerInfo;
-	descriptorSamplerWrite.pBufferInfo = nullptr;
-	descriptorSamplerWrite.pTexelBufferView = nullptr;
-	descriptorSetWrites.push_back(descriptorSamplerWrite);
+			//Update descriptorset using writes size and data.
+			vkUpdateDescriptorSets(this->logicalDevice, static_cast<ui32>(descriptorSetWrites.size()), descriptorSetWrites.data(), 0, nullptr);	
+		}
+	}
 
-	//Update descriptorset using writes size and data.
-	vkUpdateDescriptorSets(this->logicalDevice, static_cast<ui32>(descriptorSetWrites.size()), descriptorSetWrites.data(), 0, nullptr);
 }
 
 //Create pipeline using all the infos and stages defined in the pipeline info.
@@ -863,22 +874,15 @@ void Rendering::CreatePipeline()
 	std::vector<VkVertexInputBindingDescription> bindings;
 
 	VkVertexInputBindingDescription binding = Vertex::GetBindingDescription();
-	VkVertexInputBindingDescription bindingInstance = InstanceData::GetBindingDescriptionOfInstance();
 	bindings.push_back(binding);
-	bindings.push_back(bindingInstance);
 	std::vector<VkVertexInputAttributeDescription> attributes = Vertex::GetAttributeDescriptions();
-
-	for (int i = 0; i < InstanceData::GetAttributeDescriptionsOfInstance().size(); i++)
-	{
-		attributes.push_back(InstanceData::GetAttributeDescriptionsOfInstance()[i]);
-	}
 
 	//VERTEX INPUT
 	VkPipelineVertexInputStateCreateInfo vertexInputInfo;
 	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	vertexInputInfo.pNext = nullptr;
 	vertexInputInfo.flags = 0;
-	vertexInputInfo.vertexBindingDescriptionCount = 2;
+	vertexInputInfo.vertexBindingDescriptionCount = static_cast<ui32>(bindings.size());
 	vertexInputInfo.pVertexBindingDescriptions = bindings.data(); //for mesh instancing
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<ui32>(attributes.size());
 	vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
@@ -1280,6 +1284,15 @@ void Rendering::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
 
 }
 
+void Rendering::CreateObjectBuffers(VkBuffer& vertexBuffer, VkBuffer& indexBuffer, VkBuffer& uniformBuffer, VkDeviceMemory& vertexBufferMemory, VkDeviceMemory& indexBufferMemory, VkDeviceMemory& uniformBufferMemory, const char* meshName)
+{
+	VkDeviceSize bufferSize = sizeof(VertexInputInfo);
+
+	this->CreateBufferOnGPU(this->GetVerticesOfObject(meshName), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexBuffer, vertexBufferMemory);
+	this->CreateBufferOnGPU(this->GetIndicesOfObject(meshName), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexBuffer, indexBufferMemory);
+	this->CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, uniformBuffer, (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT), uniformBufferMemory);
+}
+
 //Create buffer on GPU side.
 template <typename T>
 void Rendering::CreateBufferOnGPU(std::vector<T> data, VkBufferUsageFlags usage, VkBuffer& buffer, VkDeviceMemory& memory)
@@ -1309,14 +1322,6 @@ void Rendering::CreateBufferOnGPU(std::vector<T> data, VkBufferUsageFlags usage,
 	vkFreeMemory(this->logicalDevice, stagingBufferMemory, nullptr);
 }
 
-//Create uniform buffer.
-void Rendering::CreateUniformbuffer()
-{
-	//Create uniform buffer for vertex shader (mvp matrix).
-	VkDeviceSize bufferSize = sizeof(VertexInputInfo);
-	this->CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, this->uniformBuffer, (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT), this->uniformBufferMemory);
-}
-
 //Load texture.
 void Rendering::LoadTextures(void)
 {
@@ -1330,6 +1335,22 @@ void Rendering::LoadTextures(void)
 		this->textures[i]->Load(paths[i].c_str());
 		this->textures[i]->Upload(this->m_commandPool, this->graphicsQueue);
 	}
+
+	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+	{
+		if (gb->GetIsRenderable())
+		{
+			for (Texture* tex : this->textures)
+			{
+				std::string stringName(gb->GetTextureName());
+				if (tex->GetName() == stringName)
+				{
+					gb->GetTexture()->Load(tex->GetPath());
+					gb->GetTexture()->Upload(this->m_commandPool, this->graphicsQueue);
+				}
+			}
+		}
+	}
 }
 
 //Load models.
@@ -1341,40 +1362,26 @@ void Rendering::LoadModels(void)
 
 	for(size_t i = 0; i < paths.size(); i++)
 	{
-		this->models[i] = new Model;
+		this->models[i] = new Model();
 		this->models[i]->Create(paths[i].c_str());
 	}
 }
 
-void Rendering::CreateInstanceBuffer()
+void Rendering::CreateBuffersForObjects(void)
 {
-	this->CreateBufferOnGPU(this->instanceData, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, this->instanceBuffer, this->instanceBufferMemory);
-}
-
-void Rendering::CreateInstanceData()
-{
-	this->instanceData.resize(maxInts);
-
-	for (int i = 0; i < maxInts; i++)
+	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
 	{
-		this->instanceData[i].instancePos = this->testObject->GetTransform().position;
-		this->instanceData[i].instancePos.z -= 10.0f * i;
+		if (gb->GetIsRenderable())
+		{
+			gb->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gb->GetMesh().GetName()).size()));
+
+			CreateObjectBuffers
+			(
+				gb->GetMesh().GetVertexBuffer(), gb->GetMesh().GetIndexBuffer(), gb->GetMesh().GetUniformBuffer(), gb->GetMesh().GetVertexBufferMem(), 
+				gb->GetMesh().GetIndexBufferMem(), gb->GetMesh().GetUniformBufferMem(), gb->GetMesh().GetName()
+			);
+		}
 	}
-}
-
-//Create vertex buffer.
-void Rendering::CreateVertexbuffer()
-{
-
-	//Create vertex buffer on gpu side with vertex data.
-	//this->CreateBufferOnGPU(this->mesh.GetVertices(), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, this->vertexBuffer, this->vertexBufferMemory);
-}
-
-//Create index buffer.
-void Rendering::CreateIndexbuffer()
-{
-	//Create index buffer on gpu using index data.
-	//this->CreateBufferOnGPU(this->mesh.GetIndices(), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, this->indexBuffer, this->indexBufferMemory);
 }
 
 //Record commands for the graphics queue.
@@ -1431,12 +1438,24 @@ void Rendering::RecordCommands()
 
 		//Define offset for drawing the mesh instances.
 		VkDeviceSize offsets[] = {0};
-		
-		vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &this->vertexBuffer, offsets);
-		vkCmdBindVertexBuffers(this->commandBuffers[i], 1, 1, &this->instanceBuffer, offsets);
-		vkCmdBindIndexBuffer(this->commandBuffers[i], this->indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-		vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSet, 0, nullptr);
-		//vkCmdDrawIndexed(this->commandBuffers[i], static_cast<ui32>(this->mesh.GetIndices().size()), this->maxInts, 0, 0, 0);
+
+		std::vector<Gameobject*> tempGbs;
+
+		for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+		{
+			tempGbs.push_back(gb);
+		}
+
+		for (size_t j = 0; j < tempGbs.size(); j++)
+		{
+			if (tempGbs[j]->GetIsRenderable())
+			{
+				vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempGbs[j]->GetMesh().GetVertexBuffer(), offsets);
+				vkCmdBindIndexBuffer(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+				vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[j], 0, nullptr);
+				vkCmdDrawIndexed(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndicesSize(), 1, 0, 0, 0);
+			}
+		}
 
 		//End renderpass.
 		vkCmdEndRenderPass(this->commandBuffers[i]);
@@ -1451,13 +1470,8 @@ void Rendering::ReRecordCommands(void)
 {
 	vkDeviceWaitIdle(this->logicalDevice);
 
-	vkFreeMemory(this->logicalDevice, this->instanceBufferMemory, nullptr);
-	vkDestroyBuffer(this->logicalDevice, this->instanceBuffer, nullptr);
-
 	vkFreeCommandBuffers(this->logicalDevice, this->m_commandPool, static_cast<ui32>(this->commandBuffers.size()), this->commandBuffers.data());
 	
-	this->CreateInstanceData();
-	this->CreateInstanceBuffer();
 	this->CreateCommandbuffer();
 	this->RecordCommands();
 }
@@ -1596,6 +1610,35 @@ ui32 Rendering::FindMemoryTypeIndex(ui32 typeFilter, VkMemoryPropertyFlags prope
 	return 0;
 }
 
+std::vector<Vertex> Rendering::GetVerticesOfObject(const char * name)
+{
+	for (Model* model : this->models)
+	{
+		std::string stringName(name);
+		if (model->GetName() == stringName)
+			return model->GetVertices();
+	}
+
+	return std::vector<Vertex>();
+}
+
+std::vector<ui32> Rendering::GetIndicesOfObject(const char * name)
+{
+	for (Model* model : this->models)
+	{
+		std::string stringName(name);
+		if (model->GetName() == stringName)
+			return model->GetIndices();
+	}
+
+	return std::vector<ui32>();
+}
+
+std::vector<Texture*> Rendering::GetTextures()
+{
+	return this->textures;
+}
+
 //Get logical device.
 VkDevice Rendering::GetLogicalDevice(void)
 {
@@ -1685,24 +1728,24 @@ void Rendering::Cleanup()
 	vkDestroyDescriptorSetLayout(this->logicalDevice, this->descriptorSetLayout, nullptr);
 	vkDestroyDescriptorPool(this->logicalDevice, this->descriptorPool, nullptr);
 
-	//Free memory and delete uniform buffer.
-	vkFreeMemory(this->logicalDevice, this->uniformBufferMemory, nullptr);
-	vkDestroyBuffer(this->logicalDevice, this->uniformBuffer, nullptr);
+	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+	{
+		vkFreeMemory(this->logicalDevice, gb->GetMesh().GetIndexBufferMem(), nullptr);
+		vkDestroyBuffer(this->logicalDevice, gb->GetMesh().GetIndexBuffer(), nullptr);
 
-	//Free memory and delete index buffer.
-	vkFreeMemory(this->logicalDevice, this->indexBufferMemory, nullptr);
-	vkDestroyBuffer(this->logicalDevice, this->indexBuffer, nullptr);
-	
-	//Free memory and delete vertex buffer.
-	vkFreeMemory(this->logicalDevice, this->instanceBufferMemory, nullptr);
-	vkDestroyBuffer(this->logicalDevice, this->instanceBuffer, nullptr);
+		vkFreeMemory(this->logicalDevice, gb->GetMesh().GetVertexBufferMem(), nullptr);
+		vkDestroyBuffer(this->logicalDevice, gb->GetMesh().GetVertexBuffer(), nullptr);
 
-	//Free memory and delete vertex buffer.
-	vkFreeMemory(this->logicalDevice, this->vertexBufferMemory, nullptr);
-	vkDestroyBuffer(this->logicalDevice, this->vertexBuffer, nullptr);
+		vkFreeMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), nullptr);
+		vkDestroyBuffer(this->logicalDevice, gb->GetMesh().GetUniformBuffer(), nullptr);
+
+		gb->GetMesh().Cleanup();
+
+		gb->GetTexture()->Release();
+	}
+
 
 	//Release texture.
-
 	for (Texture* tex : this->textures)
 	{
 		tex->Release();

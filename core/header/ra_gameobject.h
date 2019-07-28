@@ -5,26 +5,24 @@
 #include <list>
 //INTERNAL INCLUDES
 #include "math/ra_mat4x4.h"
+#include "ra_mesh.h"
 #include "ra_component.h"
 #include "ra_transform.h"
 #include "ra_material.h"
 
-enum class MeshType
-{
-	MESH_NONE = 0,
-	MESH_DRAGON = 1
-};
+class Texture;
 
 class Gameobject
 {
 public:
 	Gameobject();
-	void Initialize(MeshType meshtype = MeshType::MESH_NONE, Gameobject* parent = nullptr, const char* name = "");
-	void Initialize(Gameobject* copyGb, const char* name = "");
+	void Initialize(Gameobject* parent = nullptr, const char* name = "", const char* meshName = "", const char* textureName = "", bool render = false, bool act = true);
+	void Initialize(Gameobject* copyGb, const char* name = "", bool copyAll = false);
 	void Update();
 	void Cleanup();
 	
 	void SetParent(Gameobject* parent);
+	void SetMesh(const char* meshName);
 	void SetName(const char* name = "");
 	void DeleteParent();
 
@@ -38,22 +36,31 @@ public:
 
 	std::list<Gameobject*> GetChildren();
 	std::list<Gameobject*> GetAllChildren();
-	bool operator==(Gameobject* other);
 	Gameobject* GetParent();
 	Transform& GetTransform();
+	Mesh& GetMesh();
+	Texture* GetTexture();
 	Math::Mat4x4 GetModelMatrix();
-	MeshType GetMeshtype();
 	Material& GetMaterial();
 
 	const char* GetName();
+	const char* GetMeshName();
+	const char* GetTextureName();
 
 	bool hasRoot();
 	bool isMoved();
+
+	bool& GetIsRenderable();
+	bool& GetIsActive();
+
+	bool operator==(Gameobject* other);
 
 private:
 	void ListAllChildren(std::list<Gameobject*>& list);
 
 	const char* name;
+	const char* meshName;
+	const char* textureName;
 
 	Transform transform;
 	
@@ -64,12 +71,16 @@ private:
 
 	Gameobject* parent;
 
-	MeshType meshType;
 	Material material;
+
+	Mesh mesh;
+	Texture* texture;
 
 	std::list<Gameobject*> children;
 	std::list<Component*> components;
 
 	bool isRoot = false;
 	bool moved = false;
+	bool renderable = false;
+	bool active = false;
 }; 

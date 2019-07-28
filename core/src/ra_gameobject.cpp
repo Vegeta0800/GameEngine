@@ -1,5 +1,5 @@
 #include "ra_gameobject.h"
-#include "ra_application.h"
+#include "ra_texture.h"
 
 Gameobject::Gameobject() :
 	isRoot(false)
@@ -7,7 +7,7 @@ Gameobject::Gameobject() :
 	this->Initialize();
 }
 
-void Gameobject::Initialize(MeshType meshtype, Gameobject* parent, const char* name)
+void Gameobject::Initialize(Gameobject* parent, const char* name, const char* meshName, const char* textureName, bool render, bool act)
 {
 	this->parent = nullptr;
 	this->transform = Transform();
@@ -19,7 +19,13 @@ void Gameobject::Initialize(MeshType meshtype, Gameobject* parent, const char* n
 	this->transform.scaling = Math::Vec3::unit_scale;
 
 	this->name = name;
-	this->meshType = meshtype;
+	this->meshName = meshName;
+	this->textureName = textureName;
+	this->active = act;
+	this->renderable = render;
+
+	this->mesh.CreateMesh(meshName);
+	this->texture = new Texture;
 
 	//this->material.fragColor = Math::Vec3{ 0.164f, 0.749f, 0.874f };
 	this->material.fragColor = fColorRGBA{ 0, 1, 0, 1 };
@@ -31,7 +37,7 @@ void Gameobject::Initialize(MeshType meshtype, Gameobject* parent, const char* n
 		this->SetParent(parent);
 }
 
-void Gameobject::Initialize(Gameobject* copyGb, const char* name)
+void Gameobject::Initialize(Gameobject* copyGb, const char* name, bool copyAll)
 {
 	this->parent = nullptr;
 	this->transform = copyGb->GetTransform();
@@ -43,8 +49,13 @@ void Gameobject::Initialize(Gameobject* copyGb, const char* name)
 	this->transform.scaling = copyGb->GetTransform().scaling;
 
 	this->name = name;
+	this->meshName = copyGb->GetMeshName();
+	this->textureName = copyGb->GetTextureName();
 
-	this->meshType = copyGb->GetMeshtype();
+	this->mesh.CreateMesh(this->meshName);
+
+	this->active = copyGb->GetIsActive();
+	this->renderable = copyGb->GetIsRenderable();
 
 	//this->material.fragColor = Math::Vec3{ 0.164f, 0.749f, 0.874f };
 	this->material.fragColor = fColorRGBA{ 0, 1, 0, 1 };
@@ -261,11 +272,6 @@ Math::Mat4x4 Gameobject::GetModelMatrix()
 	return Math::CreateModelMatrix(this->transform.position, this->transform.scaling, this->transform.eulerRotation);
 }
 
-MeshType Gameobject::GetMeshtype()
-{
-	return this->meshType;
-}
-
 Material& Gameobject::GetMaterial()
 {
 	return this->material;
@@ -274,5 +280,35 @@ Material& Gameobject::GetMaterial()
 const char* Gameobject::GetName()
 {
 	return this->name;
+}
+
+const char* Gameobject::GetMeshName()
+{
+	return this->meshName;
+}
+
+const char* Gameobject::GetTextureName()
+{
+	return this->textureName;
+}
+
+Texture* Gameobject::GetTexture()
+{
+	return this->texture;
+}
+
+Mesh& Gameobject::GetMesh()
+{
+	return this->mesh;
+}
+
+bool& Gameobject::GetIsActive()
+{
+	return this->active;
+}
+
+bool& Gameobject::GetIsRenderable()
+{
+	return this->renderable;
 }
 

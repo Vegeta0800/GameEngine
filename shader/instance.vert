@@ -9,7 +9,6 @@ out gl_PerVertex
 layout(location = 0) in vec3 pos;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec2 inUVCoord;
-layout(location = 4) in vec3 inInstancePos;
 
 layout(location = 0) out vec2 fragUVCoord;
 layout(location = 1) out vec3 fragNormal;
@@ -34,7 +33,7 @@ layout(binding = 0) uniform UniformStruct
 
 void main()
 {
-	gl_Position = uniformObject.projection * uniformObject.view * uniformObject.model[gl_InstanceIndex] * vec4(pos + inInstancePos, 1.0);
+	gl_Position = uniformObject.projection * uniformObject.view * uniformObject.model[gl_InstanceIndex] * vec4(pos, 1.0);
 
 	vec4 worldPos = uniformObject.model[gl_InstanceIndex] * vec4(pos, 1.0);
 

@@ -5,7 +5,7 @@
 class Model
 {
 public:
-	Model(const char* p = "");
+	Model();
 	void Create(const char* p);
 
 	void SetPath(const char* p);
@@ -13,12 +13,12 @@ public:
 
 	std::vector<Vertex> GetVertices();
 	std::vector<ui32> GetIndices();
-	const char* GetName();
+	std::string GetName();
 
 private:
 	std::vector<Vertex> vertices;
 	std::vector<ui32> indices;
 
+	std::string name;
 	const char* path;
-	const char* name;
 };

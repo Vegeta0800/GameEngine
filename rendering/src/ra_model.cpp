@@ -7,9 +7,8 @@
 #include "math/ra_vector3.h"
 #include "math/ra_vector2.h"
 
-Model::Model(const char* p)
+Model::Model()
 {
-	this->path = p;
 }
 
 void Model::Create(const char* p)
@@ -18,12 +17,11 @@ void Model::Create(const char* p)
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
 	std::string errorString;
-
 	std::string tempName(p);
 
 	tempName = tempName.substr(tempName.find_last_of("/") + 1);
-
-	this->name = tempName.c_str();
+	this->name = tempName;
+	this->path = p;
 
 	bool meshLoaded = tinyobj::LoadObj(&vertexAttributes, &shapes, &materials, nullptr, &errorString, p);
 
@@ -84,7 +82,7 @@ void Model::SetName(const char* p)
 	this->name = p;
 }
 
-const char* Model::GetName()
+std::string Model::GetName()
 {
 	return this->name;
 }

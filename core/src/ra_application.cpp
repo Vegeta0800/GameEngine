@@ -26,6 +26,7 @@ void Application::Initialize(const char* path, iVec2 resolution, const char* tit
 
 	this->filesystem = new Filesystem;
 	Window::GetInstancePtr()->Instantiate(800, 600, 0, "windowTest");
+	SceneManager::GetInstancePtr()->Initialize();
 
 	Rendering::GetInstancePtr()->Initialize("RenderingExample", VK_MAKE_VERSION(0, 0, 0));
 }
@@ -61,8 +62,8 @@ void Application::Update()
 
 void Application::Cleanup()
 {
-	SceneManager::GetInstancePtr()->Cleanup();
 	Rendering::GetInstancePtr()->Cleanup();
+	SceneManager::GetInstancePtr()->Cleanup();
 	this->filesystem->Cleanup();
 	Window::GetInstancePtr()->Release();
 	Console::GetInstancePtr()->CleanUp();

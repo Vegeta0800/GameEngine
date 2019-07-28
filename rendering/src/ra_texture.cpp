@@ -1,5 +1,6 @@
 #include "ra_texture.h"
 #include "ra_rendering.h"
+#include "ra_gameobject.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "ra_stb_image.h"
 #include "ra_vkcheck.h"
@@ -17,7 +18,8 @@ void Texture::Load(const char* texturePath)
 
 	tempName = tempName.substr(tempName.find_last_of("/") + 1);
 
-	this->name = tempName.c_str();
+	this->name = tempName;
+	this->path = texturePath;
 
 	if (this->pixels == nullptr)
 		throw;
@@ -149,7 +151,12 @@ int Texture::GetByteSize()
 	return this->width * this->height * 4;
 }
 
-const char* Texture::GetName()
+const char* Texture::GetPath()
+{
+	return this->path;
+}
+
+std::string Texture::GetName()
 {
 	return this->name;
 }

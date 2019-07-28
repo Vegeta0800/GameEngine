@@ -1,10 +1,10 @@
 
 #pragma once
-#include <vulkan/vulkan.h>
 #include <vector>
 #include <unordered_map>
 #include "math/ra_vector3.h"
 #include "math/ra_vector2.h"
+#include <vulkan\vulkan_core.h>
 
 struct Vertex
 {

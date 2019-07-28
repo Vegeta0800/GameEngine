@@ -2,6 +2,7 @@
 #pragma once
 #include <vulkan/vulkan.h>
 #include "ra_types.h"
+#include <string>
 
 class Texture
 {
@@ -19,7 +20,8 @@ public:
 	int GetChannels();
 	int GetByteSize();
 
-	const char* GetName();
+	std::string GetName();
+	const char* GetPath();
 
 	bool isLoaded();
 
@@ -34,8 +36,9 @@ private:
 	int channels = 0;
 
 	byte* pixels = nullptr;
-	const char* name;
+	std::string name;
 
+	const char* path;
 
 	bool loaded = false;
 	bool uploaded = false;
