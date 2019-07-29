@@ -16,8 +16,8 @@ class Gameobject
 {
 public:
 	Gameobject();
-	void Initialize(Gameobject* parent = nullptr, const char* name = "", const char* meshName = "", const char* textureName = "", bool render = false, bool act = true);
-	void Initialize(Gameobject* copyGb, const char* name = "", bool copyAll = false);
+	void Initialize(Gameobject* parent = nullptr, const char* name = "", const char* meshName = "", const char* textureName = "", bool render = false, bool act = true, bool instanced = false);
+	void Initialize(Gameobject* copyGb, const char* name = "", bool render = false);
 	void Update();
 	void Cleanup();
 	
@@ -43,6 +43,8 @@ public:
 	Math::Mat4x4 GetModelMatrix();
 	Material& GetMaterial();
 
+	ui32& GetModelID();
+
 	const char* GetName();
 	const char* GetMeshName();
 	const char* GetTextureName();
@@ -52,6 +54,7 @@ public:
 
 	bool& GetIsRenderable();
 	bool& GetIsActive();
+	bool& GetIsInstanced();
 
 	bool operator==(Gameobject* other);
 
@@ -76,6 +79,8 @@ private:
 	Mesh mesh;
 	Texture* texture;
 
+	ui32 modelID;
+
 	std::list<Gameobject*> children;
 	std::list<Component*> components;
 
@@ -83,4 +88,5 @@ private:
 	bool moved = false;
 	bool renderable = false;
 	bool active = false;
+	bool instanced = false;
 }; 

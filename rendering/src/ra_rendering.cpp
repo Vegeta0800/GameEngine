@@ -104,9 +104,9 @@ void Rendering::UpdateMVP(float time)
 
 	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
 	{
-		if (gb->GetIsRenderable() && gb->GetIsActive())
+		if (gb->GetIsRenderable() && gb->GetIsActive() && !gb->GetIsInstanced())
 		{
-			gb->GetTransform().eulerRotation.z = time * 20.0f;	
+			gb->GetTransform().eulerRotation.z = time * 20.0f;
 
 			VertexInputInfo vertexInfo;
 
@@ -756,7 +756,7 @@ void Rendering::CreateDescriptorPool()
 	descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	descriptorPoolInfo.pNext = nullptr;
 	descriptorPoolInfo.flags = 0;
-	descriptorPoolInfo.maxSets = static_cast<ui32>(SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size());
+	descriptorPoolInfo.maxSets = 10; //TODO global int. if size is greater then recreate descriptor pool.
 	descriptorPoolInfo.poolSizeCount = static_cast<ui32>(descriptorPoolSizes.size());
 	descriptorPoolInfo.pPoolSizes = descriptorPoolSizes.data();
 
@@ -773,8 +773,11 @@ void Rendering::CreateDescriptorSets()
 
 	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
 	{
-		tempGbs.push_back(gb);
-		layouts.push_back(this->descriptorSetLayout);
+		if (gb->GetIsRenderable() && !gb->GetIsInstanced())
+		{
+			tempGbs.push_back(gb);
+			layouts.push_back(this->descriptorSetLayout);
+		}
 	}
 
 	this->descriptorSets.resize(tempGbs.size());
@@ -1010,7 +1013,7 @@ void Rendering::CreatePipeline()
 	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	pipelineInfo.pNext = nullptr;
 	pipelineInfo.flags = 0;
-	pipelineInfo.stageCount = 2;
+	pipelineInfo.stageCount = static_cast<ui32>(sizeof(shaderStages) / sizeof(VkPipelineShaderStageCreateInfo));
 	pipelineInfo.pStages = shaderStages;
 	pipelineInfo.pVertexInputState = &vertexInputInfo;
 	pipelineInfo.pInputAssemblyState = &inputAsseblyInfo;
@@ -1365,14 +1368,32 @@ void Rendering::LoadModels(void)
 		this->models[i] = new Model();
 		this->models[i]->Create(paths[i].c_str());
 	}
+
+	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+	{
+		for (ui32 i = 0; i < this->models.size(); i++)
+		{
+			std::string stringName(gb->GetMesh().GetName());
+			if (this->models[i]->GetName() == stringName)
+				gb->GetModelID() = i;
+		}
+	}
 }
 
 void Rendering::CreateBuffersForObjects(void)
 {
+	this->instancedObjects.resize(this->models.size());
+
 	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
 	{
 		if (gb->GetIsRenderable())
 		{
+			if (gb->GetIsInstanced())
+			{
+				this->instancedObjects[gb->GetModelID()].push_back(gb);
+				continue;
+			}
+
 			gb->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gb->GetMesh().GetName()).size()));
 
 			CreateObjectBuffers
@@ -1450,10 +1471,13 @@ void Rendering::RecordCommands()
 		{
 			if (tempGbs[j]->GetIsRenderable())
 			{
-				vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempGbs[j]->GetMesh().GetVertexBuffer(), offsets);
-				vkCmdBindIndexBuffer(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-				vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[j], 0, nullptr);
-				vkCmdDrawIndexed(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndicesSize(), 1, 0, 0, 0);
+				if (!tempGbs[j]->GetIsInstanced())
+				{
+					vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempGbs[j]->GetMesh().GetVertexBuffer(), offsets);
+					vkCmdBindIndexBuffer(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+					vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[j], 0, nullptr);
+					vkCmdDrawIndexed(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndicesSize(), 1, 0, 0, 0);
+				}
 			}
 		}
 
@@ -1576,9 +1600,17 @@ std::vector<byte> Rendering::GetBuffer(RenderingBuffer bufferType)
 	{
 		case RenderingBuffer::VERTEX:
 		{
+			std::vector<byte> buffer1;
+			std::vector<byte> buffer2;
+
 			WinFile* vertexShaderFile = new WinFile(Application::GetInstancePtr()->GetFilesystem()->FileInDirectory("shader", "shader.vert").c_str());
-			buffer.assign(vertexShaderFile->Read(), vertexShaderFile->Read() + vertexShaderFile->GetSize()); //trick to copy data to vector using pointer arithmetic.
+			buffer1.assign(vertexShaderFile->Read(), vertexShaderFile->Read() + vertexShaderFile->GetSize()); //trick to copy data to vector using pointer arithmetic.
 			vertexShaderFile->Cleanup();
+
+			WinFile* instancedShaderFile = new WinFile(Application::GetInstancePtr()->GetFilesystem()->FileInDirectory("shader", "instanced.vert").c_str());
+			buffer2.assign(instancedShaderFile->Read(), instancedShaderFile->Read() + instancedShaderFile->GetSize()); //trick to copy data to vector using pointer arithmetic.
+			instancedShaderFile->Cleanup();
+
 			break;
 		}
 		case RenderingBuffer::FRAGMENT:
@@ -1586,6 +1618,13 @@ std::vector<byte> Rendering::GetBuffer(RenderingBuffer bufferType)
 			WinFile* fragmentShaderFile = new WinFile(Application::GetInstancePtr()->GetFilesystem()->FileInDirectory("shader", "shader.frag").c_str());
 			buffer.assign(fragmentShaderFile->Read(), fragmentShaderFile->Read() + fragmentShaderFile->GetSize()); //trick to copy data to vector using pointer arithmetic.
 			fragmentShaderFile->Cleanup();
+			break;
+		}
+		case RenderingBuffer::INSTANCED:
+		{
+			WinFile* instancedShaderFile = new WinFile(Application::GetInstancePtr()->GetFilesystem()->FileInDirectory("shader", "instance.vert").c_str());
+			buffer.assign(instancedShaderFile->Read(), instancedShaderFile->Read() + instancedShaderFile->GetSize()); //trick to copy data to vector using pointer arithmetic.
+			instancedShaderFile->Cleanup();
 			break;
 		}
 	}
@@ -1612,11 +1651,11 @@ ui32 Rendering::FindMemoryTypeIndex(ui32 typeFilter, VkMemoryPropertyFlags prope
 
 std::vector<Vertex> Rendering::GetVerticesOfObject(const char * name)
 {
-	for (Model* model : this->models)
+	for (ui32 i = 0; i < this->models.size(); i++)
 	{
 		std::string stringName(name);
-		if (model->GetName() == stringName)
-			return model->GetVertices();
+		if (this->models[i]->GetName() == stringName)
+			return this->models[i]->GetVertices();
 	}
 
 	return std::vector<Vertex>();

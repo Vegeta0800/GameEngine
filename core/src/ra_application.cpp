@@ -69,6 +69,7 @@ void Application::Cleanup()
 	Console::GetInstancePtr()->CleanUp();
 	Console::GetInstancePtr()->Release();
 	Rendering::GetInstancePtr()->Release();
+	SceneManager::GetInstancePtr()->Release();
 }
 
 Filesystem* Application::GetFilesystem()

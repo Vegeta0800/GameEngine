@@ -23,7 +23,7 @@ class Rendering
 	enum class RenderingBuffer
 	{
 		VERTEX = 0,
-		FRAGMENT = 1
+		FRAGMENT = 1,
 	};
 
 	struct alignas(16) VertexInputInfo
@@ -176,4 +176,8 @@ private:
 	DepthImage depthImage;
 	std::vector<Texture*> textures;
 	std::vector<Model*> models;
+
+	std::vector<std::vector<Gameobject*>> instancedObjects;
+
+	ui32 renderableGameObjectsSize = 0;
 };

@@ -7,7 +7,7 @@ Gameobject::Gameobject() :
 	this->Initialize();
 }
 
-void Gameobject::Initialize(Gameobject* parent, const char* name, const char* meshName, const char* textureName, bool render, bool act)
+void Gameobject::Initialize(Gameobject* parent, const char* name, const char* meshName, const char* textureName, bool render, bool act, bool instanced)
 {
 	this->parent = nullptr;
 	this->transform = Transform();
@@ -23,6 +23,7 @@ void Gameobject::Initialize(Gameobject* parent, const char* name, const char* me
 	this->textureName = textureName;
 	this->active = act;
 	this->renderable = render;
+	this->instanced = instanced;
 
 	this->mesh.CreateMesh(meshName);
 	this->texture = new Texture;
@@ -37,7 +38,7 @@ void Gameobject::Initialize(Gameobject* parent, const char* name, const char* me
 		this->SetParent(parent);
 }
 
-void Gameobject::Initialize(Gameobject* copyGb, const char* name, bool copyAll)
+void Gameobject::Initialize(Gameobject* copyGb, const char* name, bool render)
 {
 	this->parent = nullptr;
 	this->transform = copyGb->GetTransform();
@@ -55,7 +56,8 @@ void Gameobject::Initialize(Gameobject* copyGb, const char* name, bool copyAll)
 	this->mesh.CreateMesh(this->meshName);
 
 	this->active = copyGb->GetIsActive();
-	this->renderable = copyGb->GetIsRenderable();
+	this->renderable = render;
+	this->instanced = copyGb->GetIsInstanced();
 
 	//this->material.fragColor = Math::Vec3{ 0.164f, 0.749f, 0.874f };
 	this->material.fragColor = fColorRGBA{ 0, 1, 0, 1 };
@@ -302,6 +304,11 @@ Mesh& Gameobject::GetMesh()
 	return this->mesh;
 }
 
+ui32& Gameobject::GetModelID()
+{
+	return this->modelID;
+}
+
 bool& Gameobject::GetIsActive()
 {
 	return this->active;
@@ -311,4 +318,10 @@ bool& Gameobject::GetIsRenderable()
 {
 	return this->renderable;
 }
+
+bool& Gameobject::GetIsInstanced()
+{
+	return this->instanced;
+}
+
 
