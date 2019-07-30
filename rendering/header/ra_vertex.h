@@ -50,33 +50,6 @@ struct Vertex
 	}
 };
 
-struct InstanceData
-{
-	Math::Vec3 instancePos;
-
-	static VkVertexInputBindingDescription GetBindingDescriptionOfInstance()
-	{
-		VkVertexInputBindingDescription vertexInputBindingDescription;
-		vertexInputBindingDescription.binding = 1;
-		vertexInputBindingDescription.stride = sizeof(InstanceData);
-		vertexInputBindingDescription.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
-
-		return vertexInputBindingDescription;
-	}
-
-	static std::vector<VkVertexInputAttributeDescription> GetAttributeDescriptionsOfInstance()
-	{
-		std::vector<VkVertexInputAttributeDescription> vertexInputAttributeDescription(1);
-
-		vertexInputAttributeDescription[0].location = 4;
-		vertexInputAttributeDescription[0].binding = 1;
-		vertexInputAttributeDescription[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-		vertexInputAttributeDescription[0].offset = offsetof(InstanceData, instancePos);
-
-		return vertexInputAttributeDescription;
-	}
-};
-
 namespace std {
 
 	template <> struct hash<Vertex>

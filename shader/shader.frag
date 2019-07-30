@@ -22,9 +22,11 @@ void main()
 	vec3 L = normalize(fragLight);
 	vec3 R = reflect(L, N);
 
-	vec3 ambient = fragColor.xyz * fragAmbientValue;
+	vec3 ambient = vec3(1.0, 1.0, 1.0) * fragAmbientValue;
 	vec3 diffuse = max(dot(N, L), 0.0) * fragColor.xyz;
 	vec3 specular = pow(max(dot(R, V), 0.0), fragSpecularValue) * fragSpecularColor.xyz;
 
 	outColor = vec4(ambient + diffuse + specular, 1.0);
+
+	//texture(tex, fragUVCoord).xyz
 }

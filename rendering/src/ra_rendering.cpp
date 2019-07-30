@@ -26,7 +26,7 @@ DECLARE_SINGLETON(Rendering)
 //Initialize Rendering class, setting up vulkan.
 void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 {
-	this->cameraPos = Math::Vec3{ 2.0f, 2.0f, 2.0f };
+	this->cameraPos = Math::Vec3{ 5.889f, -0.528f, 0.680f };
 
 	this->CreateInstance(applicationName, applicationVersion);
 	this->CreateSurface();
@@ -96,12 +96,6 @@ void Rendering::UpdateMVP(float time)
 		this->cameraPos.y += 0.0002f * time;
 	}
 
-	if (Input::GetInstancePtr()->GetKeyUp(KeyCode::G))
-	{
-		this->maxInts++;
-		this->ReRecordCommands();
-	}
-
 	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
 	{
 		if (gb->GetIsRenderable() && gb->GetIsActive() && !gb->GetIsInstanced())
@@ -124,6 +118,33 @@ void Rendering::UpdateMVP(float time)
 			vkMapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
 			memcpy(data, &vertexInfo, sizeof(vertexInfo));
 			vkUnmapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem());
+		}
+	}
+
+	for (std::vector<Gameobject*> gbs : this->instancedObjects)
+	{
+		if (gbs.size() != 0)
+		{
+			VertexInstancedInputInfo vertexInfo;
+
+			vertexInfo.lightPosition = this->cameraPos;
+			vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, Math::Vec3::zero, Math::Vec3::unit_z);
+			vertexInfo.projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
+			vertexInfo.projectionMatrix.m22 *= -1.0f;
+			vertexInfo.ambientVal = 0.1f;
+			vertexInfo.specularVal = 16.0f;
+
+			for (size_t i = 0; i < gbs.size(); i++)
+			{
+				vertexInfo.color[i] = gbs[i]->GetMaterial().fragColor;
+				vertexInfo.specColor[i] = gbs[i]->GetMaterial().specularColor;
+				vertexInfo.modelMatrix[i] = gbs[i]->GetModelMatrix();
+			}
+
+			void* data;
+			vkMapMemory(this->logicalDevice, gbs[0]->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
+			memcpy(data, &vertexInfo, sizeof(vertexInfo));
+			vkUnmapMemory(this->logicalDevice, gbs[0]->GetMesh().GetUniformBufferMem());
 		}
 	}
 }
@@ -766,12 +787,75 @@ void Rendering::CreateDescriptorPool()
 	VK_CHECK(vkCreateDescriptorPool(this->logicalDevice, &descriptorPoolInfo, nullptr, &this->descriptorPool));
 }
 
+void Rendering::CreateDescriptorSet(Gameobject* gb, ui32 setIndex, bool instanced)
+{
+	std::vector<VkWriteDescriptorSet> descriptorSetWrites;
+	//Uniform buffer info (for mvp matrix and fragInfos in vertex shader).
+	VkDescriptorBufferInfo uniformDescriptorBufferInfo;
+	uniformDescriptorBufferInfo.buffer = gb->GetMesh().GetUniformBuffer();
+	uniformDescriptorBufferInfo.offset = 0;
+
+	if(instanced)
+		uniformDescriptorBufferInfo.range = sizeof(VertexInstancedInputInfo);
+	else
+		uniformDescriptorBufferInfo.range = sizeof(VertexInputInfo);
+
+	//Uniform buffer write using uniformDescriptorBufferInfo.
+	VkWriteDescriptorSet uniformDescriptorWrite;
+	uniformDescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	uniformDescriptorWrite.pNext = nullptr;
+
+	if (instanced)
+		uniformDescriptorWrite.dstSet = this->instancedDescriptorSets[setIndex];
+	else
+		uniformDescriptorWrite.dstSet = this->descriptorSets[setIndex];
+	
+	uniformDescriptorWrite.dstBinding = 0;
+	uniformDescriptorWrite.dstArrayElement = 0;
+	uniformDescriptorWrite.descriptorCount = 1;
+	uniformDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uniformDescriptorWrite.pImageInfo = nullptr;
+	uniformDescriptorWrite.pBufferInfo = &uniformDescriptorBufferInfo;
+	uniformDescriptorWrite.pTexelBufferView = nullptr;
+	descriptorSetWrites.push_back(uniformDescriptorWrite);
+
+	//Sampler info (for texcoords in fragment shader).
+	VkDescriptorImageInfo descriptorSamplerInfo;
+	descriptorSamplerInfo.sampler = gb->GetTexture()->GetSampler();
+	descriptorSamplerInfo.imageView = gb->GetTexture()->GetImageView();
+	descriptorSamplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	//Sampler write using descriptorSamplerInfo.
+	VkWriteDescriptorSet descriptorSamplerWrite;
+	descriptorSamplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorSamplerWrite.pNext = nullptr;
+
+	if (instanced)
+		descriptorSamplerWrite.dstSet = this->instancedDescriptorSets[setIndex];
+	else
+		descriptorSamplerWrite.dstSet = this->descriptorSets[setIndex];
+
+	descriptorSamplerWrite.dstBinding = 1;
+	descriptorSamplerWrite.dstArrayElement = 0;
+	descriptorSamplerWrite.descriptorCount = 1;
+	descriptorSamplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorSamplerWrite.pImageInfo = &descriptorSamplerInfo;
+	descriptorSamplerWrite.pBufferInfo = nullptr;
+	descriptorSamplerWrite.pTexelBufferView = nullptr;
+	descriptorSetWrites.push_back(descriptorSamplerWrite);
+
+	//Update descriptorset using writes size and data.
+	vkUpdateDescriptorSets(this->logicalDevice, static_cast<ui32>(descriptorSetWrites.size()), descriptorSetWrites.data(), 0, nullptr);
+}
+
 //Update descriptorset using writes size and data.
 void Rendering::CreateDescriptorSets()
 {
 	//Allocate space for descriptorset using the descriptorpool and descriptorsetlayout.
 	std::vector<Gameobject*> tempGbs;
+	std::vector<Gameobject*> tempInstGbs;
 	std::vector<VkDescriptorSetLayout> layouts;
+	std::vector<VkDescriptorSetLayout> instLayouts;
 
 	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
 	{
@@ -782,7 +866,20 @@ void Rendering::CreateDescriptorSets()
 		}
 	}
 
+	for (std::vector<Gameobject*> gbs : this->instancedObjects)
+	{
+		if (gbs.size() != 0)
+		{
+			if (gbs[0]->GetIsRenderable())
+			{
+				tempInstGbs.push_back(gbs[0]);
+				instLayouts.push_back(this->descriptorSetLayout);
+			}
+		}
+	}
+
 	this->descriptorSets.resize(tempGbs.size());
+	this->instancedDescriptorSets.resize(tempInstGbs.size());
 
 	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo;
 	descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -792,55 +889,26 @@ void Rendering::CreateDescriptorSets()
 	descriptorSetAllocateInfo.pSetLayouts = layouts.data();
 	VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &descriptorSetAllocateInfo, this->descriptorSets.data()));
 
+	VkDescriptorSetAllocateInfo instancedDescriptorSetAllocateInfo;
+	instancedDescriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	instancedDescriptorSetAllocateInfo.pNext = nullptr;
+	instancedDescriptorSetAllocateInfo.descriptorPool = this->descriptorPool;
+	instancedDescriptorSetAllocateInfo.descriptorSetCount = static_cast<ui32>(this->instancedDescriptorSets.size());
+	instancedDescriptorSetAllocateInfo.pSetLayouts = instLayouts.data();
+	VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &instancedDescriptorSetAllocateInfo, this->instancedDescriptorSets.data()));
+
 	//Store write infos needed for shader data.
 	for (ui32 i = 0; i < tempGbs.size(); i++)
 	{
 		if (tempGbs[i]->GetIsRenderable())
 		{
-			std::vector<VkWriteDescriptorSet> descriptorSetWrites;
-			//Uniform buffer info (for mvp matrix and fragInfos in vertex shader).
-			VkDescriptorBufferInfo uniformDescriptorBufferInfo;
-			uniformDescriptorBufferInfo.buffer = tempGbs[i]->GetIsInstanced() ? tempGbs[i]->GetMesh().GetUniformBuffer() ;
-			uniformDescriptorBufferInfo.offset = 0;
-			uniformDescriptorBufferInfo.range = sizeof(VertexInputInfo);
-
-			//Uniform buffer write using uniformDescriptorBufferInfo.
-			VkWriteDescriptorSet uniformDescriptorWrite;
-			uniformDescriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			uniformDescriptorWrite.pNext = nullptr;
-			uniformDescriptorWrite.dstSet = this->descriptorSets[i];
-			uniformDescriptorWrite.dstBinding = 0;
-			uniformDescriptorWrite.dstArrayElement = 0;
-			uniformDescriptorWrite.descriptorCount = 1;
-			uniformDescriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			uniformDescriptorWrite.pImageInfo = nullptr;
-			uniformDescriptorWrite.pBufferInfo = &uniformDescriptorBufferInfo;
-			uniformDescriptorWrite.pTexelBufferView = nullptr;
-			descriptorSetWrites.push_back(uniformDescriptorWrite);
-
-			//Sampler info (for texcoords in fragment shader).
-			VkDescriptorImageInfo descriptorSamplerInfo;
-			descriptorSamplerInfo.sampler = tempGbs[i]->GetTexture()->GetSampler();
-			descriptorSamplerInfo.imageView = tempGbs[i]->GetTexture()->GetImageView();
-			descriptorSamplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-			//Sampler write using descriptorSamplerInfo.
-			VkWriteDescriptorSet descriptorSamplerWrite;
-			descriptorSamplerWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			descriptorSamplerWrite.pNext = nullptr;
-			descriptorSamplerWrite.dstSet = this->descriptorSets[i];
-			descriptorSamplerWrite.dstBinding = 1;
-			descriptorSamplerWrite.dstArrayElement = 0;
-			descriptorSamplerWrite.descriptorCount = 1;
-			descriptorSamplerWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-			descriptorSamplerWrite.pImageInfo = &descriptorSamplerInfo;
-			descriptorSamplerWrite.pBufferInfo = nullptr;
-			descriptorSamplerWrite.pTexelBufferView = nullptr;
-			descriptorSetWrites.push_back(descriptorSamplerWrite);
-
-			//Update descriptorset using writes size and data.
-			vkUpdateDescriptorSets(this->logicalDevice, static_cast<ui32>(descriptorSetWrites.size()), descriptorSetWrites.data(), 0, nullptr);	
+			this->CreateDescriptorSet(tempGbs[i], i, false);
 		}
+	}
+
+	for (ui32 i = 0; i < tempInstGbs.size(); i++)
+	{
+		this->CreateDescriptorSet(tempInstGbs[i], i, true);
 	}
 
 }
@@ -863,13 +931,13 @@ void Rendering::CreatePipeline()
 	vertShaderStageInfo.pSpecializationInfo = nullptr; //Constant variables
 
 	VkPipelineShaderStageCreateInfo vertInstShaderStageInfo;
-	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertShaderStageInfo.pNext = nullptr;
-	vertShaderStageInfo.flags = 0;
-	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertShaderStageInfo.module = this->instanceModule;
-	vertShaderStageInfo.pName = "main";
-	vertShaderStageInfo.pSpecializationInfo = nullptr; //Constant variables
+	vertInstShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertInstShaderStageInfo.pNext = nullptr;
+	vertInstShaderStageInfo.flags = 0;
+	vertInstShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertInstShaderStageInfo.module = this->instanceModule;
+	vertInstShaderStageInfo.pName = "main";
+	vertInstShaderStageInfo.pSpecializationInfo = nullptr; //Constant variables
 
 	//Fragment shader stage info.
 	VkPipelineShaderStageCreateInfo fragShaderStageInfo;
@@ -887,6 +955,7 @@ void Rendering::CreatePipeline()
 
 	//Get bindings and attributes of a vertex point.
 	std::vector<VkVertexInputBindingDescription> bindings;
+	std::vector<VkVertexInputBindingDescription> instBindings;
 
 	VkVertexInputBindingDescription binding = Vertex::GetBindingDescription();
 	bindings.push_back(binding);
@@ -1047,7 +1116,7 @@ void Rendering::CreatePipeline()
 	instancedPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
 	instancedPipelineInfo.pNext = nullptr;
 	instancedPipelineInfo.flags = 0;
-	instancedPipelineInfo.stageCount = static_cast<ui32>(sizeof(shaderStages) / sizeof(VkPipelineShaderStageCreateInfo));
+	instancedPipelineInfo.stageCount = static_cast<ui32>(sizeof(instancedShaderStages) / sizeof(VkPipelineShaderStageCreateInfo));
 	instancedPipelineInfo.pStages = instancedShaderStages;
 	instancedPipelineInfo.pVertexInputState = &vertexInputInfo;
 	instancedPipelineInfo.pInputAssemblyState = &inputAsseblyInfo;
@@ -1066,7 +1135,7 @@ void Rendering::CreatePipeline()
 
 	//Create pipeline using all the infos and stages defined in the pipeline info.
 	VK_CHECK(vkCreateGraphicsPipelines(this->logicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->pipeline));
-	VK_CHECK(vkCreateGraphicsPipelines(this->logicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->instancePipeline));
+	VK_CHECK(vkCreateGraphicsPipelines(this->logicalDevice, VK_NULL_HANDLE, 1, &instancedPipelineInfo, nullptr, &this->instancePipeline));
 }
 
 //Create renderpass using the declared dependencies and descriptions for the different representations.
@@ -1322,9 +1391,14 @@ void Rendering::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
 
 }
 
-void Rendering::CreateObjectBuffers(VkBuffer& vertexBuffer, VkBuffer& indexBuffer, VkBuffer& uniformBuffer, VkDeviceMemory& vertexBufferMemory, VkDeviceMemory& indexBufferMemory, VkDeviceMemory& uniformBufferMemory, const char* meshName)
+void Rendering::CreateObjectBuffers(VkBuffer& vertexBuffer, VkBuffer& indexBuffer, VkBuffer& uniformBuffer, VkDeviceMemory& vertexBufferMemory, VkDeviceMemory& indexBufferMemory, VkDeviceMemory& uniformBufferMemory, const char* meshName, bool instanced)
 {
-	VkDeviceSize bufferSize = sizeof(VertexInputInfo);
+	VkDeviceSize bufferSize;
+
+	if(instanced)
+		bufferSize = sizeof(VertexInstancedInputInfo);
+	else
+		bufferSize = sizeof(VertexInputInfo);
 
 	this->CreateBufferOnGPU(this->GetVerticesOfObject(meshName), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, vertexBuffer, vertexBufferMemory);
 	this->CreateBufferOnGPU(this->GetIndicesOfObject(meshName), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, indexBuffer, indexBufferMemory);
@@ -1425,19 +1499,40 @@ void Rendering::CreateBuffersForObjects(void)
 		{
 			if (gb->GetIsInstanced())
 			{
-				this->instancedObjects[gb->GetModelID()].push_back(gb);
-				continue;
+				if (this->instancedObjects[gb->GetModelID()].size() != 0)
+				{
+					this->instancedObjects[gb->GetModelID()].push_back(gb);
+					continue;
+				}
+				else
+					this->instancedObjects[gb->GetModelID()].push_back(gb);
 			}
 
 			gb->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gb->GetMesh().GetName()).size()));
 
-			CreateObjectBuffers
-			(
-				gb->GetMesh().GetVertexBuffer(), gb->GetMesh().GetIndexBuffer(), gb->GetMesh().GetUniformBuffer(), gb->GetMesh().GetVertexBufferMem(), 
-				gb->GetMesh().GetIndexBufferMem(), gb->GetMesh().GetUniformBufferMem(), gb->GetMesh().GetName()
-			);
+			if (gb->GetIsInstanced())
+			{
+				if (this->instancedObjects[gb->GetModelID()].size() == 1)
+				{
+					CreateObjectBuffers
+					(
+						gb->GetMesh().GetVertexBuffer(), gb->GetMesh().GetIndexBuffer(), gb->GetMesh().GetUniformBuffer(), gb->GetMesh().GetVertexBufferMem(),
+						gb->GetMesh().GetIndexBufferMem(), gb->GetMesh().GetUniformBufferMem(), gb->GetMesh().GetName(), true
+					);
+				}
+			}
+			else
+			{
+				CreateObjectBuffers
+				(
+					gb->GetMesh().GetVertexBuffer(), gb->GetMesh().GetIndexBuffer(), gb->GetMesh().GetUniformBuffer(), gb->GetMesh().GetVertexBufferMem(), 
+					gb->GetMesh().GetIndexBufferMem(), gb->GetMesh().GetUniformBufferMem(), gb->GetMesh().GetName(), false
+				);
+			}
 		}
 	}
+
+
 }
 
 //Record commands for the graphics queue.
@@ -1449,6 +1544,27 @@ void Rendering::RecordCommands()
 	commandBufferBeginInfo.pNext = nullptr;
 	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 	commandBufferBeginInfo.pInheritanceInfo = nullptr;
+
+	std::vector<Gameobject*> tempInstGbs;
+
+	for (std::vector<Gameobject*> gbs : this->instancedObjects)
+	{
+		if (gbs.size() != 0)
+		{
+			if (gbs[0]->GetIsRenderable())
+			{
+				tempInstGbs.push_back(gbs[0]);
+			}
+		}
+	}
+
+	std::vector<Gameobject*> tempGbs;
+
+	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+	{
+		if(!gb->GetIsInstanced())
+			tempGbs.push_back(gb);
+	}
 
 	//For every image in swapchain
 	for (size_t i = 0; i < this->swapchainImages.size(); i++)
@@ -1494,31 +1610,41 @@ void Rendering::RecordCommands()
 		//Define offset for drawing the mesh instances.
 		VkDeviceSize offsets[] = {0};
 
-		std::vector<Gameobject*> tempGbs;
-
-		for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
-		{
-			tempGbs.push_back(gb);
-		}
-
 		vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline);
 
 		for (size_t j = 0; j < tempGbs.size(); j++)
 		{
 			if (tempGbs[j]->GetIsRenderable())
 			{
-				if (!tempGbs[j]->GetIsInstanced())
-				{
-					vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempGbs[j]->GetMesh().GetVertexBuffer(), offsets);
-					vkCmdBindIndexBuffer(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-					vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[j], 0, nullptr);
-					vkCmdDrawIndexed(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndicesSize(), 1, 0, 0, 0);
-				}
+				vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempGbs[j]->GetMesh().GetVertexBuffer(), offsets);
+				vkCmdBindIndexBuffer(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+				vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[j], 0, nullptr);
+				vkCmdDrawIndexed(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndicesSize(), 1, 0, 0, 0);
 			}
+		}
+
+		if (tempInstGbs.size() == 0)
+		{
+			//End renderpass.
+			vkCmdEndRenderPass(this->commandBuffers[i]);
+
+			//End recording of command buffer.
+			VK_CHECK(vkEndCommandBuffer(this->commandBuffers[i]));
+			continue;
 		}
 
 		vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->instancePipeline);
 
+		for (size_t j = 0; j < tempInstGbs.size(); j++)
+		{
+			if (tempInstGbs[j]->GetIsRenderable())
+			{
+				vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempInstGbs[j]->GetMesh().GetVertexBuffer(), offsets);
+				vkCmdBindIndexBuffer(this->commandBuffers[i], tempInstGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+				vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->instancedDescriptorSets[j], 0, nullptr);
+				vkCmdDrawIndexed(this->commandBuffers[i], tempInstGbs[j]->GetMesh().GetIndicesSize(), static_cast<ui32>(this->instancedObjects[tempInstGbs[j]->GetModelID()].size()), 0, 0, 0);
+			}
+		}
 
 		//End renderpass.
 		vkCmdEndRenderPass(this->commandBuffers[i]);

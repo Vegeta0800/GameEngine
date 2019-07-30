@@ -44,8 +44,8 @@ class Rendering
 		Math::Mat4x4 modelMatrix[100];
 		Math::Mat4x4 viewMatrix;
 		Math::Mat4x4 projectionMatrix;
-		fColorRGBA color;
-		fColorRGBA specColor;
+		fColorRGBA color[100];
+		fColorRGBA specColor[100];
 		Math::Vec3 lightPosition;
 		float ambientVal;
 		float specularVal;
@@ -102,6 +102,7 @@ private:
 
 	void CreateDescriptorSetLayout(void);
 	void CreateDescriptorPool(void);
+	void CreateDescriptorSet(Gameobject* gb, ui32 setIndex, bool instanced);
 
 	void CreatePipeline(void);
 	void CreateRenderpass(void);
@@ -113,7 +114,7 @@ private:
 
 	void CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size);
 
-	void CreateObjectBuffers(VkBuffer& vertexBuffer, VkBuffer& indexBuffer, VkBuffer& uniformBuffer, VkDeviceMemory& vertexBufferMemory, VkDeviceMemory& indexBufferMemory, VkDeviceMemory& uniformBufferMemory, const char* meshName);
+	void CreateObjectBuffers(VkBuffer& vertexBuffer, VkBuffer& indexBuffer, VkBuffer& uniformBuffer, VkDeviceMemory& vertexBufferMemory, VkDeviceMemory& indexBufferMemory, VkDeviceMemory& uniformBufferMemory, const char* meshName, bool instanced);
 
 	void LoadTextures(void);
 	void LoadModels(void);
@@ -179,6 +180,7 @@ private:
 	std::vector<VkPipelineStageFlags> waitStageMask;
 
 	std::vector<VkDescriptorSet> descriptorSets;
+	std::vector<VkDescriptorSet> instancedDescriptorSets;
 
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderingFinishedSemaphore;

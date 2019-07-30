@@ -21,11 +21,11 @@ layout(location = 7) out float fragSpecularValue;
 
 layout(binding = 0) uniform UniformStruct
 {
-	mat4 model[1024];
+	mat4 model[100];
 	mat4 view;
 	mat4 projection;
-	vec4 colorIn;
-	vec4 specularColor;
+	vec4 colorIn[100];
+	vec4 specularColor[100];
 	vec3 lightPos;
 	float ambientValue;
 	float specularValue;
@@ -41,8 +41,8 @@ void main()
 	fragNormal = mat3(uniformObject.model[gl_InstanceIndex]) * normal;
 	fragView = (uniformObject.view * worldPos).xyz;
 	fragLight = uniformObject.lightPos - vec3(worldPos);
-	fragColor = uniformObject.colorIn;
-	fragSpecularColor = uniformObject.specularColor;
+	fragColor = uniformObject.colorIn[gl_InstanceIndex];
+	fragSpecularColor = uniformObject.specularColor[gl_InstanceIndex];
 	fragAmbientValue = uniformObject.ambientValue;
 	fragSpecularValue = uniformObject.specularValue;
 }

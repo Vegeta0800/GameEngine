@@ -271,7 +271,7 @@ Transform& Gameobject::GetTransform()
 
 Math::Mat4x4 Gameobject::GetModelMatrix()
 {
-	return Math::CreateModelMatrix(this->transform.position, this->transform.scaling, this->transform.eulerRotation);
+	return Math::CreateModelMatrix((this->transform.position * 0.1f), this->transform.scaling, this->transform.eulerRotation);
 }
 
 Material& Gameobject::GetMaterial()
