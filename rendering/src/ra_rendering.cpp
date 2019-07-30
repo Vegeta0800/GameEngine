@@ -40,10 +40,11 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 	this->CreateCommandPool();
 	this->CreateDepthImage();
 	this->CreateFramebuffers();
-	this->LoadTextures();
 	this->LoadModels();
-	this->CreateDescriptorPool();
+	this->instancedObjects.resize(this->models.size());
 	this->CreateBuffersForObjects();
+	this->LoadTextures();
+	this->CreateDescriptorPool();
 	this->CreateDescriptorSets();
 	this->CreateCommandbuffer();
 	this->RecordCommands();
@@ -51,6 +52,7 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 
 	//Finished initializing.
 	this->initialized = true;
+	this->gameObjectCount = static_cast<ui32>(SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size());
 
 	Window::GetInstancePtr()->SetState(Window::WindowState::Started);
 	Window::GetInstancePtr()->ShowActiveWindow();
@@ -59,6 +61,11 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 //Update function called every frame.
 void Rendering::Update(float time)
 {
+	if (SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size() > this->gameObjectCount)
+	{
+		this->gameObjectCount = static_cast<ui32>(SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size());
+		this->ReRecordCommands();
+	}
 
 	this->UpdateMVP(time);
 	this->DrawFrame();
@@ -96,6 +103,7 @@ void Rendering::UpdateMVP(float time)
 		this->cameraPos.y += 0.0002f * time;
 	}
 
+	//Update MVP Matrix for every object in the scene that isnt instanced
 	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
 	{
 		if (gb->GetIsRenderable() && gb->GetIsActive() && !gb->GetIsInstanced())
@@ -121,32 +129,58 @@ void Rendering::UpdateMVP(float time)
 		}
 	}
 
+	//Update MVP Matrix for instanced objects
 	for (std::vector<Gameobject*> gbs : this->instancedObjects)
 	{
+		VertexInstancedInputInfo vertexInfo;
+
+		vertexInfo.lightPosition = this->cameraPos;
+		vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, Math::Vec3::zero, Math::Vec3::unit_z);
+		vertexInfo.projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
+		vertexInfo.projectionMatrix.m22 *= -1.0f;
+		vertexInfo.ambientVal = 0.1f;
+		vertexInfo.specularVal = 16.0f;
+
 		if (gbs.size() != 0)
 		{
-			VertexInstancedInputInfo vertexInfo;
-
-			vertexInfo.lightPosition = this->cameraPos;
-			vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, Math::Vec3::zero, Math::Vec3::unit_z);
-			vertexInfo.projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
-			vertexInfo.projectionMatrix.m22 *= -1.0f;
-			vertexInfo.ambientVal = 0.1f;
-			vertexInfo.specularVal = 16.0f;
-
-			for (size_t i = 0; i < gbs.size(); i++)
+			if (gbs.size() > 100)
 			{
-				vertexInfo.color[i] = gbs[i]->GetMaterial().fragColor;
-				vertexInfo.specColor[i] = gbs[i]->GetMaterial().specularColor;
-				vertexInfo.modelMatrix[i] = gbs[i]->GetModelMatrix();
-			}
+				ui32 k = 0;
+				while (gbs.size() - (k * 100) >= 100)
+				{
+					if (gbs[k]->GetIsRenderable())
+					{
+						for (size_t i = 0; i < 100; i++)
+						{
+							vertexInfo.color[i] = gbs[i]->GetMaterial().fragColor;
+							vertexInfo.specColor[i] = gbs[i]->GetMaterial().specularColor;
+							vertexInfo.modelMatrix[i] = gbs[i]->GetModelMatrix();
+						}
 
-			void* data;
-			vkMapMemory(this->logicalDevice, gbs[0]->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
-			memcpy(data, &vertexInfo, sizeof(vertexInfo));
-			vkUnmapMemory(this->logicalDevice, gbs[0]->GetMesh().GetUniformBufferMem());
+						void* data;
+						vkMapMemory(this->logicalDevice, gbs[k]->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
+						memcpy(data, &vertexInfo, sizeof(vertexInfo));
+						vkUnmapMemory(this->logicalDevice, gbs[k]->GetMesh().GetUniformBufferMem());
+					}
+					k++;
+				}
+			}
+			else
+			{
+				for (size_t i = 0; i < gbs.size(); i++)
+				{
+					vertexInfo.color[i] = gbs[i]->GetMaterial().fragColor;
+					vertexInfo.specColor[i] = gbs[i]->GetMaterial().specularColor;
+					vertexInfo.modelMatrix[i] = gbs[i]->GetModelMatrix();
+				}
+				void* data;
+				vkMapMemory(this->logicalDevice, gbs[0]->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
+				memcpy(data, &vertexInfo, sizeof(vertexInfo));
+				vkUnmapMemory(this->logicalDevice, gbs[0]->GetMesh().GetUniformBufferMem());
+			}
 		}
 	}
+
 }
 
 //Begin recording of a command buffer using inputed information.
@@ -279,9 +313,12 @@ void Rendering::ChangeLayout(VkCommandPool commandPool, VkQueue queue, VkImage i
 //Draw frame
 void Rendering::DrawFrame()
 {
+	INIT_TIMER
+		START_TIMER
+
 	//Get image index in swapchain.
 	ui32 imageIndex;
-	vkAcquireNextImageKHR(this->logicalDevice, this->swapchain, 1000000000, this->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex); //TODO Tweak timeoutLimit current 1 second.
+	vkAcquireNextImageKHR(this->logicalDevice, this->swapchain, INT_MAX, this->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex); 
 
 	//Create submit info for graphics queue.
 	VkSubmitInfo graphicsInfo;
@@ -316,6 +353,9 @@ void Rendering::DrawFrame()
 		vkQueuePresentKHR(this->graphicsQueue, &presentInfo);
 	else
 		throw;
+
+	STOP_TIMER("Loop took")
+
 }
 
 //Create vulkan instance with application infos, extensions and activated validation layers.
@@ -352,8 +392,14 @@ void Rendering::CreateInstance(const char* applicationName, ui32 applicationVers
 	instanceInfo.pApplicationInfo = &appInfo;
 	instanceInfo.enabledExtensionCount = static_cast<ui32>(instanceExtensions.size());
 	instanceInfo.ppEnabledExtensionNames = instanceExtensions.data();
+
+#if _DEBUG
+	instanceInfo.enabledLayerCount = 0;
+	instanceInfo.ppEnabledLayerNames = nullptr;
+#else
 	instanceInfo.enabledLayerCount = static_cast<ui32>(instanceValidationLayers.size());
 	instanceInfo.ppEnabledLayerNames = instanceValidationLayers.data();
+#endif
 
 	//Create instance with instance info.
 	VK_CHECK(vkCreateInstance(&instanceInfo, nullptr, &this->vkInstance));
@@ -774,12 +820,43 @@ void Rendering::CreateDescriptorPool()
 	samplerPoolSize.descriptorCount = 1;
 	descriptorPoolSizes.push_back(samplerPoolSize);
 
+	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+	{
+		if (gb->GetIsRenderable() && !gb->GetIsInstanced())
+		{
+			this->descriptorPoolSize++;
+		}
+	}
+
+	for (std::vector<Gameobject*> gbs : this->instancedObjects)
+	{
+		if (gbs.size() != 0)
+		{
+			if (gbs.size() > 100)
+			{
+				ui32 k = 0;
+				while (gbs.size() - (k * 100) >= 100)
+				{
+					if (gbs[k]->GetIsRenderable())
+					{
+						this->descriptorPoolSize++;
+					}
+					k++;
+				}
+			}
+			else if (gbs[0]->GetIsRenderable())
+			{
+				this->descriptorPoolSize++;
+			}
+		}
+	}
+
 	//Descriptorpool info using pool sizes.
 	VkDescriptorPoolCreateInfo descriptorPoolInfo;
 	descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	descriptorPoolInfo.pNext = nullptr;
-	descriptorPoolInfo.flags = 0;
-	descriptorPoolInfo.maxSets = 10; //TODO global int. if size is greater then recreate descriptor pool.
+	descriptorPoolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+	descriptorPoolInfo.maxSets = descriptorPoolSize;
 	descriptorPoolInfo.poolSizeCount = static_cast<ui32>(descriptorPoolSizes.size());
 	descriptorPoolInfo.pPoolSizes = descriptorPoolSizes.data();
 
@@ -870,7 +947,20 @@ void Rendering::CreateDescriptorSets()
 	{
 		if (gbs.size() != 0)
 		{
-			if (gbs[0]->GetIsRenderable())
+			if (gbs.size() > 100)
+			{
+				ui32 k = 0;
+				while (gbs.size() - (k * 100) >= 100)
+				{
+					if (gbs[k]->GetIsRenderable())
+					{
+						tempInstGbs.push_back(gbs[k]);
+						instLayouts.push_back(this->descriptorSetLayout);
+					}
+					k++;
+				}
+			}
+			else if (gbs[0]->GetIsRenderable())
 			{
 				tempInstGbs.push_back(gbs[0]);
 				instLayouts.push_back(this->descriptorSetLayout);
@@ -1439,25 +1529,71 @@ void Rendering::LoadTextures(void)
 {
 	std::vector<std::string> paths = Application::GetInstancePtr()->GetFilesystem()->FilesInDirectory("textures");
 
-	this->textures.resize(paths.size());
-
-	for (size_t i = 0; i < paths.size(); i++)
-	{
-		this->textures[i] = new Texture;
-		this->textures[i]->Load(paths[i].c_str());
-		this->textures[i]->Upload(this->m_commandPool, this->graphicsQueue);
-	}
-
 	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
 	{
 		if (gb->GetIsRenderable())
 		{
-			for (Texture* tex : this->textures)
+			if (gb->GetIsInstanced())
 			{
-				std::string stringName(gb->GetTextureName());
-				if (tex->GetName() == stringName)
+				if (this->instancedObjects[gb->GetModelID()].size() != 0)
 				{
-					gb->GetTexture()->Load(tex->GetPath());
+					if (!this->instancedObjects[gb->GetModelID()][0]->GetTexture()->isLoaded())
+					{
+						if (this->instancedObjects[gb->GetModelID()].size() > 100)
+						{
+							ui32 k = 0;
+							while (this->instancedObjects[gb->GetModelID()].size() - (k * 100) >= 100)
+							{
+								if (this->instancedObjects[gb->GetModelID()][k]->GetIsRenderable())
+								{
+									for (std::string tex : paths)
+									{
+										std::string tempName(tex);
+
+										tempName = tempName.substr(tempName.find_last_of("/") + 1);
+
+										std::string stringName(this->instancedObjects[gb->GetModelID()][k]->GetTextureName());
+										if (tempName == stringName)
+										{
+											this->instancedObjects[gb->GetModelID()][k]->GetTexture()->Load(tex.c_str());
+											this->instancedObjects[gb->GetModelID()][k]->GetTexture()->Upload(this->m_commandPool, this->graphicsQueue);
+										}
+									}
+								}
+								k++;
+							}
+						}
+						else if (this->instancedObjects[gb->GetModelID()][0]->GetIsRenderable())
+						{
+							for (std::string tex : paths)
+							{
+								std::string tempName(tex);
+
+								tempName = tempName.substr(tempName.find_last_of("/") + 1);
+
+								std::string stringName(this->instancedObjects[gb->GetModelID()][0]->GetTextureName());
+								if (tempName == stringName)
+								{
+									this->instancedObjects[gb->GetModelID()][0]->GetTexture()->Load(tex.c_str());
+									this->instancedObjects[gb->GetModelID()][0]->GetTexture()->Upload(this->m_commandPool, this->graphicsQueue);
+								}
+							}
+						}
+					}
+					continue;
+				}
+			}
+
+			for (std::string tex : paths)
+			{
+				std::string tempName(tex);
+
+				tempName = tempName.substr(tempName.find_last_of("/") + 1);
+
+				std::string stringName(gb->GetTextureName());
+				if (tempName == stringName)
+				{
+					gb->GetTexture()->Load(tex.c_str());
 					gb->GetTexture()->Upload(this->m_commandPool, this->graphicsQueue);
 				}
 			}
@@ -1491,47 +1627,98 @@ void Rendering::LoadModels(void)
 
 void Rendering::CreateBuffersForObjects(void)
 {
-	this->instancedObjects.resize(this->models.size());
-
 	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
 	{
 		if (gb->GetIsRenderable())
 		{
+			if (gb->GetMesh().GetInitStatus())
+				continue;
+
+			gb->GetMesh().GetInitStatus() = true;
+
 			if (gb->GetIsInstanced())
 			{
 				if (this->instancedObjects[gb->GetModelID()].size() != 0)
 				{
 					this->instancedObjects[gb->GetModelID()].push_back(gb);
-					continue;
+
 				}
 				else
 					this->instancedObjects[gb->GetModelID()].push_back(gb);
 			}
-
-			gb->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gb->GetMesh().GetName()).size()));
-
-			if (gb->GetIsInstanced())
-			{
-				if (this->instancedObjects[gb->GetModelID()].size() == 1)
-				{
-					CreateObjectBuffers
-					(
-						gb->GetMesh().GetVertexBuffer(), gb->GetMesh().GetIndexBuffer(), gb->GetMesh().GetUniformBuffer(), gb->GetMesh().GetVertexBufferMem(),
-						gb->GetMesh().GetIndexBufferMem(), gb->GetMesh().GetUniformBufferMem(), gb->GetMesh().GetName(), true
-					);
-				}
-			}
 			else
 			{
+				gb->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gb->GetMesh().GetName()).size()));
 				CreateObjectBuffers
 				(
-					gb->GetMesh().GetVertexBuffer(), gb->GetMesh().GetIndexBuffer(), gb->GetMesh().GetUniformBuffer(), gb->GetMesh().GetVertexBufferMem(), 
+					gb->GetMesh().GetVertexBuffer(), gb->GetMesh().GetIndexBuffer(), gb->GetMesh().GetUniformBuffer(), gb->GetMesh().GetVertexBufferMem(),
 					gb->GetMesh().GetIndexBufferMem(), gb->GetMesh().GetUniformBufferMem(), gb->GetMesh().GetName(), false
 				);
 			}
 		}
 	}
 
+	for (std::vector<Gameobject*> gbs : this->instancedObjects)
+	{
+		if (gbs.size() != 0)
+		{
+			if (gbs.size() > 100)
+			{
+				for (ui32 i = 0; i < gbs.size() / 100; i++)
+				{
+					gbs[i]->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gbs[i]->GetMesh().GetName()).size()));
+					CreateObjectBuffers
+					(
+						gbs[i]->GetMesh().GetVertexBuffer(), gbs[i]->GetMesh().GetIndexBuffer(), gbs[i]->GetMesh().GetUniformBuffer(), gbs[i]->GetMesh().GetVertexBufferMem(),
+						gbs[i]->GetMesh().GetIndexBufferMem(), gbs[i]->GetMesh().GetUniformBufferMem(), gbs[i]->GetMesh().GetName(), true
+					);
+				}
+			}
+			else
+			{
+				gbs[0]->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gbs[0]->GetMesh().GetName()).size()));
+				CreateObjectBuffers
+				(
+					gbs[0]->GetMesh().GetVertexBuffer(), gbs[0]->GetMesh().GetIndexBuffer(), gbs[0]->GetMesh().GetUniformBuffer(), gbs[0]->GetMesh().GetVertexBufferMem(),
+					gbs[0]->GetMesh().GetIndexBufferMem(), gbs[0]->GetMesh().GetUniformBufferMem(), gbs[0]->GetMesh().GetName(), true
+				);
+			}
+		}
+	}
+	//if (gb->GetIsInstanced())
+	//{
+	//	if (this->instancedObjects[gb->GetModelID()].size() != 0)
+	//	{
+	//		if (this->instancedObjects[gb->GetModelID()].size() > 100)
+	//		{
+	//			if (this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetUniformBuffer() == VK_NULL_HANDLE)
+	//			{
+	//				ui32 k = 0;
+	//				while (this->instancedObjects[gb->GetModelID()].size() - (k * 100) >= 100)
+	//				{
+	//					CreateObjectBuffers
+	//					(
+	//						this->instancedObjects[gb->GetModelID()][k]->GetMesh().GetVertexBuffer(), this->instancedObjects[gb->GetModelID()][k]->GetMesh().GetIndexBuffer(),
+	//						this->instancedObjects[gb->GetModelID()][k]->GetMesh().GetUniformBuffer(), this->instancedObjects[gb->GetModelID()][k]->GetMesh().GetVertexBufferMem(),
+	//						this->instancedObjects[gb->GetModelID()][k]->GetMesh().GetIndexBufferMem(), this->instancedObjects[gb->GetModelID()][k]->GetMesh().GetUniformBufferMem(),
+	//						this->instancedObjects[gb->GetModelID()][k]->GetMesh().GetName(), true
+	//					);
+	//					k++;
+	//				}
+	//			}
+	//		}
+	//		else if (this->instancedObjects[gb->GetModelID()][0]->GetIsRenderable())
+	//		{
+	//			CreateObjectBuffers
+	//			(
+	//				this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetVertexBuffer(), this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetIndexBuffer(),
+	//				this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetUniformBuffer(), this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetVertexBufferMem(),
+	//				this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetIndexBufferMem(), this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetUniformBufferMem(),
+	//				this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetName(), true
+	//			);
+	//		}
+	//	}
+	//}
 
 }
 
@@ -1551,7 +1738,19 @@ void Rendering::RecordCommands()
 	{
 		if (gbs.size() != 0)
 		{
-			if (gbs[0]->GetIsRenderable())
+			if (gbs.size() > 100)
+			{
+				ui32 k = 0;
+				while (gbs.size() - (k * 100) >= 100)
+				{
+					if (gbs[k]->GetIsRenderable())
+					{
+						tempInstGbs.push_back(gbs[k]);
+					}
+					k++;
+				}
+			}
+			else if (gbs[0]->GetIsRenderable())
 			{
 				tempInstGbs.push_back(gbs[0]);
 			}
@@ -1642,7 +1841,7 @@ void Rendering::RecordCommands()
 				vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempInstGbs[j]->GetMesh().GetVertexBuffer(), offsets);
 				vkCmdBindIndexBuffer(this->commandBuffers[i], tempInstGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 				vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->instancedDescriptorSets[j], 0, nullptr);
-				vkCmdDrawIndexed(this->commandBuffers[i], tempInstGbs[j]->GetMesh().GetIndicesSize(), static_cast<ui32>(this->instancedObjects[tempInstGbs[j]->GetModelID()].size()), 0, 0, 0);
+				vkCmdDrawIndexed(this->commandBuffers[i], tempInstGbs[j]->GetMesh().GetIndicesSize(), static_cast<ui32>(this->instancedObjects[tempInstGbs[j]->GetModelID()].size() / tempInstGbs.size()), 0, 0, 0);
 			}
 		}
 
@@ -1659,8 +1858,14 @@ void Rendering::ReRecordCommands(void)
 {
 	vkDeviceWaitIdle(this->logicalDevice);
 
+	vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->descriptorSets.size()), this->descriptorSets.data());
+	vkDestroyDescriptorPool(this->logicalDevice, this->descriptorPool, nullptr);
+
 	vkFreeCommandBuffers(this->logicalDevice, this->m_commandPool, static_cast<ui32>(this->commandBuffers.size()), this->commandBuffers.data());
 	
+	this->CreateDescriptorPool();
+	this->CreateBuffersForObjects();
+	this->CreateDescriptorSets();
 	this->CreateCommandbuffer();
 	this->RecordCommands();
 }
@@ -1830,11 +2035,6 @@ std::vector<ui32> Rendering::GetIndicesOfObject(const char * name)
 	return std::vector<ui32>();
 }
 
-std::vector<Texture*> Rendering::GetTextures()
-{
-	return this->textures;
-}
-
 //Get logical device.
 VkDevice Rendering::GetLogicalDevice(void)
 {
@@ -1921,6 +2121,7 @@ void Rendering::Cleanup()
 	this->depthImage.Destroy();
 
 	//Destroy descriptorSet layout and descriptorpool.
+	vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->descriptorSets.size()), this->descriptorSets.data());
 	vkDestroyDescriptorSetLayout(this->logicalDevice, this->descriptorSetLayout, nullptr);
 	vkDestroyDescriptorPool(this->logicalDevice, this->descriptorPool, nullptr);
 
@@ -1940,13 +2141,6 @@ void Rendering::Cleanup()
 		gb->GetTexture()->Release();
 	}
 
-
-	//Release texture.
-	for (Texture* tex : this->textures)
-	{
-		tex->Release();
-		delete tex;
-	}
 
 	for (Model* model : this->models)
 	{

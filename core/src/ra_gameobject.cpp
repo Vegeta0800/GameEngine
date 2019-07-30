@@ -7,7 +7,7 @@ Gameobject::Gameobject() :
 	this->Initialize();
 }
 
-void Gameobject::Initialize(Gameobject* parent, const char* name, const char* meshName, const char* textureName, bool render, bool act, bool instanced)
+void Gameobject::Initialize(Gameobject* parent, std::string name, const char* meshName, const char* textureName, bool render, bool act, bool instanced)
 {
 	this->parent = nullptr;
 	this->transform = Transform();
@@ -38,7 +38,7 @@ void Gameobject::Initialize(Gameobject* parent, const char* name, const char* me
 		this->SetParent(parent);
 }
 
-void Gameobject::Initialize(Gameobject* copyGb, const char* name, bool render)
+void Gameobject::Initialize(Gameobject* copyGb, std::string name, bool render)
 {
 	this->parent = nullptr;
 	this->transform = copyGb->GetTransform();
@@ -128,7 +128,7 @@ void Gameobject::SetParent(Gameobject* parent)
 	this->parent->children.push_back(this);
 }
 
-void Gameobject::SetName(const char* name)
+void Gameobject::SetName(std::string name)
 {
 	this->name = name;
 }
@@ -279,7 +279,7 @@ Material& Gameobject::GetMaterial()
 	return this->material;
 }
 
-const char* Gameobject::GetName()
+std::string Gameobject::GetName()
 {
 	return this->name;
 }

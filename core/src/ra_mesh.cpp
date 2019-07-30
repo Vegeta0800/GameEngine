@@ -54,6 +54,10 @@ ui32 Mesh::GetIndicesSize()
 	return this->indicesSize;
 }
 
+bool& Mesh::GetInitStatus()
+{
+	return this->initialized;
+}
 void Mesh::Cleanup()
 {
 	this->vertexBuffer = VK_NULL_HANDLE;

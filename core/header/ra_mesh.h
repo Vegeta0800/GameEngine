@@ -23,6 +23,7 @@ public:
 	VkDeviceMemory& GetUniformBufferMem();
 
 	ui32 GetIndicesSize();
+	bool& GetInitStatus();
 
 	void CreateMesh(const char* name);
 	void Cleanup();
@@ -39,4 +40,6 @@ private:
 	ui32 indicesSize = 0;
 
 	const char* name;
+
+	bool initialized = false;
 };

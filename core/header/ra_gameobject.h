@@ -16,14 +16,14 @@ class Gameobject
 {
 public:
 	Gameobject();
-	void Initialize(Gameobject* parent = nullptr, const char* name = "", const char* meshName = "", const char* textureName = "", bool render = false, bool act = true, bool instanced = false);
-	void Initialize(Gameobject* copyGb, const char* name = "", bool render = false);
+	void Initialize(Gameobject* parent = nullptr, std::string name = "", const char* meshName = "", const char* textureName = "", bool render = false, bool act = true, bool instanced = false);
+	void Initialize(Gameobject* copyGb, std::string name = "", bool render = false);
 	void Update();
 	void Cleanup();
 	
 	void SetParent(Gameobject* parent);
 	void SetMesh(const char* meshName);
-	void SetName(const char* name = "");
+	void SetName(std::string name = "");
 	void DeleteParent();
 
 	void DeleteChild(Gameobject* child, Gameobject* parent = nullptr);
@@ -45,7 +45,7 @@ public:
 
 	ui32& GetModelID();
 
-	const char* GetName();
+	std::string GetName();
 	const char* GetMeshName();
 	const char* GetTextureName();
 
@@ -61,7 +61,7 @@ public:
 private:
 	void ListAllChildren(std::list<Gameobject*>& list);
 
-	const char* name;
+	std::string name;
 	const char* meshName;
 	const char* textureName;
 

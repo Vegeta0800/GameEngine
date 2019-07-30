@@ -62,7 +62,6 @@ public:
 
 	std::vector<Vertex> GetVerticesOfObject(const char* name);
 	std::vector<ui32> GetIndicesOfObject(const char* name);
-	std::vector<Texture*> GetTextures();
 
 	VkDevice GetLogicalDevice(void);
 	VkFormat GetSupportedFormats(VkPhysicalDevice phyDevice, const std::vector<VkFormat>& formats, VkImageTiling tiling, VkFormatFeatureFlags featureFlags);
@@ -191,10 +190,11 @@ private:
 	Math::Vec3 cameraPos;
 
 	DepthImage depthImage;
-	std::vector<Texture*> textures;
+	std::vector<std::string> texturePaths;
 	std::vector<Model*> models;
 
 	std::vector<std::vector<Gameobject*>> instancedObjects;
 
-	ui32 renderableGameObjectsSize = 0;
+	ui32 descriptorPoolSize = 0;
+	ui32 gameObjectCount = 0;
 };

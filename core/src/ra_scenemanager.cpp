@@ -1,3 +1,5 @@
+#include <string>
+
 #include "ra_scenemanager.h"
 #include "ra_gameobject.h"
 #include "ra_rendering.h"
@@ -19,17 +21,19 @@ void SceneManager::Initialize()
 		testObject->GetTransform().scaling *= 0.1f;
 		testObject->GetTransform().position = Math::Vec3{ 0, 0, 0 };
 
-		Gameobject* testObject2 = new Gameobject;
-		testObject2->Initialize(mainSceneRoot, GetVariableName(testObject2), "dragon(2).obj", "texture(2).jpg", true, true, true);
-		testObject2->GetTransform().scaling *= 0.1f;
-		testObject2->GetTransform().position = Math::Vec3{ 0, -15, 0 };
-		testObject2->GetMaterial().fragColor = fColorRGBA{ 0.874f, 0.749f, 0.164f, 1.0f };
+		std::vector<Gameobject*> cubes(500);
 
-		Gameobject* testObject3 = new Gameobject;
-		testObject3->Initialize(mainSceneRoot, GetVariableName(testObject3), "dragon(2).obj", "texture(2).jpg", true, true, true);
-		testObject3->GetTransform().scaling *= 0.1f;
-		testObject3->GetTransform().position = Math::Vec3{ 0, 15, 0 };
-		testObject3->GetMaterial().fragColor = fColorRGBA{ 0.2f, 0.349f, 0.964f, 1.0f };
+		for (ui32 i = 0; i < cubes.size(); i++)
+		{
+			std::string s = std::to_string(i);
+			s = "cube " + s;
+			cubes[i] = new Gameobject;
+			cubes[i]->Initialize(mainSceneRoot, s.c_str(), "dragon.obj", "texture.jpg", true, true, true);
+			cubes[i]->GetTransform().scaling *= 0.1f;
+			cubes[i]->GetTransform().position = Math::Vec3{ 0, 5.0f * i, 0 };
+			cubes[i]->GetMaterial().fragColor = fColorRGBA{ 0.874f, 0.749f, 0.164f, 1.0f };
+		}
+		
 
 		mainSceneName = GetVariableName(mainSceneRoot);
 		this->scenes[mainSceneName] = mainSceneRoot;
