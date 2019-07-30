@@ -23,12 +23,25 @@ class Rendering
 	enum class RenderingBuffer
 	{
 		VERTEX = 0,
-		FRAGMENT = 1,
+		INSTANCED = 1,
+		FRAGMENT = 2,
 	};
 
 	struct alignas(16) VertexInputInfo
 	{
 		Math::Mat4x4 modelMatrix;
+		Math::Mat4x4 viewMatrix;
+		Math::Mat4x4 projectionMatrix;
+		fColorRGBA color;
+		fColorRGBA specColor;
+		Math::Vec3 lightPosition;
+		float ambientVal;
+		float specularVal;
+	};
+
+	struct alignas(16) VertexInstancedInputInfo
+	{
+		Math::Mat4x4 modelMatrix[100];
 		Math::Mat4x4 viewMatrix;
 		Math::Mat4x4 projectionMatrix;
 		fColorRGBA color;
@@ -148,11 +161,13 @@ private:
 	VkFormat supportedColorFormat;
 
 	VkShaderModule vertexModule;
+	VkShaderModule instanceModule;
 	VkShaderModule fragmentModule;
 
 	VkRenderPass renderpass;
 	VkPipelineLayout pipelineLayout;
 	VkPipeline pipeline;
+	VkPipeline instancePipeline;
 
 	VkCommandPool m_commandPool;
 	std::vector<VkCommandBuffer> commandBuffers;

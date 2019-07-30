@@ -675,10 +675,12 @@ void Rendering::CreateShaderModules()
 {
 	//Get buffers
 	std::vector<byte> vertexCode = GetBuffer(RenderingBuffer::VERTEX);
+	std::vector<byte> instanceCode = GetBuffer(RenderingBuffer::INSTANCED);
 	std::vector<byte> fragmentCode = GetBuffer(RenderingBuffer::FRAGMENT);
 
 	//Create shader modules.
 	this->CreateShaderModule(vertexCode, &this->vertexModule);
+	this->CreateShaderModule(instanceCode, &this->instanceModule);
 	this->CreateShaderModule(fragmentCode, &this->fragmentModule);
 }
 
@@ -798,7 +800,7 @@ void Rendering::CreateDescriptorSets()
 			std::vector<VkWriteDescriptorSet> descriptorSetWrites;
 			//Uniform buffer info (for mvp matrix and fragInfos in vertex shader).
 			VkDescriptorBufferInfo uniformDescriptorBufferInfo;
-			uniformDescriptorBufferInfo.buffer = tempGbs[i]->GetMesh().GetUniformBuffer();
+			uniformDescriptorBufferInfo.buffer = tempGbs[i]->GetIsInstanced() ? tempGbs[i]->GetMesh().GetUniformBuffer() ;
 			uniformDescriptorBufferInfo.offset = 0;
 			uniformDescriptorBufferInfo.range = sizeof(VertexInputInfo);
 
@@ -860,6 +862,15 @@ void Rendering::CreatePipeline()
 	vertShaderStageInfo.pName = "main";
 	vertShaderStageInfo.pSpecializationInfo = nullptr; //Constant variables
 
+	VkPipelineShaderStageCreateInfo vertInstShaderStageInfo;
+	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertShaderStageInfo.pNext = nullptr;
+	vertShaderStageInfo.flags = 0;
+	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertShaderStageInfo.module = this->instanceModule;
+	vertShaderStageInfo.pName = "main";
+	vertShaderStageInfo.pSpecializationInfo = nullptr; //Constant variables
+
 	//Fragment shader stage info.
 	VkPipelineShaderStageCreateInfo fragShaderStageInfo;
 	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -872,6 +883,7 @@ void Rendering::CreatePipeline()
 
 	//Store shader stage infos.
 	VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+	VkPipelineShaderStageCreateInfo instancedShaderStages[] = { vertInstShaderStageInfo, fragShaderStageInfo };
 
 	//Get bindings and attributes of a vertex point.
 	std::vector<VkVertexInputBindingDescription> bindings;
@@ -886,7 +898,7 @@ void Rendering::CreatePipeline()
 	vertexInputInfo.pNext = nullptr;
 	vertexInputInfo.flags = 0;
 	vertexInputInfo.vertexBindingDescriptionCount = static_cast<ui32>(bindings.size());
-	vertexInputInfo.pVertexBindingDescriptions = bindings.data(); //for mesh instancing
+	vertexInputInfo.pVertexBindingDescriptions = bindings.data(); 
 	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<ui32>(attributes.size());
 	vertexInputInfo.pVertexAttributeDescriptions = attributes.data();
 
@@ -1030,8 +1042,31 @@ void Rendering::CreatePipeline()
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = -10; //invalid index for creation.
 
+		//CREATE PIPELINE
+	VkGraphicsPipelineCreateInfo instancedPipelineInfo;
+	instancedPipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	instancedPipelineInfo.pNext = nullptr;
+	instancedPipelineInfo.flags = 0;
+	instancedPipelineInfo.stageCount = static_cast<ui32>(sizeof(shaderStages) / sizeof(VkPipelineShaderStageCreateInfo));
+	instancedPipelineInfo.pStages = instancedShaderStages;
+	instancedPipelineInfo.pVertexInputState = &vertexInputInfo;
+	instancedPipelineInfo.pInputAssemblyState = &inputAsseblyInfo;
+	instancedPipelineInfo.pTessellationState = nullptr;
+	instancedPipelineInfo.pViewportState = &viewportInfo;
+	instancedPipelineInfo.pRasterizationState = &rasterizationInfo;
+	instancedPipelineInfo.pMultisampleState = &multisampleInfo;
+	instancedPipelineInfo.pDepthStencilState = &this->depthImage.GetDepthInfo();
+	instancedPipelineInfo.pColorBlendState = &colorBlendInfo;
+	instancedPipelineInfo.pDynamicState = &dynamicStateInfo;
+	instancedPipelineInfo.layout = this->pipelineLayout;
+	instancedPipelineInfo.renderPass = this->renderpass;
+	instancedPipelineInfo.subpass = 0;
+	instancedPipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+	instancedPipelineInfo.basePipelineIndex = -10; //invalid index for creation.
+
 	//Create pipeline using all the infos and stages defined in the pipeline info.
 	VK_CHECK(vkCreateGraphicsPipelines(this->logicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->pipeline));
+	VK_CHECK(vkCreateGraphicsPipelines(this->logicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &this->instancePipeline));
 }
 
 //Create renderpass using the declared dependencies and descriptions for the different representations.
@@ -1447,7 +1482,6 @@ void Rendering::RecordCommands()
 		vkCmdBeginRenderPass(this->commandBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 		//Bind pipeline to command buffer.
-		vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline);
 
 		//Set viewport and scissors.
 		this->viewport.width = static_cast<float>(this->surfaceCapabilities.currentExtent.width);
@@ -1467,6 +1501,8 @@ void Rendering::RecordCommands()
 			tempGbs.push_back(gb);
 		}
 
+		vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline);
+
 		for (size_t j = 0; j < tempGbs.size(); j++)
 		{
 			if (tempGbs[j]->GetIsRenderable())
@@ -1480,6 +1516,9 @@ void Rendering::RecordCommands()
 				}
 			}
 		}
+
+		vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->instancePipeline);
+
 
 		//End renderpass.
 		vkCmdEndRenderPass(this->commandBuffers[i]);
@@ -1600,17 +1639,9 @@ std::vector<byte> Rendering::GetBuffer(RenderingBuffer bufferType)
 	{
 		case RenderingBuffer::VERTEX:
 		{
-			std::vector<byte> buffer1;
-			std::vector<byte> buffer2;
-
 			WinFile* vertexShaderFile = new WinFile(Application::GetInstancePtr()->GetFilesystem()->FileInDirectory("shader", "shader.vert").c_str());
-			buffer1.assign(vertexShaderFile->Read(), vertexShaderFile->Read() + vertexShaderFile->GetSize()); //trick to copy data to vector using pointer arithmetic.
+			buffer.assign(vertexShaderFile->Read(), vertexShaderFile->Read() + vertexShaderFile->GetSize()); //trick to copy data to vector using pointer arithmetic.
 			vertexShaderFile->Cleanup();
-
-			WinFile* instancedShaderFile = new WinFile(Application::GetInstancePtr()->GetFilesystem()->FileInDirectory("shader", "instanced.vert").c_str());
-			buffer2.assign(instancedShaderFile->Read(), instancedShaderFile->Read() + instancedShaderFile->GetSize()); //trick to copy data to vector using pointer arithmetic.
-			instancedShaderFile->Cleanup();
-
 			break;
 		}
 		case RenderingBuffer::FRAGMENT:
@@ -1826,6 +1857,7 @@ void Rendering::Cleanup()
 
 	//Destroy pipeline.
 	vkDestroyPipeline(this->logicalDevice, this->pipeline, nullptr);
+	vkDestroyPipeline(this->logicalDevice, this->instancePipeline, nullptr);
 
 	//Destroy pipeline layout.
 	vkDestroyPipelineLayout(this->logicalDevice, this->pipelineLayout, nullptr);
@@ -1835,6 +1867,7 @@ void Rendering::Cleanup()
 
 	//Destroy shadermodules.
 	vkDestroyShaderModule(this->logicalDevice, this->vertexModule, nullptr);
+	vkDestroyShaderModule(this->logicalDevice, this->instanceModule, nullptr);
 	vkDestroyShaderModule(this->logicalDevice, this->fragmentModule, nullptr);
 
 	//Destroy swapchain.
