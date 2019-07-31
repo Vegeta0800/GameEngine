@@ -83,11 +83,15 @@ void Gameobject::Update()
 
 	for (Component* component : this->components)
 	{
-		this->transform.position.x += 10.0f;
-		this->transform.eulerRotation.x += 10.0f;
 	}
 
-	if (!(this->transform.position == this->oldPosition))
+	if (this->parent != nullptr && this->parent->isRoot)
+	{
+		this->transform.eulerRotation.z += 0.5f;
+		this->transform.eulerRotation.y -= 0.5f;
+	}
+
+	if (!(this->transform.position == this->oldPosition) || !(this->transform.eulerRotation == this->oldEulerRotation))
 	{
 		this->moved = true;
 		for (Gameobject* child : this->GetAllChildren())

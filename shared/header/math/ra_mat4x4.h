@@ -274,7 +274,7 @@ namespace Math
 		Mat4x4 rot = Mat4x4::identity;
 		rot = rot * Math::CreateRotationZMatrix(kappa);
 		rot = rot * Math::CreateRotationYMatrix(psi);
-		rot = rot * Math::CreateRotationXMatrix(psi);
+		rot = rot * Math::CreateRotationXMatrix(thetha);
 
 		return rot;
 	}
@@ -308,6 +308,26 @@ namespace Math
 			s.y, u.y, -f.y, 0.0f,
 			s.z, u.z, -f.z, 0.0f,
 			-Math::Dot(s, eye), -Math::Dot(u, eye), Math::Dot(f, eye), 1.0f
+		};
+	}
+
+	inline Mat4x4 CreateViewMatrixFPS(const Vec3& eye, float pitch, float yaw)
+	{
+		float cosPitch = cos(pitch);
+		float sinPitch = sin(pitch);
+		float cosYaw = cos(yaw);
+		float sinYaw = sin(yaw);
+
+		Math::Vec3 xaxis = { cosYaw, 0, -sinYaw };
+		Math::Vec3 yaxis = { sinYaw * sinPitch, cosPitch, cosYaw * sinPitch };
+		Math::Vec3 zaxis = { sinYaw * cosPitch, -sinPitch, cosPitch * cosYaw };
+
+		// Create a 4x4 view matrix from the right, up, forward and eye position vectors
+		return Math::Mat4x4{
+			xaxis.x,            yaxis.x,            zaxis.x,      0,
+			xaxis.y,            yaxis.y,            zaxis.y,      0,
+			xaxis.z,            yaxis.z,            zaxis.z,      0,
+			-Math::Dot(xaxis, eye), -Math::Dot(yaxis, eye), -Math::Dot(zaxis, eye), 1
 		};
 	}
 

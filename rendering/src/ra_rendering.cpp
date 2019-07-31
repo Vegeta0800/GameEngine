@@ -26,7 +26,7 @@ DECLARE_SINGLETON(Rendering)
 //Initialize Rendering class, setting up vulkan.
 void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 {
-	this->cameraPos = Math::Vec3{ 5.889f, -0.528f, 0.680f };
+	this->cameraPos = Math::Vec3{ 10.0f, 0, 0.0f };
 
 	this->CreateInstance(applicationName, applicationVersion);
 	this->CreateSurface();
@@ -108,13 +108,11 @@ void Rendering::UpdateMVP(float time)
 	{
 		if (gb->GetIsRenderable() && gb->GetIsActive() && !gb->GetIsInstanced())
 		{
-			gb->GetTransform().eulerRotation.z = time * 20.0f;
-
 			VertexInputInfo vertexInfo;
 
 			vertexInfo.modelMatrix = gb->GetModelMatrix();
 			vertexInfo.lightPosition = this->cameraPos;
-			vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, Math::Vec3::zero, Math::Vec3::unit_z);
+			vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, this->cameraPos + Math::Vec3{ -10.0f, 0.0f, 0.0f }, Math::Vec3::unit_z);
 			vertexInfo.projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
 			vertexInfo.projectionMatrix.m22 *= -1.0f;
 			vertexInfo.color = gb->GetMaterial().fragColor;
@@ -135,7 +133,7 @@ void Rendering::UpdateMVP(float time)
 		VertexInstancedInputInfo vertexInfo;
 
 		vertexInfo.lightPosition = this->cameraPos;
-		vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, Math::Vec3::zero, Math::Vec3::unit_z);
+		vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, this->cameraPos + Math::Vec3{-10.0f, 0.0f, 0.0f}, Math::Vec3::unit_z);
 		vertexInfo.projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
 		vertexInfo.projectionMatrix.m22 *= -1.0f;
 		vertexInfo.ambientVal = 0.1f;
@@ -143,17 +141,17 @@ void Rendering::UpdateMVP(float time)
 
 		if (gbs.size() != 0)
 		{
-			if (gbs.size() > 100)
+			vertexInfo.color = gbs[0]->GetMaterial().fragColor;
+			vertexInfo.specColor = gbs[0]->GetMaterial().specularColor;
+			if (gbs.size() > INSTANCE_AMOUNT)
 			{
 				ui32 k = 0;
-				while (gbs.size() - (k * 100) >= 100)
+				while (gbs.size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
 				{
 					if (gbs[k]->GetIsRenderable())
 					{
-						for (size_t i = 0; i < 100; i++)
+						for (size_t i = 0; i < INSTANCE_AMOUNT; i++)
 						{
-							vertexInfo.color[i] = gbs[i]->GetMaterial().fragColor;
-							vertexInfo.specColor[i] = gbs[i]->GetMaterial().specularColor;
 							vertexInfo.modelMatrix[i] = gbs[i]->GetModelMatrix();
 						}
 
@@ -169,8 +167,6 @@ void Rendering::UpdateMVP(float time)
 			{
 				for (size_t i = 0; i < gbs.size(); i++)
 				{
-					vertexInfo.color[i] = gbs[i]->GetMaterial().fragColor;
-					vertexInfo.specColor[i] = gbs[i]->GetMaterial().specularColor;
 					vertexInfo.modelMatrix[i] = gbs[i]->GetModelMatrix();
 				}
 				void* data;
@@ -313,9 +309,6 @@ void Rendering::ChangeLayout(VkCommandPool commandPool, VkQueue queue, VkImage i
 //Draw frame
 void Rendering::DrawFrame()
 {
-	INIT_TIMER
-		START_TIMER
-
 	//Get image index in swapchain.
 	ui32 imageIndex;
 	vkAcquireNextImageKHR(this->logicalDevice, this->swapchain, INT_MAX, this->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex); 
@@ -353,8 +346,6 @@ void Rendering::DrawFrame()
 		vkQueuePresentKHR(this->graphicsQueue, &presentInfo);
 	else
 		throw;
-
-	STOP_TIMER("Loop took")
 
 }
 
@@ -832,10 +823,10 @@ void Rendering::CreateDescriptorPool()
 	{
 		if (gbs.size() != 0)
 		{
-			if (gbs.size() > 100)
+			if (gbs.size() > INSTANCE_AMOUNT)
 			{
 				ui32 k = 0;
-				while (gbs.size() - (k * 100) >= 100)
+				while (gbs.size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
 				{
 					if (gbs[k]->GetIsRenderable())
 					{
@@ -947,10 +938,10 @@ void Rendering::CreateDescriptorSets()
 	{
 		if (gbs.size() != 0)
 		{
-			if (gbs.size() > 100)
+			if (gbs.size() > INSTANCE_AMOUNT)
 			{
 				ui32 k = 0;
-				while (gbs.size() - (k * 100) >= 100)
+				while (gbs.size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
 				{
 					if (gbs[k]->GetIsRenderable())
 					{
@@ -971,13 +962,16 @@ void Rendering::CreateDescriptorSets()
 	this->descriptorSets.resize(tempGbs.size());
 	this->instancedDescriptorSets.resize(tempInstGbs.size());
 
-	VkDescriptorSetAllocateInfo descriptorSetAllocateInfo;
-	descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	descriptorSetAllocateInfo.pNext = nullptr;
-	descriptorSetAllocateInfo.descriptorPool = this->descriptorPool;
-	descriptorSetAllocateInfo.descriptorSetCount = static_cast<ui32>(this->descriptorSets.size());
-	descriptorSetAllocateInfo.pSetLayouts = layouts.data();
-	VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &descriptorSetAllocateInfo, this->descriptorSets.data()));
+	if (this->descriptorSets.size() > 0)
+	{
+		VkDescriptorSetAllocateInfo descriptorSetAllocateInfo;
+		descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		descriptorSetAllocateInfo.pNext = nullptr;
+		descriptorSetAllocateInfo.descriptorPool = this->descriptorPool;
+		descriptorSetAllocateInfo.descriptorSetCount = static_cast<ui32>(this->descriptorSets.size());
+		descriptorSetAllocateInfo.pSetLayouts = layouts.data();
+		VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &descriptorSetAllocateInfo, this->descriptorSets.data()));
+	}
 
 	VkDescriptorSetAllocateInfo instancedDescriptorSetAllocateInfo;
 	instancedDescriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1539,10 +1533,10 @@ void Rendering::LoadTextures(void)
 				{
 					if (!this->instancedObjects[gb->GetModelID()][0]->GetTexture()->isLoaded())
 					{
-						if (this->instancedObjects[gb->GetModelID()].size() > 100)
+						if (this->instancedObjects[gb->GetModelID()].size() > INSTANCE_AMOUNT)
 						{
 							ui32 k = 0;
-							while (this->instancedObjects[gb->GetModelID()].size() - (k * 100) >= 100)
+							while (this->instancedObjects[gb->GetModelID()].size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
 							{
 								if (this->instancedObjects[gb->GetModelID()][k]->GetIsRenderable())
 								{
@@ -1662,9 +1656,9 @@ void Rendering::CreateBuffersForObjects(void)
 	{
 		if (gbs.size() != 0)
 		{
-			if (gbs.size() > 100)
+			if (gbs.size() > INSTANCE_AMOUNT)
 			{
-				for (ui32 i = 0; i < gbs.size() / 100; i++)
+				for (ui32 i = 0; i < gbs.size() / INSTANCE_AMOUNT; i++)
 				{
 					gbs[i]->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gbs[i]->GetMesh().GetName()).size()));
 					CreateObjectBuffers
@@ -1685,40 +1679,6 @@ void Rendering::CreateBuffersForObjects(void)
 			}
 		}
 	}
-	//if (gb->GetIsInstanced())
-	//{
-	//	if (this->instancedObjects[gb->GetModelID()].size() != 0)
-	//	{
-	//		if (this->instancedObjects[gb->GetModelID()].size() > 100)
-	//		{
-	//			if (this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetUniformBuffer() == VK_NULL_HANDLE)
-	//			{
-	//				ui32 k = 0;
-	//				while (this->instancedObjects[gb->GetModelID()].size() - (k * 100) >= 100)
-	//				{
-	//					CreateObjectBuffers
-	//					(
-	//						this->instancedObjects[gb->GetModelID()][k]->GetMesh().GetVertexBuffer(), this->instancedObjects[gb->GetModelID()][k]->GetMesh().GetIndexBuffer(),
-	//						this->instancedObjects[gb->GetModelID()][k]->GetMesh().GetUniformBuffer(), this->instancedObjects[gb->GetModelID()][k]->GetMesh().GetVertexBufferMem(),
-	//						this->instancedObjects[gb->GetModelID()][k]->GetMesh().GetIndexBufferMem(), this->instancedObjects[gb->GetModelID()][k]->GetMesh().GetUniformBufferMem(),
-	//						this->instancedObjects[gb->GetModelID()][k]->GetMesh().GetName(), true
-	//					);
-	//					k++;
-	//				}
-	//			}
-	//		}
-	//		else if (this->instancedObjects[gb->GetModelID()][0]->GetIsRenderable())
-	//		{
-	//			CreateObjectBuffers
-	//			(
-	//				this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetVertexBuffer(), this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetIndexBuffer(),
-	//				this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetUniformBuffer(), this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetVertexBufferMem(),
-	//				this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetIndexBufferMem(), this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetUniformBufferMem(),
-	//				this->instancedObjects[gb->GetModelID()][0]->GetMesh().GetName(), true
-	//			);
-	//		}
-	//	}
-	//}
 
 }
 
@@ -1738,10 +1698,10 @@ void Rendering::RecordCommands()
 	{
 		if (gbs.size() != 0)
 		{
-			if (gbs.size() > 100)
+			if (gbs.size() > INSTANCE_AMOUNT)
 			{
 				ui32 k = 0;
-				while (gbs.size() - (k * 100) >= 100)
+				while (gbs.size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
 				{
 					if (gbs[k]->GetIsRenderable())
 					{
@@ -1809,16 +1769,19 @@ void Rendering::RecordCommands()
 		//Define offset for drawing the mesh instances.
 		VkDeviceSize offsets[] = {0};
 
-		vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline);
-
-		for (size_t j = 0; j < tempGbs.size(); j++)
+		if (tempGbs.size() > 0)
 		{
-			if (tempGbs[j]->GetIsRenderable())
+			vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline);
+
+			for (size_t j = 0; j < tempGbs.size(); j++)
 			{
-				vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempGbs[j]->GetMesh().GetVertexBuffer(), offsets);
-				vkCmdBindIndexBuffer(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-				vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[j], 0, nullptr);
-				vkCmdDrawIndexed(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndicesSize(), 1, 0, 0, 0);
+				if (tempGbs[j]->GetIsRenderable())
+				{
+					vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempGbs[j]->GetMesh().GetVertexBuffer(), offsets);
+					vkCmdBindIndexBuffer(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+					vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[j], 0, nullptr);
+					vkCmdDrawIndexed(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndicesSize(), 1, 0, 0, 0);
+				}
 			}
 		}
 
@@ -1859,6 +1822,7 @@ void Rendering::ReRecordCommands(void)
 	vkDeviceWaitIdle(this->logicalDevice);
 
 	vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->descriptorSets.size()), this->descriptorSets.data());
+	vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->instancedDescriptorSets.size()), this->instancedDescriptorSets.data());
 	vkDestroyDescriptorPool(this->logicalDevice, this->descriptorPool, nullptr);
 
 	vkFreeCommandBuffers(this->logicalDevice, this->m_commandPool, static_cast<ui32>(this->commandBuffers.size()), this->commandBuffers.data());
@@ -2121,7 +2085,10 @@ void Rendering::Cleanup()
 	this->depthImage.Destroy();
 
 	//Destroy descriptorSet layout and descriptorpool.
-	vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->descriptorSets.size()), this->descriptorSets.data());
+	if(this->descriptorSets.size() > 0)
+		vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->descriptorSets.size()), this->descriptorSets.data());
+	if (this->instancedDescriptorSets.size() > 0)
+		vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->instancedDescriptorSets.size()), this->instancedDescriptorSets.data());
 	vkDestroyDescriptorSetLayout(this->logicalDevice, this->descriptorSetLayout, nullptr);
 	vkDestroyDescriptorPool(this->logicalDevice, this->descriptorPool, nullptr);
 

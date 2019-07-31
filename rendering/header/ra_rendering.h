@@ -14,6 +14,8 @@
 #include "ra_depthimage.h"
 #include "ra_model.h"
 
+#define INSTANCE_AMOUNT 1000
+
 class Gameobject;
 
 class Rendering 
@@ -41,11 +43,11 @@ class Rendering
 
 	struct alignas(16) VertexInstancedInputInfo
 	{
-		Math::Mat4x4 modelMatrix[100];
+		Math::Mat4x4 modelMatrix[INSTANCE_AMOUNT];
 		Math::Mat4x4 viewMatrix;
 		Math::Mat4x4 projectionMatrix;
-		fColorRGBA color[100];
-		fColorRGBA specColor[100];
+		fColorRGBA color;
+		fColorRGBA specColor;
 		Math::Vec3 lightPosition;
 		float ambientVal;
 		float specularVal;
