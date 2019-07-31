@@ -89,6 +89,7 @@ void Gameobject::Update()
 	{
 		this->transform.eulerRotation.z += 0.5f;
 		this->transform.eulerRotation.y -= 0.5f;
+		this->transform.eulerRotation.x += 0.5f;
 	}
 
 	if (!(this->transform.position == this->oldPosition) || !(this->transform.eulerRotation == this->oldEulerRotation))

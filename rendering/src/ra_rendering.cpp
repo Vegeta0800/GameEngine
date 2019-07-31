@@ -73,10 +73,7 @@ void Rendering::Update(float time)
 
 void Rendering::UpdateMVP(float time)
 {
-	if (Input::GetInstancePtr()->GetKey(KeyCode::D))
-	{
 		this->cameraPos.x -= 0.0002f * time;
-	}
 
 	if (Input::GetInstancePtr()->GetKey(KeyCode::A))
 	{
