@@ -20,7 +20,11 @@ void Gameobject::Initialize(Gameobject* parent, std::string name, const char* me
 
 	this->name = name;
 	this->meshName = meshName;
-	this->textureName = textureName;
+
+	if(textureName != nullptr)
+		this->textureName = textureName;
+	else
+		this->textureName = "empty.png";
 	this->active = act;
 	this->renderable = render;
 	this->instanced = instanced;
@@ -28,8 +32,7 @@ void Gameobject::Initialize(Gameobject* parent, std::string name, const char* me
 	this->mesh.CreateMesh(meshName);
 	this->texture = new Texture;
 
-	//this->material.fragColor = Math::Vec3{ 0.164f, 0.749f, 0.874f };
-	this->material.fragColor = fColorRGBA{ 0, 1, 0, 1 };
+	this->material.fragColor = fColorRGBA{ 1, 1, 1, 1 };
 	this->material.specularColor = fColorRGBA{1.4f, 1.4f, 1.4f, 1};
 	this->material.ambientValue = 0.1f;
 	this->material.specularValue = 16.0f;
@@ -85,12 +88,12 @@ void Gameobject::Update()
 	{
 	}
 
-	if (this->parent != nullptr && this->parent->isRoot)
-	{
-		this->transform.eulerRotation.z += 0.5f;
-		this->transform.eulerRotation.y -= 0.5f;
-		this->transform.eulerRotation.x += 0.5f;
-	}
+	//if (this->parent != nullptr && this->parent->isRoot)
+	//{
+	//	this->transform.eulerRotation.z += 0.5f;
+	//	this->transform.eulerRotation.y -= 0.5f;
+	//	this->transform.eulerRotation.x += 0.5f;
+	//}
 
 	if (!(this->transform.position == this->oldPosition) || !(this->transform.eulerRotation == this->oldEulerRotation))
 	{

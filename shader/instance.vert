@@ -38,9 +38,9 @@ void main()
 	vec4 worldPos = uniformObject.model[gl_InstanceIndex] * vec4(pos, 1.0);
 
 	fragUVCoord = inUVCoord;
-	fragNormal = mat3(uniformObject.model[gl_InstanceIndex]) * normal;
-	fragView = (uniformObject.view * worldPos).xyz;
-	fragLight = uniformObject.lightPos - vec3(worldPos);
+	fragNormal = mat3(uniformObject.view) * mat3(uniformObject.model[gl_InstanceIndex]) * normal;
+	fragView = -(uniformObject.view * worldPos).xyz;
+	fragLight = mat3(uniformObject.view) * (uniformObject.lightPos - vec3(worldPos));
 	fragColor = uniformObject.colorIn;
 	fragSpecularColor = uniformObject.specularColor;
 	fragAmbientValue = uniformObject.ambientValue;

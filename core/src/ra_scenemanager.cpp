@@ -9,12 +9,13 @@ DECLARE_SINGLETON(SceneManager);
 
 void SceneManager::Initialize()
 {
-	const char* mainSceneName = "";
-	#pragma region MainScene
+	std::string renderingExampleScene = "";
+	std::string mainSceneName = "";
+	#pragma region RenderingExampleScene
 	{
-		Gameobject* mainSceneRoot = new Gameobject;
-		mainSceneRoot->MakeRoot();
-		mainSceneRoot->SetName("MainSceneRoot");
+		Gameobject* renderingSceneRoot = new Gameobject;
+		renderingSceneRoot->MakeRoot();
+		renderingSceneRoot->SetName("RenderingSceneRoot");
 
 		std::vector<Gameobject*> cubes(10000);
 
@@ -28,7 +29,7 @@ void SceneManager::Initialize()
 			cubes[i] = new Gameobject;
 
 			if(i == 0)
-				cubes[i]->Initialize(mainSceneRoot, s.c_str(), "cube.obj", "cubeTexture.png", true, true, true);
+				cubes[i]->Initialize(renderingSceneRoot, s.c_str(), "cube.obj", "cubeTexture.png", true, true, true);
 			else
 				cubes[i]->Initialize(cubes[0], s.c_str(), "cube.obj", "cubeTexture.png", true, true, true);
 
@@ -46,6 +47,22 @@ void SceneManager::Initialize()
 		}
 		
 
+		renderingExampleScene = GetVariableName(renderingSceneRoot);
+		this->scenes[renderingExampleScene] = renderingSceneRoot;
+	}
+	#pragma endregion
+
+	#pragma region MainScene
+	{
+		Gameobject* mainSceneRoot = new Gameobject;
+		mainSceneRoot->MakeRoot();
+		mainSceneRoot->SetName("MainSceneRoot");
+
+		Gameobject* player = new Gameobject;
+		player->Initialize(mainSceneRoot, "Player", "dragon.obj", nullptr, true, true, false);
+		player->GetMaterial().fragColor = fColorRGBA{ 1, 0, 0, 1 };
+		player->GetTransform().scaling *= 0.3f;
+
 		mainSceneName = GetVariableName(mainSceneRoot);
 		this->scenes[mainSceneName] = mainSceneRoot;
 	}
@@ -55,7 +72,7 @@ void SceneManager::Initialize()
 	this->currentScene = this->scenes[mainSceneName];
 }
 
-void SceneManager::SwitchScene(const char* sceneName)
+void SceneManager::SwitchScene(std::string sceneName)
 {
 	this->currentScene = this->scenes[sceneName];
 
@@ -73,7 +90,7 @@ void SceneManager::Update()
 
 void SceneManager::Cleanup()
 {
-	for (std::pair<const char*, Gameobject*> element : this->scenes)
+	for (std::pair<std::string, Gameobject*> element : this->scenes)
 	{
 		element.second->Cleanup();
 	}

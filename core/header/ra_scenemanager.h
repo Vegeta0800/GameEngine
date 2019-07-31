@@ -17,11 +17,11 @@ public:
 	void Update();
 	void Cleanup();
 
-	void SwitchScene(const char* sceneName);
+	void SwitchScene(std::string sceneName);
 
 	Gameobject* GetActiveScene();
 private:
-	std::unordered_map<const char*, Gameobject*> scenes;
+	std::unordered_map<std::string, Gameobject*> scenes;
 	Gameobject* currentScene;
-	const char* currentSceneName;
+	std::string currentSceneName;
 };

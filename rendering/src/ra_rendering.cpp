@@ -26,7 +26,7 @@ DECLARE_SINGLETON(Rendering)
 //Initialize Rendering class, setting up vulkan.
 void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 {
-	this->cameraPos = Math::Vec3{ 10.0f, 0, 0.0f };
+	this->cameraPos = Math::Vec3{ 0.0f, 10.0f, 1.5f };
 
 	this->CreateInstance(applicationName, applicationVersion);
 	this->CreateSurface();
@@ -64,16 +64,20 @@ void Rendering::Update(float time)
 	if (SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size() > this->gameObjectCount)
 	{
 		this->gameObjectCount = static_cast<ui32>(SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size());
-		this->ReRecordCommands();
 	}
 
+	this->ReRecordCommands();
 	this->UpdateMVP(time);
 	this->DrawFrame();
 }
 
 void Rendering::UpdateMVP(float time)
 {
+
+	if (Input::GetInstancePtr()->GetKey(KeyCode::D))
+	{
 		this->cameraPos.x -= 0.0002f * time;
+	}
 
 	if (Input::GetInstancePtr()->GetKey(KeyCode::A))
 	{
@@ -107,9 +111,11 @@ void Rendering::UpdateMVP(float time)
 		{
 			VertexInputInfo vertexInfo;
 
+			gb->GetTransform().eulerRotation.z = 20.0f * time;
+
 			vertexInfo.modelMatrix = gb->GetModelMatrix();
 			vertexInfo.lightPosition = this->cameraPos;
-			vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, this->cameraPos + Math::Vec3{ -10.0f, 0.0f, 0.0f }, Math::Vec3::unit_z);
+			vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, this->cameraPos + Math::Vec3{ 0, -10.0f, 0.0f }, Math::Vec3::unit_z);
 			vertexInfo.projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
 			vertexInfo.projectionMatrix.m22 *= -1.0f;
 			vertexInfo.color = gb->GetMaterial().fragColor;
@@ -130,7 +136,7 @@ void Rendering::UpdateMVP(float time)
 		VertexInstancedInputInfo vertexInfo;
 
 		vertexInfo.lightPosition = this->cameraPos;
-		vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, this->cameraPos + Math::Vec3{-10.0f, 0.0f, 0.0f}, Math::Vec3::unit_z);
+		vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, this->cameraPos + Math::Vec3{ 0.0f, -10.0f, 0.0f }, Math::Vec3::unit_z);
 		vertexInfo.projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
 		vertexInfo.projectionMatrix.m22 *= -1.0f;
 		vertexInfo.ambientVal = 0.1f;
@@ -970,14 +976,16 @@ void Rendering::CreateDescriptorSets()
 		VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &descriptorSetAllocateInfo, this->descriptorSets.data()));
 	}
 
-	VkDescriptorSetAllocateInfo instancedDescriptorSetAllocateInfo;
-	instancedDescriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	instancedDescriptorSetAllocateInfo.pNext = nullptr;
-	instancedDescriptorSetAllocateInfo.descriptorPool = this->descriptorPool;
-	instancedDescriptorSetAllocateInfo.descriptorSetCount = static_cast<ui32>(this->instancedDescriptorSets.size());
-	instancedDescriptorSetAllocateInfo.pSetLayouts = instLayouts.data();
-	VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &instancedDescriptorSetAllocateInfo, this->instancedDescriptorSets.data()));
-
+	if (this->instancedDescriptorSets.size() > 0)
+	{
+		VkDescriptorSetAllocateInfo instancedDescriptorSetAllocateInfo;
+		instancedDescriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		instancedDescriptorSetAllocateInfo.pNext = nullptr;
+		instancedDescriptorSetAllocateInfo.descriptorPool = this->descriptorPool;
+		instancedDescriptorSetAllocateInfo.descriptorSetCount = static_cast<ui32>(this->instancedDescriptorSets.size());
+		instancedDescriptorSetAllocateInfo.pSetLayouts = instLayouts.data();
+		VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &instancedDescriptorSetAllocateInfo, this->instancedDescriptorSets.data()));
+	}
 	//Store write infos needed for shader data.
 	for (ui32 i = 0; i < tempGbs.size(); i++)
 	{
@@ -1818,8 +1826,16 @@ void Rendering::ReRecordCommands(void)
 {
 	vkDeviceWaitIdle(this->logicalDevice);
 
-	vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->descriptorSets.size()), this->descriptorSets.data());
-	vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->instancedDescriptorSets.size()), this->instancedDescriptorSets.data());
+	if (this->descriptorSets.size() > 0)
+	{
+		this->descriptorSets.clear();
+		vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->descriptorSets.size()), this->descriptorSets.data());
+	}
+	if (this->instancedDescriptorSets.size() > 0)
+	{
+		this->instancedDescriptorSets.clear();
+		vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->instancedDescriptorSets.size()), this->instancedDescriptorSets.data());
+	}
 	vkDestroyDescriptorPool(this->logicalDevice, this->descriptorPool, nullptr);
 
 	vkFreeCommandBuffers(this->logicalDevice, this->m_commandPool, static_cast<ui32>(this->commandBuffers.size()), this->commandBuffers.data());
