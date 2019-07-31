@@ -16,7 +16,7 @@ void SceneManager::Initialize()
 		mainSceneRoot->MakeRoot();
 		mainSceneRoot->SetName("MainSceneRoot");
 
-		std::vector<Gameobject*> cubes(1000);
+		std::vector<Gameobject*> cubes(10000);
 
 			float xOffset = -2.5f;
 			float yOffset = 2.0f;
