@@ -7,6 +7,7 @@
 #include "ra_utils.h"
 
 class Gameobject;
+class Camera;
 
 class SceneManager
 {
@@ -20,8 +21,12 @@ public:
 	void SwitchScene(std::string sceneName);
 
 	Gameobject* GetActiveScene();
+	Camera* GetActiveCamera();
 private:
 	std::unordered_map<std::string, Gameobject*> scenes;
+	std::unordered_map<Gameobject*, Camera*> cameras;
 	Gameobject* currentScene;
+	Camera* currentCamera;
 	std::string currentSceneName;
+
 };

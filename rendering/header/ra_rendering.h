@@ -55,7 +55,7 @@ class Rendering
 
 public:
 	void Initialize(const char* applicationName, ui32 applicationVersion);
-	void Update(float time);
+	void Update();
 	void Cleanup(void);
 
 	void RecreateSwapchain(void);
@@ -84,7 +84,7 @@ public:
 	void CreateDescriptorSets();
 private:
 	void DrawFrame(void);
-	void UpdateMVP(float time); //TODO
+	void UpdateMVP(); //TODO
 
 	void CreateInstance(const char* applicationName, ui32 applicationVersion);
 
@@ -188,8 +188,6 @@ private:
 
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorPool descriptorPool;
-
-	Math::Vec3 cameraPos;
 
 	DepthImage depthImage;
 	std::vector<std::string> texturePaths;

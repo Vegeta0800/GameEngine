@@ -16,6 +16,11 @@ public:
 	void Cleanup();
 
 	Filesystem* GetFilesystem();
+	float GetDeltaTime();
+	float& GetAspectRatio();
 private:
 	Filesystem* filesystem;
+
+	float deltaTime = 0.0f;
+	float aspectRatio = 0.0f;
 };

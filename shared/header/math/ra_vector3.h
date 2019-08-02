@@ -90,7 +90,7 @@ namespace Math
 		};
 	}
 
-	inline Vec3 operator*(const Vec3& lhs, const Vec3 rhs)
+	inline Vec3 operator*(const Vec3& lhs, const Vec3& rhs)
 	{
 		return Vec3
 		{

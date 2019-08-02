@@ -1,5 +1,6 @@
 #include "ra_gameobject.h"
 #include "ra_texture.h"
+#include "ra_boxcollider.h"
 
 Gameobject::Gameobject() :
 	isRoot(false)
@@ -13,13 +14,15 @@ void Gameobject::Initialize(Gameobject* parent, std::string name, const char* me
 	this->transform = Transform();
 	this->oldPosition = Math::Vec3::zero;
 	this->oldEulerRotation = Math::Vec3::zero;
-	this->transform.position = Math::Vec3::zero;
+	this->transform.position = Math::Vec3{ 0, 0, 10.0f };
 	this->transform.eulerRotation = Math::Vec3{0, 0, 0};
 	this->transform.rotation = Math::Quaternion::identity;
 	this->transform.scaling = Math::Vec3::unit_scale;
 
 	this->name = name;
 	this->meshName = meshName;
+
+	this->collider = new BoxCollider(this);
 
 	if(textureName != nullptr)
 		this->textureName = textureName;

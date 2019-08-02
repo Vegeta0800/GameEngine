@@ -5,7 +5,7 @@
 #include <cmath>
 //INTERNAL INCLUDES
 #include "ra_types.h"
-#include "ra_vector3.h"
+#include "math/ra_vector3.h"
 
 //Namespace Math
 namespace Math 

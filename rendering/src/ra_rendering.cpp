@@ -17,17 +17,15 @@
 #include "filesystem/ra_filesystem.h"
 #include "filesystem/ra_winfile.h"
 #include "math/ra_mat4x4.h"
-#include "input/ra_inputhandler.h"
 #include "ra_depthimage.h"
 #include "ra_scenemanager.h"
+#include "ra_camera.h"
 
 DECLARE_SINGLETON(Rendering)
 
 //Initialize Rendering class, setting up vulkan.
 void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 {
-	this->cameraPos = Math::Vec3{ 0.0f, 10.0f, 1.5f };
-
 	this->CreateInstance(applicationName, applicationVersion);
 	this->CreateSurface();
 	this->CreatePhysicalDevice();
@@ -50,6 +48,8 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 	this->RecordCommands();
 	this->CreateSemaphores();
 
+	Application::GetInstancePtr()->GetAspectRatio() = static_cast<float>(this->surfaceCapabilities.currentExtent.width) / static_cast<float>(this->surfaceCapabilities.currentExtent.height);
+
 	//Finished initializing.
 	this->initialized = true;
 	this->gameObjectCount = static_cast<ui32>(SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size());
@@ -59,51 +59,20 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 }
 
 //Update function called every frame.
-void Rendering::Update(float time)
+void Rendering::Update()
 {
 	if (SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size() > this->gameObjectCount)
 	{
 		this->gameObjectCount = static_cast<ui32>(SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size());
 	}
 
-	this->ReRecordCommands();
-	this->UpdateMVP(time);
+	//this->ReRecordCommands();
+	this->UpdateMVP();
 	this->DrawFrame();
 }
 
-void Rendering::UpdateMVP(float time)
+void Rendering::UpdateMVP()
 {
-
-	if (Input::GetInstancePtr()->GetKey(KeyCode::D))
-	{
-		this->cameraPos.x -= 0.0002f * time;
-	}
-
-	if (Input::GetInstancePtr()->GetKey(KeyCode::A))
-	{
-		this->cameraPos.x += 0.0002f * time;
-	}
-
-	if (Input::GetInstancePtr()->GetKey(KeyCode::W))
-	{
-		this->cameraPos.z -= 0.0002f * time;
-	}
-
-	if (Input::GetInstancePtr()->GetKey(KeyCode::S))
-	{
-		this->cameraPos.z += 0.0002f * time;
-	}
-
-	if (Input::GetInstancePtr()->GetKey(KeyCode::Q))
-	{
-		this->cameraPos.y -= 0.0002f * time;
-	}
-
-	if (Input::GetInstancePtr()->GetKey(KeyCode::E))
-	{
-		this->cameraPos.y += 0.0002f * time;
-	}
-
 	//Update MVP Matrix for every object in the scene that isnt instanced
 	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
 	{
@@ -111,13 +80,10 @@ void Rendering::UpdateMVP(float time)
 		{
 			VertexInputInfo vertexInfo;
 
-			gb->GetTransform().eulerRotation.z = 20.0f * time;
-
 			vertexInfo.modelMatrix = gb->GetModelMatrix();
-			vertexInfo.lightPosition = this->cameraPos;
-			vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, this->cameraPos + Math::Vec3{ 0, -10.0f, 0.0f }, Math::Vec3::unit_z);
-			vertexInfo.projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
-			vertexInfo.projectionMatrix.m22 *= -1.0f;
+			vertexInfo.lightPosition = SceneManager::GetInstancePtr()->GetActiveCamera()->GetPostion();
+			vertexInfo.viewMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetViewMatrix();
+			vertexInfo.projectionMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix();
 			vertexInfo.color = gb->GetMaterial().fragColor;
 			vertexInfo.specColor = gb->GetMaterial().specularColor;
 			vertexInfo.ambientVal = 0.1f;
@@ -135,10 +101,9 @@ void Rendering::UpdateMVP(float time)
 	{
 		VertexInstancedInputInfo vertexInfo;
 
-		vertexInfo.lightPosition = this->cameraPos;
-		vertexInfo.viewMatrix = Math::CreateViewMatrixLookAt(this->cameraPos, this->cameraPos + Math::Vec3{ 0.0f, -10.0f, 0.0f }, Math::Vec3::unit_z);
-		vertexInfo.projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), (float)this->surfaceCapabilities.currentExtent.width / (float)this->surfaceCapabilities.currentExtent.height, 0.1f, 100.0f);
-		vertexInfo.projectionMatrix.m22 *= -1.0f;
+		vertexInfo.lightPosition = SceneManager::GetInstancePtr()->GetActiveCamera()->GetPostion();
+		vertexInfo.viewMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetViewMatrix();
+		vertexInfo.projectionMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix();
 		vertexInfo.ambientVal = 0.1f;
 		vertexInfo.specularVal = 16.0f;
 
@@ -710,6 +675,8 @@ void Rendering::RecreateSwapchain()
 	this->RecordCommands();
 
 	vkDestroySwapchainKHR(this->logicalDevice, oldSwapchain, nullptr);
+
+	Application::GetInstancePtr()->GetAspectRatio() = static_cast<float>(this->surfaceCapabilities.currentExtent.width) / static_cast<float>(this->surfaceCapabilities.currentExtent.height);
 }
 
 //Create image views for swapchain.

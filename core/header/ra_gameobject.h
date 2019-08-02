@@ -9,6 +9,7 @@
 #include "ra_component.h"
 #include "ra_transform.h"
 #include "ra_material.h"
+#include "ra_boxcollider.h"
 
 class Texture;
 
@@ -78,6 +79,8 @@ private:
 
 	Mesh mesh;
 	Texture* texture;
+
+	BoxCollider* collider;
 
 	ui32 modelID;
 

@@ -4,6 +4,8 @@
 #include "ra_gameobject.h"
 #include "ra_rendering.h"
 #include "ra_mesh.h"
+#include "ra_camera.h"
+
 
 DECLARE_SINGLETON(SceneManager);
 
@@ -45,10 +47,15 @@ void SceneManager::Initialize()
 
 			xOffset += 1.0f;
 		}
+
+		Camera* cam = new Camera;
+		cam->Initialize();
+		cam->GetPostion() = Math::Vec3{ 0, 10.0f, 0.0f };
 		
 
 		renderingExampleScene = GetVariableName(renderingSceneRoot);
 		this->scenes[renderingExampleScene] = renderingSceneRoot;
+		this->cameras[renderingSceneRoot] = cam;
 	}
 	#pragma endregion
 
@@ -63,13 +70,19 @@ void SceneManager::Initialize()
 		player->GetMaterial().fragColor = fColorRGBA{ 1, 0, 0, 1 };
 		player->GetTransform().scaling *= 0.3f;
 
+		Camera* cam = new Camera;
+		cam->Initialize();
+		cam->GetPostion() = Math::Vec3{ 0.0f, 0.0f, 0.0f };
+
 		mainSceneName = GetVariableName(mainSceneRoot);
 		this->scenes[mainSceneName] = mainSceneRoot;
+		this->cameras[mainSceneRoot] = cam;
 	}
 	#pragma endregion
 
 	this->currentSceneName = mainSceneName;
 	this->currentScene = this->scenes[mainSceneName];
+	this->currentCamera = this->cameras[this->currentScene];
 }
 
 void SceneManager::SwitchScene(std::string sceneName)
@@ -77,7 +90,10 @@ void SceneManager::SwitchScene(std::string sceneName)
 	this->currentScene = this->scenes[sceneName];
 
 	if (this->currentScene == nullptr)
+	{
 		this->currentScene = this->scenes[currentSceneName];
+		this->currentCamera = this->cameras[this->currentScene];
+	}
 	else
 		this->currentSceneName = sceneName;
 }
@@ -85,7 +101,7 @@ void SceneManager::SwitchScene(std::string sceneName)
 void SceneManager::Update()
 {
 	this->currentScene->Update();
-
+	this->currentCamera->Update();
 }
 
 void SceneManager::Cleanup()
@@ -94,9 +110,19 @@ void SceneManager::Cleanup()
 	{
 		element.second->Cleanup();
 	}
+
+	for (std::pair<Gameobject*, Camera*> element : this->cameras)
+	{
+		delete element.second;
+	}
 }
 
 Gameobject* SceneManager::GetActiveScene()
 {
 	return this->currentScene;
+}
+
+Camera* SceneManager::GetActiveCamera()
+{
+	return this->currentCamera;
 }

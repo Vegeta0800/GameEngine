@@ -8,6 +8,8 @@
 #include "input/ra_inputhandler.h"
 #include "ra_scenemanager.h"
 #include "ra_gameobject.h"
+#include <ctime>
+#include <chrono>
 
 DECLARE_SINGLETON(Application)
 
@@ -34,29 +36,33 @@ void Application::Initialize(const char* path, iVec2 resolution, const char* tit
 
 void Application::Update()
 {
-	INIT_TIMER  
+	INIT_TIMER
+
+	this->deltaTime = 0.0f;
 
 	auto gameStartTime = std::chrono::high_resolution_clock::now();
+	auto gameCurrentTime = std::chrono::high_resolution_clock::now();
 
 	while (Window::GetInstancePtr() && Window::GetInstancePtr()->GetState() != Window::WindowState::Closed)
 	{
 		START_TIMER
 
-		auto frameTime = std::chrono::high_resolution_clock::now();
+		gameStartTime = std::chrono::high_resolution_clock::now();
 
-		float timeDifference = std::chrono::duration_cast<std::chrono::milliseconds>(gameStartTime - frameTime).count() / 1000.0f;
+		this->deltaTime = std::chrono::duration_cast<std::chrono::duration<float>>(gameStartTime - gameCurrentTime).count();
+		gameCurrentTime = gameStartTime;
 
 		if (!Window::GetInstancePtr()->PollEvents())
 		{
-			SceneManager::GetInstancePtr()->GetActiveScene()->Update();
+			SceneManager::GetInstancePtr()->Update();
 		}
 
-		Rendering::GetInstancePtr()->Update(timeDifference);
+		Rendering::GetInstancePtr()->Update();
 
 		if (Input::GetInstancePtr()->GetUpState())
 			Input::GetInstancePtr()->EradicateUpKeys();
 
-		STOP_TIMER("Loop took")
+		//STOP_TIMER("Loop took")
 	}
 
 }
@@ -76,4 +82,14 @@ void Application::Cleanup()
 Filesystem* Application::GetFilesystem()
 {
 	return this->filesystem;
+}
+
+float Application::GetDeltaTime()
+{
+	return this->deltaTime;
+}
+
+float& Application::GetAspectRatio()
+{
+	return this->aspectRatio;
 }
