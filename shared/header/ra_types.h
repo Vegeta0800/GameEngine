@@ -69,3 +69,5 @@ struct fColorRGBA
 	real b;
 	real a;
 };
+
+typedef fColorRGBA Vec4;

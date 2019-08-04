@@ -72,6 +72,27 @@ namespace Math
 		}
 	}
 
+	inline fColorRGBA* Normalize(fColorRGBA* pout, fColorRGBA* pp)
+	{
+		FLOAT norm;
+
+		norm = sqrt(pp->r * pp->r + pp->g * pp->g + pp->b * pp->b);
+		if (norm)
+		{
+			pout->r = pp->r / norm;
+			pout->g = pp->g / norm;
+			pout->b = pp->b / norm;
+			pout->a = pp->a / norm;
+		}
+		else
+		{
+			pout->r = 0.0f;
+			pout->g = 0.0f;
+			pout->b = 0.0f;
+			pout->a = 0.0f;
+		}
+		return pout;
+	}
 	inline Math::Vec3 GetMirroredVector(Math::Vec3 dir, Math::Vec3 normal)
 	{
 

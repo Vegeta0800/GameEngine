@@ -310,6 +310,11 @@ Texture* Gameobject::GetTexture()
 	return this->texture;
 }
 
+BoxCollider* Gameobject::GetBoxCollider()
+{
+	return this->collider;
+}
+
 Mesh& Gameobject::GetMesh()
 {
 	return this->mesh;
@@ -333,6 +338,11 @@ bool& Gameobject::GetIsRenderable()
 bool& Gameobject::GetIsInstanced()
 {
 	return this->instanced;
+}
+
+bool& Gameobject::GetIsInFrustum()
+{
+	return this->inFrustum;
 }
 
 

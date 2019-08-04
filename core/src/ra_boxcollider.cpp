@@ -10,29 +10,40 @@ BoxCollider::BoxCollider(Gameobject* gb)
 	this->gb = gb;
 }
 
-std::vector<Math::Vec3>& BoxCollider::GetMinMax()
+void BoxCollider::SetMinMax(Math::Vec3 min, Math::Vec3 max)
 {
-	fColorRGBA projection = fColorRGBA{ this->minMax[0].x, this->minMax[0].y, this->minMax[0].z } *
-	(SceneManager::GetInstancePtr()->GetActiveCamera()->GetVPMatrix() *
-	Math::CreateModelMatrix(gb->GetTransform().position, gb->GetTransform().scaling, Math::Vec3::zero));
+	this->minMax[0] = min;
+	this->minMax[1] = max;
+}
 
-	this->minMax[0] = Math::Vec3
+Math::Vec3 BoxCollider::GetMin()
+{
+	fColorRGBA projection = fColorRGBA{ this->minMax[0].x, this->minMax[0].y , this->minMax[0].z } *
+		(SceneManager::GetInstancePtr()->GetActiveCamera()->GetVPMatrix() *
+			Math::CreateModelMatrix(gb->GetTransform().position, gb->GetTransform().scaling, Math::Vec3::zero));
+
+	Math::Vec3 min = Math::Vec3
 	{
 		this->gb->GetTransform().position.x + projection.r,
 		this->gb->GetTransform().position.y + projection.g,
 		this->gb->GetTransform().position.z + projection.b,
 	};
 
-	fColorRGBA projection2 = fColorRGBA{ this->minMax[1].x, this->minMax[1].y, this->minMax[1].z } *
+	return min;
+}
+
+Math::Vec3 BoxCollider::GetMax()
+{
+	fColorRGBA projection = fColorRGBA{ this->minMax[1].x, this->minMax[1].y , this->minMax[1].z } *
 		(SceneManager::GetInstancePtr()->GetActiveCamera()->GetVPMatrix() *
 			Math::CreateModelMatrix(gb->GetTransform().position, gb->GetTransform().scaling, Math::Vec3::zero));
 
-	this->minMax[1] = Math::Vec3
+	Math::Vec3 max = Math::Vec3
 	{
-		this->gb->GetTransform().position.x + projection2.r,
-		this->gb->GetTransform().position.y + projection2.g,
-		this->gb->GetTransform().position.z + projection2.b,
+		this->gb->GetTransform().position.x + projection.r,
+		this->gb->GetTransform().position.y + projection.g,
+		this->gb->GetTransform().position.z + projection.b,
 	};
 
-	return this->minMax;
+	return max;
 }

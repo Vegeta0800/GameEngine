@@ -72,7 +72,7 @@ void SceneManager::Initialize()
 
 		Camera* cam = new Camera;
 		cam->Initialize();
-		cam->GetPostion() = Math::Vec3{ 0.0f, 0.0f, 0.0f };
+		cam->GetPostion() = Math::Vec3{ 0.0f, -10.0f, 2.0f };
 
 		mainSceneName = GetVariableName(mainSceneRoot);
 		this->scenes[mainSceneName] = mainSceneRoot;

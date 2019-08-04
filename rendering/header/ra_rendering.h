@@ -127,6 +127,8 @@ private:
 
 	void CreateSemaphores(void);
 
+	void ExtractPlanes(Math::Mat4x4 mat);
+
 	void CreateDepthImage(void);
 
 	bool isFormatSupported(VkPhysicalDevice phyDevice, VkFormat format, VkImageTiling tiling, VkFormatFeatureFlags featureFlags);
@@ -194,6 +196,9 @@ private:
 	std::vector<Model*> models;
 
 	std::vector<std::vector<Gameobject*>> instancedObjects;
+
+	std::vector<Vec4> planes;
+
 
 	ui32 descriptorPoolSize = 0;
 	ui32 gameObjectCount = 0;

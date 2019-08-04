@@ -20,6 +20,7 @@
 #include "ra_depthimage.h"
 #include "ra_scenemanager.h"
 #include "ra_camera.h"
+#include "math/ra_mathfunctions.h"
 
 DECLARE_SINGLETON(Rendering)
 
@@ -66,8 +67,9 @@ void Rendering::Update()
 		this->gameObjectCount = static_cast<ui32>(SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size());
 	}
 
-	//this->ReRecordCommands();
+	this->ExtractPlanes(SceneManager::GetInstancePtr()->GetActiveCamera()->GetVPMatrix());
 	this->UpdateMVP();
+	this->ReRecordCommands();
 	this->DrawFrame();
 }
 
@@ -78,21 +80,28 @@ void Rendering::UpdateMVP()
 	{
 		if (gb->GetIsRenderable() && gb->GetIsActive() && !gb->GetIsInstanced())
 		{
-			VertexInputInfo vertexInfo;
+			gb->GetIsInFrustum() = SceneManager::GetInstancePtr()->GetActiveCamera()->FrustumCulling(gb->GetBoxCollider()->GetMin(), gb->GetBoxCollider()->GetMax(), this->planes);
 
-			vertexInfo.modelMatrix = gb->GetModelMatrix();
-			vertexInfo.lightPosition = SceneManager::GetInstancePtr()->GetActiveCamera()->GetPostion();
-			vertexInfo.viewMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetViewMatrix();
-			vertexInfo.projectionMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix();
-			vertexInfo.color = gb->GetMaterial().fragColor;
-			vertexInfo.specColor = gb->GetMaterial().specularColor;
-			vertexInfo.ambientVal = 0.1f;
-			vertexInfo.specularVal = 16.0f;
+				printf("%d \n", gb->GetIsInFrustum());
 
-			void* data;
-			vkMapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
-			memcpy(data, &vertexInfo, sizeof(vertexInfo));
-			vkUnmapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem());
+			if (gb->GetIsInFrustum())
+			{
+				VertexInputInfo vertexInfo;
+
+				vertexInfo.modelMatrix = gb->GetModelMatrix();
+				vertexInfo.lightPosition = SceneManager::GetInstancePtr()->GetActiveCamera()->GetPostion();
+				vertexInfo.viewMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetViewMatrix();
+				vertexInfo.projectionMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix();
+				vertexInfo.color = gb->GetMaterial().fragColor;
+				vertexInfo.specColor = gb->GetMaterial().specularColor;
+				vertexInfo.ambientVal = 0.1f;
+				vertexInfo.specularVal = 16.0f;
+
+				void* data;
+				vkMapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
+				memcpy(data, &vertexInfo, sizeof(vertexInfo));
+				vkUnmapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem());
+			}
 		}
 	}
 
@@ -120,7 +129,12 @@ void Rendering::UpdateMVP()
 					{
 						for (size_t i = 0; i < INSTANCE_AMOUNT; i++)
 						{
-							vertexInfo.modelMatrix[i] = gbs[i]->GetModelMatrix();
+							gbs[i]->GetIsInFrustum() = SceneManager::GetInstancePtr()->GetActiveCamera()->FrustumCulling(gbs[i]->GetBoxCollider()->GetMin(), gbs[i]->GetBoxCollider()->GetMax(), this->planes);
+
+							if (gbs[i]->GetIsInFrustum())
+							{
+								vertexInfo.modelMatrix[i] = gbs[i]->GetModelMatrix();
+							}
 						}
 
 						void* data;
@@ -144,6 +158,62 @@ void Rendering::UpdateMVP()
 			}
 		}
 	}
+
+}
+
+void Rendering::ExtractPlanes(Math::Mat4x4 m)
+{
+	// l, r, t, b, n, f
+	this->planes.resize(6);
+	//this->planes[0] = Vec4{ m.m11 + m.m41, m.m12 + m.m42, m.m13 + m.m43, m.m14 + m.m44 };
+	//this->planes[1] = Vec4{ m.m41 - m.m11, m.m43 - m.m12, m.m43 - m.m13, m.m44 - m.m14 };
+	//this->planes[2] = Vec4{ m.m41 - m.m21, m.m42 - m.m22, m.m43 - m.m23, m.m44 - m.m24 };
+	//this->planes[3] = Vec4{ m.m21 + m.m41, m.m22 + m.m42, m.m23 + m.m43, m.m24 + m.m44 };
+	//this->planes[4] = Vec4{ m.m31 + m.m41, m.m32 + m.m42, m.m33 + m.m43, m.m34 + m.m44 };
+	//this->planes[5] = Vec4{ m.m41 - m.m31, m.m42 - m.m32, m.m43 - m.m33, m.m44 - m.m34 };
+
+	// Calculate left plane of frustum.
+	this->planes[2].r = m.m14 + m.m11;
+	this->planes[2].g = m.m24 + m.m21;
+	this->planes[2].b = m.m34 + m.m31;
+	this->planes[2].a = m.m44 + m.m41;
+	Math::Normalize(&this->planes[2], &this->planes[2]);
+
+	// Calculate right plane of frustum.
+	this->planes[3].r = m.m14 - m.m11;
+	this->planes[3].g = m.m24 - m.m21;
+	this->planes[3].b = m.m34 - m.m31;
+	this->planes[3].a = m.m44 - m.m41;
+	Math::Normalize(&this->planes[3], &this->planes[3]);
+
+	// Calculate top plane of frustum.
+	this->planes[4].r = m.m14 - m.m12;
+	this->planes[4].g = m.m24 - m.m22;
+	this->planes[4].b = m.m34 - m.m32;
+	this->planes[4].a = m.m44 - m.m42;
+	Math::Normalize(&this->planes[4], &this->planes[4]);
+
+	// Calculate bottom plane of frustum.
+	this->planes[5].r = m.m14 + m.m12;
+	this->planes[5].g = m.m24 + m.m22;
+	this->planes[5].b = m.m34 + m.m32;
+	this->planes[5].a = m.m44 + m.m42;
+	Math::Normalize(&this->planes[5], &this->planes[5]);
+
+	// Calculate near plane of frustum.
+	this->planes[0].r = m.m13;        // matrix._14 + matrix._13;
+	this->planes[0].g = m.m23;        // matrix._24 + matrix._23;
+	this->planes[0].b = m.m33;        // matrix._34 + matrix._33;
+	this->planes[0].a = m.m43;        // matrix._44 + matrix._43;
+	Math::Normalize(&this->planes[0], &this->planes[0]);
+
+	// Calculate far plane of frustum.
+	this->planes[1].r = m.m14 - m.m13;
+	this->planes[1].g = m.m24 - m.m23;
+	this->planes[1].b = m.m34 - m.m33;
+	this->planes[1].a = m.m44 - m.m43;
+	Math::Normalize(&this->planes[1], &this->planes[1]);
+
 
 }
 
@@ -822,7 +892,7 @@ void Rendering::CreateDescriptorPool()
 	descriptorPoolInfo.pPoolSizes = descriptorPoolSizes.data();
 
 	//Create descriptorpool using the descriptorpool info.
-	VK_CHECK(vkCreateDescriptorPool(this->logicalDevice, &descriptorPoolInfo, nullptr, &this->descriptorPool));
+	vkCreateDescriptorPool(this->logicalDevice, &descriptorPoolInfo, nullptr, &this->descriptorPool);
 }
 
 void Rendering::CreateDescriptorSet(Gameobject* gb, ui32 setIndex, bool instanced)
@@ -940,7 +1010,7 @@ void Rendering::CreateDescriptorSets()
 		descriptorSetAllocateInfo.descriptorPool = this->descriptorPool;
 		descriptorSetAllocateInfo.descriptorSetCount = static_cast<ui32>(this->descriptorSets.size());
 		descriptorSetAllocateInfo.pSetLayouts = layouts.data();
-		VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &descriptorSetAllocateInfo, this->descriptorSets.data()));
+		vkAllocateDescriptorSets(this->logicalDevice, &descriptorSetAllocateInfo, this->descriptorSets.data());
 	}
 
 	if (this->instancedDescriptorSets.size() > 0)
@@ -951,7 +1021,7 @@ void Rendering::CreateDescriptorSets()
 		instancedDescriptorSetAllocateInfo.descriptorPool = this->descriptorPool;
 		instancedDescriptorSetAllocateInfo.descriptorSetCount = static_cast<ui32>(this->instancedDescriptorSets.size());
 		instancedDescriptorSetAllocateInfo.pSetLayouts = instLayouts.data();
-		VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &instancedDescriptorSetAllocateInfo, this->instancedDescriptorSets.data()));
+		vkAllocateDescriptorSets(this->logicalDevice, &instancedDescriptorSetAllocateInfo, this->instancedDescriptorSets.data());
 	}
 	//Store write infos needed for shader data.
 	for (ui32 i = 0; i < tempGbs.size(); i++)
@@ -1323,7 +1393,7 @@ void Rendering::CreateCommandbuffer()
 	commandBufferAllocateInfo.commandBufferCount = static_cast<ui32>(this->swapchainImages.size());
 
 	this->commandBuffers.resize(this->swapchainImages.size());
-	VK_CHECK(vkAllocateCommandBuffers(this->logicalDevice, &commandBufferAllocateInfo, this->commandBuffers.data()));
+	vkAllocateCommandBuffers(this->logicalDevice, &commandBufferAllocateInfo, this->commandBuffers.data());
 }
 
 //Create buffer on CPU side.
@@ -1341,7 +1411,7 @@ void Rendering::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags bufferUsageFl
 	bufferInfo.pQueueFamilyIndices = nullptr;
 
 	//Create buffer using the buffer info.
-	VK_CHECK(vkCreateBuffer(this->logicalDevice, &bufferInfo, nullptr, &buffer));
+	vkCreateBuffer(this->logicalDevice, &bufferInfo, nullptr, &buffer);
 
 	//Get Memory needed for storing the buffer and allocate that memory.
 	VkMemoryRequirements memoryRequirements;
@@ -1353,10 +1423,10 @@ void Rendering::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags bufferUsageFl
 	memoryAllocateInfo.allocationSize = memoryRequirements.size;
 	memoryAllocateInfo.memoryTypeIndex = this->FindMemoryTypeIndex(memoryRequirements.memoryTypeBits, memoryFlags);
 
-	VK_CHECK(vkAllocateMemory(this->logicalDevice, &memoryAllocateInfo, nullptr, &memory));
+	vkAllocateMemory(this->logicalDevice, &memoryAllocateInfo, nullptr, &memory);
 
 	//Bind the allocated memory to the buffer.
-	VK_CHECK(vkBindBufferMemory(this->logicalDevice, buffer, memory, 0));
+	vkBindBufferMemory(this->logicalDevice, buffer, memory, 0);
 }
 
 //Copy and transfer buffer to GPU side.
@@ -1586,7 +1656,42 @@ void Rendering::LoadModels(void)
 		{
 			std::string stringName(gb->GetMesh().GetName());
 			if (this->models[i]->GetName() == stringName)
+			{
 				gb->GetModelID() = i;
+
+				Math::Vec3 max = Math::Vec3::zero;
+				Math::Vec3 min = Math::Vec3::zero;
+
+				for (Vertex vertex : this->models[i]->GetVertices())
+				{
+					if (vertex.position.x > max.x)
+					{
+						max.x = vertex.position.x;
+					}
+					if (vertex.position.y > max.y)
+					{
+						max.y = vertex.position.y;
+					}
+					if (vertex.position.z > max.z)
+					{
+						max.z = vertex.position.z;
+					}
+
+					if (vertex.position.x < min.x)
+					{
+						min.x = vertex.position.x;
+					}
+					if (vertex.position.y < min.y)
+					{
+						min.y = vertex.position.y;
+					}
+					if (vertex.position.z < min.z)
+					{
+						min.z = vertex.position.z;
+					}
+				}
+				gb->GetBoxCollider()->SetMinMax(min, max);
+			}
 		}
 	}
 }
@@ -1675,14 +1780,14 @@ void Rendering::RecordCommands()
 				ui32 k = 0;
 				while (gbs.size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
 				{
-					if (gbs[k]->GetIsRenderable())
+					if (gbs[k]->GetIsRenderable() && gbs[k]->GetIsInFrustum() && gbs[k]->GetIsActive())
 					{
 						tempInstGbs.push_back(gbs[k]);
 					}
 					k++;
 				}
 			}
-			else if (gbs[0]->GetIsRenderable())
+			else if (gbs[0]->GetIsRenderable() && gbs[0]->GetIsInFrustum() && gbs[0]->GetIsActive())
 			{
 				tempInstGbs.push_back(gbs[0]);
 			}
@@ -1693,7 +1798,7 @@ void Rendering::RecordCommands()
 
 	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
 	{
-		if(!gb->GetIsInstanced())
+		if(!gb->GetIsInstanced() && gb->GetIsRenderable() && gb->GetIsInFrustum() && gb->GetIsActive())
 			tempGbs.push_back(gb);
 	}
 
@@ -1701,7 +1806,7 @@ void Rendering::RecordCommands()
 	for (size_t i = 0; i < this->swapchainImages.size(); i++)
 	{
 		//Start recording.
-		VK_CHECK(vkBeginCommandBuffer(this->commandBuffers[i], &commandBufferBeginInfo));
+		vkBeginCommandBuffer(this->commandBuffers[i], &commandBufferBeginInfo);
 
 		//Declare and store clear values of normal color image and depth image.
 		std::vector <VkClearValue> clearValues;
@@ -1747,13 +1852,10 @@ void Rendering::RecordCommands()
 
 			for (size_t j = 0; j < tempGbs.size(); j++)
 			{
-				if (tempGbs[j]->GetIsRenderable())
-				{
-					vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempGbs[j]->GetMesh().GetVertexBuffer(), offsets);
-					vkCmdBindIndexBuffer(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-					vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[j], 0, nullptr);
-					vkCmdDrawIndexed(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndicesSize(), 1, 0, 0, 0);
-				}
+				vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempGbs[j]->GetMesh().GetVertexBuffer(), offsets);
+				vkCmdBindIndexBuffer(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+				vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[j], 0, nullptr);
+				vkCmdDrawIndexed(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndicesSize(), 1, 0, 0, 0);
 			}
 		}
 
@@ -1763,7 +1865,7 @@ void Rendering::RecordCommands()
 			vkCmdEndRenderPass(this->commandBuffers[i]);
 
 			//End recording of command buffer.
-			VK_CHECK(vkEndCommandBuffer(this->commandBuffers[i]));
+			vkEndCommandBuffer(this->commandBuffers[i]);
 			continue;
 		}
 
@@ -1771,20 +1873,17 @@ void Rendering::RecordCommands()
 
 		for (size_t j = 0; j < tempInstGbs.size(); j++)
 		{
-			if (tempInstGbs[j]->GetIsRenderable())
-			{
-				vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempInstGbs[j]->GetMesh().GetVertexBuffer(), offsets);
-				vkCmdBindIndexBuffer(this->commandBuffers[i], tempInstGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-				vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->instancedDescriptorSets[j], 0, nullptr);
-				vkCmdDrawIndexed(this->commandBuffers[i], tempInstGbs[j]->GetMesh().GetIndicesSize(), static_cast<ui32>(this->instancedObjects[tempInstGbs[j]->GetModelID()].size() / tempInstGbs.size()), 0, 0, 0);
-			}
+			vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempInstGbs[j]->GetMesh().GetVertexBuffer(), offsets);
+			vkCmdBindIndexBuffer(this->commandBuffers[i], tempInstGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->instancedDescriptorSets[j], 0, nullptr);
+			vkCmdDrawIndexed(this->commandBuffers[i], tempInstGbs[j]->GetMesh().GetIndicesSize(), static_cast<ui32>(this->instancedObjects[tempInstGbs[j]->GetModelID()].size() / tempInstGbs.size()), 0, 0, 0);
 		}
 
 		//End renderpass.
 		vkCmdEndRenderPass(this->commandBuffers[i]);
 		
 		//End recording of command buffer.
-		VK_CHECK(vkEndCommandBuffer(this->commandBuffers[i]));
+		vkEndCommandBuffer(this->commandBuffers[i]);
 	}
 
 }
@@ -1795,14 +1894,15 @@ void Rendering::ReRecordCommands(void)
 
 	if (this->descriptorSets.size() > 0)
 	{
-		this->descriptorSets.clear();
 		vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->descriptorSets.size()), this->descriptorSets.data());
+		this->descriptorSets.clear();
 	}
 	if (this->instancedDescriptorSets.size() > 0)
 	{
-		this->instancedDescriptorSets.clear();
 		vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->instancedDescriptorSets.size()), this->instancedDescriptorSets.data());
+		this->instancedDescriptorSets.clear();
 	}
+
 	vkDestroyDescriptorPool(this->logicalDevice, this->descriptorPool, nullptr);
 
 	vkFreeCommandBuffers(this->logicalDevice, this->m_commandPool, static_cast<ui32>(this->commandBuffers.size()), this->commandBuffers.data());

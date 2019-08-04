@@ -41,6 +41,7 @@ public:
 	Transform& GetTransform();
 	Mesh& GetMesh();
 	Texture* GetTexture();
+	BoxCollider* GetBoxCollider();
 	Math::Mat4x4 GetModelMatrix();
 	Material& GetMaterial();
 
@@ -56,6 +57,7 @@ public:
 	bool& GetIsRenderable();
 	bool& GetIsActive();
 	bool& GetIsInstanced();
+	bool& GetIsInFrustum();
 
 	bool operator==(Gameobject* other);
 
@@ -92,4 +94,5 @@ private:
 	bool renderable = false;
 	bool active = false;
 	bool instanced = false;
+	bool inFrustum = false;
 }; 

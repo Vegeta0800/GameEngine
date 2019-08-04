@@ -12,7 +12,10 @@ class BoxCollider
 public:
 	BoxCollider(Gameobject* gb);
 
-	std::vector<Math::Vec3>& GetMinMax();
+	void SetMinMax(Math::Vec3 min, Math::Vec3 max);
+
+	Math::Vec3 GetMin();
+	Math::Vec3 GetMax();
 private:
 	std::vector<Math::Vec3> minMax;
 	Gameobject* gb;

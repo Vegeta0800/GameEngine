@@ -30,7 +30,6 @@ void Model::Create(const char* p)
 
 	std::unordered_map<Vertex, ui32> tempVertices;
 
-
 	for(tinyobj::shape_t shape : shapes)
 	{
 		for (tinyobj::index_t index : shape.mesh.indices)

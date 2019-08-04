@@ -1,5 +1,7 @@
 
 #pragma once
+#include <vector>
+
 #include "math/ra_vector3.h"
 #include "math/ra_mat4x4.h"
 
@@ -19,8 +21,8 @@ public:
 	Math::Mat4x4 GetViewMatrix();
 	Math::Mat4x4 GetProjectionMatrix();
 	
+	bool FrustumCulling(Math::Vec3 min, Math::Vec3 max, std::vector<Vec4> frustum_planes);
 private:
-	void FrustumCulling();
 	void UpdatePosition();
 
 	Math::Vec3 position;
