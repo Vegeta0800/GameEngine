@@ -24,46 +24,16 @@ bool Camera::FrustumCulling(Math::Vec3 Min, Math::Vec3 Max, std::vector<Vec4> fr
 {
 	bool inside = true;
 
-	frustum_planes[5].b = abs(frustum_planes[5].b);
-	frustum_planes[5].a = abs(frustum_planes[5].a);
-
 	//test all 6 frustum planes
 	for (int i = 0; i < 6; i++)
 	{
-		//pick closest point to plane and check if it behind the plane
-//if yes - object outside frustum
 		float d = max(Min.x * frustum_planes[i].r, Max.x * frustum_planes[i].r) +
 			max(Min.y * frustum_planes[i].g, Max.y * frustum_planes[i].g) +
 			max(Min.z * frustum_planes[i].b, Max.z * frustum_planes[i].b) +
 			frustum_planes[i].a;
 
 		inside &= d > 0;
-		//return false; //with flag works faster
-
-
-		//try to find such plane for which all 8 box points behind it
-		//test all 8 box points against frustum plane
-		//calculate distance from point to plane
-		//if point infront of the plane (dist > 0) - this is not separating plane
-		//if (frustum_planes[i].r * min.x + frustum_planes[i].g * max.y + frustum_planes[i].b * min.z + frustum_planes[i].a > 0)
-		//	continue;
-		//if (frustum_planes[i].r  * min.x + frustum_planes[i].g * max.y + frustum_planes[i].b * max.z + frustum_planes[i].a > 0)
-		//	continue;
-		//if (frustum_planes[i].r  * max.x + frustum_planes[i].g * max.y + frustum_planes[i].b * max.z + frustum_planes[i].a > 0)
-		//	continue;
-		//if (frustum_planes[i].r  * max.x + frustum_planes[i].g * max.y + frustum_planes[i].b * min.z + frustum_planes[i].a > 0)
-		//	continue;
-		//if (frustum_planes[i].r  * max.x + frustum_planes[i].g * min.y + frustum_planes[i].b * min.z + frustum_planes[i].a > 0)
-		//	continue;
-		//if (frustum_planes[i].r  * max.x + frustum_planes[i].g * min.y + frustum_planes[i].b * max.z + frustum_planes[i].a > 0)
-		//	continue;
-		//if (frustum_planes[i].r  * min.x + frustum_planes[i].g * min.y + frustum_planes[i].b * max.z + frustum_planes[i].a > 0)
-		//	continue;
-		//if (frustum_planes[i].r  * min.x + frustum_planes[i].g * min.y + frustum_planes[i].b * min.z + frustum_planes[i].a > 0)
-		//	continue;
-		//return false;
 	}
-
 	return inside;
 }
 

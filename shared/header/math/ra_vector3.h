@@ -190,7 +190,7 @@ namespace Math
 	//Get distance between two vector3. 
 	inline float Distance(const Vec3& lhs, const Vec3& rhs)
 	{
-		return sqrt(((rhs.x - lhs.x) * (rhs.x - lhs.x)) + ((rhs.y - lhs.y) * (rhs.y - lhs.y)));
+		return sqrt(((rhs.x - lhs.x) * (rhs.x - lhs.x)) + ((rhs.y - lhs.y) * (rhs.y - lhs.y)) + ((rhs.z - lhs.z) * (rhs.z - lhs.z)));
 	}
 
 	//Normalize vector2.

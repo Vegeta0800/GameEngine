@@ -53,6 +53,7 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 
 	//Finished initializing.
 	this->initialized = true;
+	this->planes.resize(6);
 	this->gameObjectCount = static_cast<ui32>(SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size());
 
 	Window::GetInstancePtr()->SetState(Window::WindowState::Started);
@@ -82,8 +83,6 @@ void Rendering::UpdateMVP()
 		{
 			gb->GetIsInFrustum() = SceneManager::GetInstancePtr()->GetActiveCamera()->FrustumCulling(gb->GetBoxCollider()->GetMin(), gb->GetBoxCollider()->GetMax(), this->planes);
 
-				printf("%d \n", gb->GetIsInFrustum());
-
 			if (gb->GetIsInFrustum())
 			{
 				VertexInputInfo vertexInfo;
@@ -95,7 +94,7 @@ void Rendering::UpdateMVP()
 				vertexInfo.color = gb->GetMaterial().fragColor;
 				vertexInfo.specColor = gb->GetMaterial().specularColor;
 				vertexInfo.ambientVal = 0.1f;
-				vertexInfo.specularVal = 16.0f;
+				vertexInfo.specularVal = 106.0f;
 
 				void* data;
 				vkMapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
@@ -161,60 +160,46 @@ void Rendering::UpdateMVP()
 
 }
 
-void Rendering::ExtractPlanes(Math::Mat4x4 m)
+void Rendering::ExtractPlanes(Math::Mat4x4 matrix)
 {
-	// l, r, t, b, n, f
-	this->planes.resize(6);
-	//this->planes[0] = Vec4{ m.m11 + m.m41, m.m12 + m.m42, m.m13 + m.m43, m.m14 + m.m44 };
-	//this->planes[1] = Vec4{ m.m41 - m.m11, m.m43 - m.m12, m.m43 - m.m13, m.m44 - m.m14 };
-	//this->planes[2] = Vec4{ m.m41 - m.m21, m.m42 - m.m22, m.m43 - m.m23, m.m44 - m.m24 };
-	//this->planes[3] = Vec4{ m.m21 + m.m41, m.m22 + m.m42, m.m23 + m.m43, m.m24 + m.m44 };
-	//this->planes[4] = Vec4{ m.m31 + m.m41, m.m32 + m.m42, m.m33 + m.m43, m.m34 + m.m44 };
-	//this->planes[5] = Vec4{ m.m41 - m.m31, m.m42 - m.m32, m.m43 - m.m33, m.m44 - m.m34 };
+	this->planes[0].r = matrix.m14 + matrix.m11;
+	this->planes[0].g = matrix.m24 + matrix.m21;
+	this->planes[0].b = matrix.m34 + matrix.m31;
+	this->planes[0].a = matrix.m44 + matrix.m41;
 
-	// Calculate left plane of frustum.
-	this->planes[2].r = m.m14 + m.m11;
-	this->planes[2].g = m.m24 + m.m21;
-	this->planes[2].b = m.m34 + m.m31;
-	this->planes[2].a = m.m44 + m.m41;
-	Math::Normalize(&this->planes[2], &this->planes[2]);
+	this->planes[1].r = matrix.m14 - matrix.m11;
+	this->planes[1].g = matrix.m24 - matrix.m21;
+	this->planes[1].b = matrix.m34 - matrix.m31;
+	this->planes[1].a = matrix.m44 - matrix.m41;
 
-	// Calculate right plane of frustum.
-	this->planes[3].r = m.m14 - m.m11;
-	this->planes[3].g = m.m24 - m.m21;
-	this->planes[3].b = m.m34 - m.m31;
-	this->planes[3].a = m.m44 - m.m41;
-	Math::Normalize(&this->planes[3], &this->planes[3]);
+	this->planes[2].r = matrix.m14 - matrix.m12;
+	this->planes[2].g = matrix.m24 - matrix.m22;
+	this->planes[2].b = matrix.m34 - matrix.m32;
+	this->planes[2].a = matrix.m44 - matrix.m42;
 
-	// Calculate top plane of frustum.
-	this->planes[4].r = m.m14 - m.m12;
-	this->planes[4].g = m.m24 - m.m22;
-	this->planes[4].b = m.m34 - m.m32;
-	this->planes[4].a = m.m44 - m.m42;
-	Math::Normalize(&this->planes[4], &this->planes[4]);
+	this->planes[3].r = matrix.m14 + matrix.m12;
+	this->planes[3].g = matrix.m24 + matrix.m22;
+	this->planes[3].b = matrix.m34 + matrix.m32;
+	this->planes[3].a = matrix.m44 + matrix.m42;
 
-	// Calculate bottom plane of frustum.
-	this->planes[5].r = m.m14 + m.m12;
-	this->planes[5].g = m.m24 + m.m22;
-	this->planes[5].b = m.m34 + m.m32;
-	this->planes[5].a = m.m44 + m.m42;
-	Math::Normalize(&this->planes[5], &this->planes[5]);
+	this->planes[4].r = matrix.m14 + matrix.m13;
+	this->planes[4].g = matrix.m24 + matrix.m23;
+	this->planes[4].b = matrix.m34 + matrix.m33;
+	this->planes[4].a = matrix.m44 + matrix.m43;
 
-	// Calculate near plane of frustum.
-	this->planes[0].r = m.m13;        // matrix._14 + matrix._13;
-	this->planes[0].g = m.m23;        // matrix._24 + matrix._23;
-	this->planes[0].b = m.m33;        // matrix._34 + matrix._33;
-	this->planes[0].a = m.m43;        // matrix._44 + matrix._43;
-	Math::Normalize(&this->planes[0], &this->planes[0]);
+	this->planes[5].r = matrix.m14 - matrix.m13;
+	this->planes[5].g = matrix.m24 - matrix.m23;
+	this->planes[5].b = matrix.m34 - matrix.m33;
+	this->planes[5].a = matrix.m44 - matrix.m43;
 
-	// Calculate far plane of frustum.
-	this->planes[1].r = m.m14 - m.m13;
-	this->planes[1].g = m.m24 - m.m23;
-	this->planes[1].b = m.m34 - m.m33;
-	this->planes[1].a = m.m44 - m.m43;
-	Math::Normalize(&this->planes[1], &this->planes[1]);
-
-
+	for (auto i = 0; i < this->planes.size(); i++)
+	{
+		float length = sqrtf(this->planes[i].r *this->planes[i].r + this->planes[i].g * this->planes[i].g + this->planes[i].b * this->planes[i].b);
+		this->planes[i].r /= length;
+		this->planes[i].g /= length;
+		this->planes[i].b /= length;
+		this->planes[i].a /= length;
+	}
 }
 
 //Begin recording of a command buffer using inputed information.

@@ -66,7 +66,7 @@ void SceneManager::Initialize()
 		mainSceneRoot->SetName("MainSceneRoot");
 
 		Gameobject* player = new Gameobject;
-		player->Initialize(mainSceneRoot, "Player", "dragon.obj", nullptr, true, true, false);
+		player->Initialize(mainSceneRoot, "Player", "cube.obj", nullptr, true, true, false);
 		player->GetMaterial().fragColor = fColorRGBA{ 1, 0, 0, 1 };
 		player->GetTransform().scaling *= 0.3f;
 
