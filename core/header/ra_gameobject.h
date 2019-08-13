@@ -94,5 +94,5 @@ private:
 	bool renderable = false;
 	bool active = false;
 	bool instanced = false;
-	bool inFrustum = false;
+	bool inFrustum = true;
 }; 

@@ -159,6 +159,33 @@ namespace Math
 		};
 	}
 
+	//Multiply each matrix value by a scalar product
+	inline Mat4x4 operator/(const Mat4x4& lhs, float scalar)
+	{
+		return Mat4x4
+		{
+			lhs.m11 / scalar,
+			lhs.m12 / scalar,
+			lhs.m13 / scalar,
+			lhs.m14 / scalar,
+					
+			lhs.m21 / scalar,
+			lhs.m22 / scalar,
+			lhs.m23 / scalar,
+			lhs.m24 / scalar,
+					
+			lhs.m31 / scalar,
+			lhs.m32 / scalar,
+			lhs.m33 / scalar,
+			lhs.m34 / scalar,
+					
+			lhs.m41 / scalar,
+			lhs.m42 / scalar,
+			lhs.m43 / scalar,
+			lhs.m44 / scalar
+		};
+	}
+
 	//Transform input matrix into transpose matrix. (a1, b1, c1, d1, a2, b2, c2, d2, a3, b3, c3, d3, a4, b4, c4, d4)
 	inline Mat4x4 Transpose(const Mat4x4& mat)
 	{
@@ -339,5 +366,49 @@ namespace Math
 		modelMatrix = modelMatrix * Math::Transpose(Math::CreateTranslationMatrix(position));
 
 		return modelMatrix;
+	}
+
+	inline Mat4x4 Inverse(Mat4x4 m)
+	{
+		float
+			a00 = m.m11, a01 = m.m12, a02 = m.m13, a03 = m.m14,
+			a10 = m.m21, a11 = m.m22, a12 = m.m23, a13 = m.m24,
+			a20 = m.m31, a21 = m.m32, a22 = m.m33, a23 = m.m34,
+			a30 = m.m41, a31 = m.m42, a32 = m.m43, a33 = m.m44,
+
+			b00 = a00 * a11 - a01 * a10,
+			b01 = a00 * a12 - a02 * a10,
+			b02 = a00 * a13 - a03 * a10,
+			b03 = a01 * a12 - a02 * a11,
+			b04 = a01 * a13 - a03 * a11,
+			b05 = a02 * a13 - a03 * a12,
+			b06 = a20 * a31 - a21 * a30,
+			b07 = a20 * a32 - a22 * a30,
+			b08 = a20 * a33 - a23 * a30,
+			b09 = a21 * a32 - a22 * a31,
+			b10 = a21 * a33 - a23 * a31,
+			b11 = a22 * a33 - a23 * a32,
+
+			det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
+
+		return Mat4x4
+		{
+			a11 * b11 - a12 * b10 + a13 * b09,
+			a02 * b10 - a01 * b11 - a03 * b09,
+			a31 * b05 - a32 * b04 + a33 * b03,
+			a22 * b04 - a21 * b05 - a23 * b03,
+			a12 * b08 - a10 * b11 - a13 * b07,
+			a00 * b11 - a02 * b08 + a03 * b07,
+			a32 * b02 - a30 * b05 - a33 * b01,
+			a20 * b05 - a22 * b02 + a23 * b01,
+			a10 * b10 - a11 * b08 + a13 * b06,
+			a01 * b08 - a00 * b10 - a03 * b06,
+			a30 * b04 - a31 * b02 + a33 * b00,
+			a21 * b02 - a20 * b04 - a23 * b00,
+			a11 * b07 - a10 * b09 - a12 * b06,
+			a00 * b09 - a01 * b07 + a02 * b06,
+			a31 * b01 - a30 * b03 - a32 * b00,
+			a20 * b03 - a21 * b01 + a22 * b00
+		} / det;
 	}
 }

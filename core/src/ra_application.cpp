@@ -55,14 +55,13 @@ void Application::Update()
 		if (!Window::GetInstancePtr()->PollEvents())
 		{
 			SceneManager::GetInstancePtr()->Update();
+			Rendering::GetInstancePtr()->Update();
+
+			if (Input::GetInstancePtr()->GetUpState())
+				Input::GetInstancePtr()->EradicateUpKeys();
+
 		}
-
-		Rendering::GetInstancePtr()->Update();
-
-		if (Input::GetInstancePtr()->GetUpState())
-			Input::GetInstancePtr()->EradicateUpKeys();
-
-		//STOP_TIMER("Loop took")
+			//STOP_TIMER("Loop took")
 	}
 
 }

@@ -81,25 +81,49 @@ void Rendering::UpdateMVP()
 	{
 		if (gb->GetIsRenderable() && gb->GetIsActive() && !gb->GetIsInstanced())
 		{
-			gb->GetIsInFrustum() = SceneManager::GetInstancePtr()->GetActiveCamera()->FrustumCulling(gb->GetBoxCollider()->GetMin(), gb->GetBoxCollider()->GetMax(), this->planes);
+			if (gb->GetName() == "Frustum")
+				gb->GetIsInFrustum() = SceneManager::GetInstancePtr()->GetActiveCamera()->FrustumCulling(gb->GetBoxCollider()->GetMin(), gb->GetBoxCollider()->GetMax(), this->planes);
+			else
+				printf("%d", gb->GetIsInFrustum());
 
 			if (gb->GetIsInFrustum())
 			{
-				VertexInputInfo vertexInfo;
+				if (gb->GetName() == "Frustum")
+				{
+					VertexInputInfo vertexInfo;
 
-				vertexInfo.modelMatrix = gb->GetModelMatrix();
-				vertexInfo.lightPosition = SceneManager::GetInstancePtr()->GetActiveCamera()->GetPostion();
-				vertexInfo.viewMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetViewMatrix();
-				vertexInfo.projectionMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix();
-				vertexInfo.color = gb->GetMaterial().fragColor;
-				vertexInfo.specColor = gb->GetMaterial().specularColor;
-				vertexInfo.ambientVal = 0.1f;
-				vertexInfo.specularVal = 106.0f;
+					vertexInfo.modelMatrix = Math::Inverse(SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix()) * Math::CreateRotationYMatrix(180.0f);
+					vertexInfo.lightPosition = SceneManager::GetInstancePtr()->GetActiveCamera()->GetPostion();
+					vertexInfo.viewMatrix = Math::Mat4x4::identity;
+					vertexInfo.projectionMatrix = Math::Mat4x4::identity;
+					vertexInfo.color = gb->GetMaterial().fragColor;
+					vertexInfo.specColor = gb->GetMaterial().specularColor;
+					vertexInfo.ambientVal = 0.1f;
+					vertexInfo.specularVal = 106.0f;
 
-				void* data;
-				vkMapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
-				memcpy(data, &vertexInfo, sizeof(vertexInfo));
-				vkUnmapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem());
+					void* data;
+					vkMapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
+					memcpy(data, &vertexInfo, sizeof(vertexInfo));
+					vkUnmapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem());
+				}
+				else
+				{
+					VertexInputInfo vertexInfo;
+
+					vertexInfo.modelMatrix = gb->GetModelMatrix();
+					vertexInfo.lightPosition = SceneManager::GetInstancePtr()->GetActiveCamera()->GetPostion();
+					vertexInfo.viewMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetViewMatrix();
+					vertexInfo.projectionMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix();
+					vertexInfo.color = gb->GetMaterial().fragColor;
+					vertexInfo.specColor = gb->GetMaterial().specularColor;
+					vertexInfo.ambientVal = 0.1f;
+					vertexInfo.specularVal = 106.0f;
+
+					void* data;
+					vkMapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
+					memcpy(data, &vertexInfo, sizeof(vertexInfo));
+					vkUnmapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem());
+				}
 			}
 		}
 	}
@@ -157,7 +181,6 @@ void Rendering::UpdateMVP()
 			}
 		}
 	}
-
 }
 
 void Rendering::ExtractPlanes(Math::Mat4x4 matrix)
@@ -192,7 +215,7 @@ void Rendering::ExtractPlanes(Math::Mat4x4 matrix)
 	this->planes[5].b = matrix.m34 - matrix.m33;
 	this->planes[5].a = matrix.m44 - matrix.m43;
 
-	for (auto i = 0; i < this->planes.size(); i++)
+	for (size_t i = 0; i < this->planes.size(); i++)
 	{
 		float length = sqrtf(this->planes[i].r *this->planes[i].r + this->planes[i].g * this->planes[i].g + this->planes[i].b * this->planes[i].b);
 		this->planes[i].r /= length;
@@ -1741,7 +1764,6 @@ void Rendering::CreateBuffersForObjects(void)
 			}
 		}
 	}
-
 }
 
 //Record commands for the graphics queue.

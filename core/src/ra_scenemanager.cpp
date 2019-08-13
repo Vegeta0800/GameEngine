@@ -70,6 +70,10 @@ void SceneManager::Initialize()
 		player->GetMaterial().fragColor = fColorRGBA{ 1, 0, 0, 1 };
 		player->GetTransform().scaling *= 0.3f;
 
+		Gameobject* frustum = new Gameobject;
+		frustum->Initialize(mainSceneRoot, "Frustum", "cube.obj", nullptr, true, true, false);
+		frustum->GetMaterial().fragColor = fColorRGBA{ 1, 1, 1, 1 };
+
 		Camera* cam = new Camera;
 		cam->Initialize();
 		cam->GetPostion() = Math::Vec3{ 0.0f, -10.0f, 2.0f };
