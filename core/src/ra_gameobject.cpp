@@ -8,13 +8,13 @@ Gameobject::Gameobject() :
 	this->Initialize();
 }
 
-void Gameobject::Initialize(Gameobject* parent, std::string name, const char* meshName, const char* textureName, bool render, bool act, bool instanced)
+void Gameobject::Initialize(Gameobject* parent, std::string name, const char* meshName, const std::vector<const char*>& textureNames, bool render, bool act, bool instanced)
 {
 	this->parent = nullptr;
 	this->transform = Transform();
 	this->oldPosition = Math::Vec3::zero;
 	this->oldEulerRotation = Math::Vec3::zero;
-	this->transform.position = Math::Vec3{ 0, 0, 10.0f };
+	this->transform.position = Math::Vec3{ 0, 0, 0.0f };
 	this->transform.eulerRotation = Math::Vec3{0, 0, 0};
 	this->transform.rotation = Math::Quaternion::identity;
 	this->transform.scaling = Math::Vec3::unit_scale;
@@ -22,21 +22,43 @@ void Gameobject::Initialize(Gameobject* parent, std::string name, const char* me
 	this->name = name;
 	this->meshName = meshName;
 
+	this->inFrustum = true;
+
 	this->collider = new BoxCollider(this);
 
-	if(textureName != nullptr)
-		this->textureName = textureName;
-	else
-		this->textureName = "empty.png";
+	this->textureName = "empty.png";
+	this->normalMapName = "empty.png";
+	this->emissionMapName = "empty.png";
+	this->roughnessMapName = "empty.png";
+	this->ambientMapName = "empty.png";
+
+	if (textureNames.size() != 0)
+	{
+		if(textureNames.size() >= 1)
+			this->textureName = textureNames[0];
+		if (textureNames.size() >= 2)
+			this->normalMapName = textureNames[1];
+		if (textureNames.size() >= 3)
+			this->emissionMapName = textureNames[2];
+		if (textureNames.size() >= 4)
+			this->roughnessMapName = textureNames[3];
+		if (textureNames.size() == 5)
+			this->ambientMapName = textureNames[4];
+	}
+
 	this->active = act;
 	this->renderable = render;
 	this->instanced = instanced;
 
 	this->mesh.CreateMesh(meshName);
-	this->texture = new Texture;
+	this->textures.resize(5);
+	this->textures[0] = new Texture;
+	this->textures[1] = new Texture;
+	this->textures[2] = new Texture;
+	this->textures[3] = new Texture;
+	this->textures[4] = new Texture;
 
 	this->material.fragColor = fColorRGBA{ 1, 1, 1, 1 };
-	this->material.specularColor = fColorRGBA{1.4f, 1.4f, 1.4f, 1};
 	this->material.ambientValue = 0.1f;
 	this->material.specularValue = 16.0f;
 
@@ -67,7 +89,6 @@ void Gameobject::Initialize(Gameobject* copyGb, std::string name, bool render)
 
 	//this->material.fragColor = Math::Vec3{ 0.164f, 0.749f, 0.874f };
 	this->material.fragColor = fColorRGBA{ 0, 1, 0, 1 };
-	this->material.specularColor = fColorRGBA{ 1.4f, 1.4f, 1.4f, 1 };
 	this->material.ambientValue = 0.1f;
 	this->material.specularValue = 16.0f;
 
@@ -305,9 +326,29 @@ const char* Gameobject::GetTextureName()
 	return this->textureName;
 }
 
-Texture* Gameobject::GetTexture()
+const char* Gameobject::GetNormalMapName()
 {
-	return this->texture;
+	return this->normalMapName;
+}
+
+const char* Gameobject::GetEmissionMapName()
+{
+	return this->emissionMapName;
+}
+
+const char* Gameobject::GetRoughnessMapName()
+{
+	return this->roughnessMapName;
+}
+
+const char* Gameobject::GetAmbientMapName()
+{
+	return this->ambientMapName;
+}
+
+std::vector<Texture*> Gameobject::GetTextures()
+{
+	return this->textures;
 }
 
 BoxCollider* Gameobject::GetBoxCollider()
@@ -345,4 +386,8 @@ bool& Gameobject::GetIsInFrustum()
 	return this->inFrustum;
 }
 
+bool& Gameobject::GetBufferCreated()
+{
+	return this->bufferCreated;
+}
 

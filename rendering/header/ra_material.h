@@ -5,7 +5,6 @@
 struct Material
 {
 	fColorRGBA fragColor;
-	fColorRGBA specularColor;
 	float ambientValue;
 	float specularValue;
 };

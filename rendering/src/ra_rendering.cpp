@@ -81,49 +81,25 @@ void Rendering::UpdateMVP()
 	{
 		if (gb->GetIsRenderable() && gb->GetIsActive() && !gb->GetIsInstanced())
 		{
-			if (gb->GetName() == "Frustum")
-				gb->GetIsInFrustum() = SceneManager::GetInstancePtr()->GetActiveCamera()->FrustumCulling(gb->GetBoxCollider()->GetMin(), gb->GetBoxCollider()->GetMax(), this->planes);
-			else
-				printf("%d", gb->GetIsInFrustum());
+			gb->GetIsInFrustum() = true;//SceneManager::GetInstancePtr()->GetActiveCamera()->FrustumCulling(gb->GetBoxCollider()->GetMin(), gb->GetBoxCollider()->GetMax(), this->planes);
+			
+			printf("%d \n", gb->GetIsInFrustum());
 
 			if (gb->GetIsInFrustum())
 			{
-				if (gb->GetName() == "Frustum")
-				{
-					VertexInputInfo vertexInfo;
+				VertexInputInfo vertexInfo;
+				vertexInfo.modelMatrix = gb->GetModelMatrix();
+				vertexInfo.lightPosition = SceneManager::GetInstancePtr()->GetActiveCamera()->GetPostion() - gb->GetTransform().position;
+				vertexInfo.viewMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetViewMatrix();
+				vertexInfo.projectionMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix();
+				vertexInfo.color = gb->GetMaterial().fragColor;
+				vertexInfo.ambientVal = 0.1f;
+				vertexInfo.specularVal = 16.0f;
 
-					vertexInfo.modelMatrix = Math::Inverse(SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix()) * Math::CreateRotationYMatrix(180.0f);
-					vertexInfo.lightPosition = SceneManager::GetInstancePtr()->GetActiveCamera()->GetPostion();
-					vertexInfo.viewMatrix = Math::Mat4x4::identity;
-					vertexInfo.projectionMatrix = Math::Mat4x4::identity;
-					vertexInfo.color = gb->GetMaterial().fragColor;
-					vertexInfo.specColor = gb->GetMaterial().specularColor;
-					vertexInfo.ambientVal = 0.1f;
-					vertexInfo.specularVal = 106.0f;
-
-					void* data;
-					vkMapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
-					memcpy(data, &vertexInfo, sizeof(vertexInfo));
-					vkUnmapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem());
-				}
-				else
-				{
-					VertexInputInfo vertexInfo;
-
-					vertexInfo.modelMatrix = gb->GetModelMatrix();
-					vertexInfo.lightPosition = SceneManager::GetInstancePtr()->GetActiveCamera()->GetPostion();
-					vertexInfo.viewMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetViewMatrix();
-					vertexInfo.projectionMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix();
-					vertexInfo.color = gb->GetMaterial().fragColor;
-					vertexInfo.specColor = gb->GetMaterial().specularColor;
-					vertexInfo.ambientVal = 0.1f;
-					vertexInfo.specularVal = 106.0f;
-
-					void* data;
-					vkMapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
-					memcpy(data, &vertexInfo, sizeof(vertexInfo));
-					vkUnmapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem());
-				}
+				void* data;
+				vkMapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
+				memcpy(data, &vertexInfo, sizeof(vertexInfo));
+				vkUnmapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem());
 			}
 		}
 	}
@@ -131,40 +107,35 @@ void Rendering::UpdateMVP()
 	//Update MVP Matrix for instanced objects
 	for (std::vector<Gameobject*> gbs : this->instancedObjects)
 	{
-		VertexInstancedInputInfo vertexInfo;
-
-		vertexInfo.lightPosition = SceneManager::GetInstancePtr()->GetActiveCamera()->GetPostion();
-		vertexInfo.viewMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetViewMatrix();
-		vertexInfo.projectionMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix();
-		vertexInfo.ambientVal = 0.1f;
-		vertexInfo.specularVal = 16.0f;
-
 		if (gbs.size() != 0)
 		{
+			VertexInstancedInputInfo vertexInfo;
+
+			vertexInfo.lightPosition = gbs[0]->GetTransform().position;
+			vertexInfo.viewMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetViewMatrix();
+			vertexInfo.projectionMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix();
+			vertexInfo.ambientVal = 0.1f;
+			vertexInfo.specularVal = 16.0f;
 			vertexInfo.color = gbs[0]->GetMaterial().fragColor;
-			vertexInfo.specColor = gbs[0]->GetMaterial().specularColor;
 			if (gbs.size() > INSTANCE_AMOUNT)
 			{
 				ui32 k = 0;
 				while (gbs.size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
 				{
-					if (gbs[k]->GetIsRenderable())
+					for (size_t i = 0; i < INSTANCE_AMOUNT; i++)
 					{
-						for (size_t i = 0; i < INSTANCE_AMOUNT; i++)
+						gbs[i + (k * INSTANCE_AMOUNT)]->GetIsInFrustum() = SceneManager::GetInstancePtr()->GetActiveCamera()->FrustumCulling(gbs[i]->GetBoxCollider()->GetMin(), gbs[i]->GetBoxCollider()->GetMax(), this->planes);
+
+						if (gbs[i + (k * INSTANCE_AMOUNT)]->GetIsRenderable() && gbs[i + (k * INSTANCE_AMOUNT)]->GetIsInFrustum())
 						{
-							gbs[i]->GetIsInFrustum() = SceneManager::GetInstancePtr()->GetActiveCamera()->FrustumCulling(gbs[i]->GetBoxCollider()->GetMin(), gbs[i]->GetBoxCollider()->GetMax(), this->planes);
-
-							if (gbs[i]->GetIsInFrustum())
-							{
-								vertexInfo.modelMatrix[i] = gbs[i]->GetModelMatrix();
-							}
+							vertexInfo.modelMatrix[i] = gbs[i + (k * INSTANCE_AMOUNT)]->GetModelMatrix();
 						}
-
-						void* data;
-						vkMapMemory(this->logicalDevice, gbs[k]->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
-						memcpy(data, &vertexInfo, sizeof(vertexInfo));
-						vkUnmapMemory(this->logicalDevice, gbs[k]->GetMesh().GetUniformBufferMem());
 					}
+
+					void* data;
+					vkMapMemory(this->logicalDevice, gbs[k]->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
+					memcpy(data, &vertexInfo, sizeof(vertexInfo));
+					vkUnmapMemory(this->logicalDevice, gbs[k]->GetMesh().GetUniformBufferMem());
 					k++;
 				}
 			}
@@ -185,39 +156,39 @@ void Rendering::UpdateMVP()
 
 void Rendering::ExtractPlanes(Math::Mat4x4 matrix)
 {
-	this->planes[0].r = matrix.m14 + matrix.m11;
-	this->planes[0].g = matrix.m24 + matrix.m21;
-	this->planes[0].b = matrix.m34 + matrix.m31;
-	this->planes[0].a = matrix.m44 + matrix.m41;
-
-	this->planes[1].r = matrix.m14 - matrix.m11;
-	this->planes[1].g = matrix.m24 - matrix.m21;
-	this->planes[1].b = matrix.m34 - matrix.m31;
-	this->planes[1].a = matrix.m44 - matrix.m41;
-
-	this->planes[2].r = matrix.m14 - matrix.m12;
-	this->planes[2].g = matrix.m24 - matrix.m22;
-	this->planes[2].b = matrix.m34 - matrix.m32;
-	this->planes[2].a = matrix.m44 - matrix.m42;
-
-	this->planes[3].r = matrix.m14 + matrix.m12;
-	this->planes[3].g = matrix.m24 + matrix.m22;
-	this->planes[3].b = matrix.m34 + matrix.m32;
-	this->planes[3].a = matrix.m44 + matrix.m42;
-
-	this->planes[4].r = matrix.m14 + matrix.m13;
-	this->planes[4].g = matrix.m24 + matrix.m23;
-	this->planes[4].b = matrix.m34 + matrix.m33;
-	this->planes[4].a = matrix.m44 + matrix.m43;
-
-	this->planes[5].r = matrix.m14 - matrix.m13;
-	this->planes[5].g = matrix.m24 - matrix.m23;
-	this->planes[5].b = matrix.m34 - matrix.m33;
-	this->planes[5].a = matrix.m44 - matrix.m43;
+	this->planes[0].r = matrix.m41 + matrix.m11;
+	this->planes[0].g = matrix.m42 + matrix.m12;
+	this->planes[0].b = matrix.m43 + matrix.m13;
+	this->planes[0].a = matrix.m44 + matrix.m14;
+											 
+	this->planes[1].r = matrix.m41 - matrix.m11;
+	this->planes[1].g = matrix.m42 - matrix.m12;
+	this->planes[1].b = matrix.m43 - matrix.m13;
+	this->planes[1].a = matrix.m44 - matrix.m14;
+								
+	this->planes[2].r = matrix.m41 - matrix.m21;
+	this->planes[2].g = matrix.m42 - matrix.m22;
+	this->planes[2].b = matrix.m43 - matrix.m23;
+	this->planes[2].a = matrix.m44 - matrix.m24;
+								
+	this->planes[3].r = matrix.m41 + matrix.m21;
+	this->planes[3].g = matrix.m42 + matrix.m22;
+	this->planes[3].b = matrix.m43 + matrix.m23;
+	this->planes[3].a = matrix.m44 + matrix.m24;
+								
+	this->planes[4].r = matrix.m31;
+	this->planes[4].g = matrix.m32;
+	this->planes[4].b = matrix.m33;
+	this->planes[4].a = matrix.m34;
+								
+	this->planes[5].r = matrix.m41 - matrix.m31;
+	this->planes[5].g = matrix.m42 - matrix.m32;
+	this->planes[5].b = matrix.m43 - matrix.m33;
+	this->planes[5].a = matrix.m44 - matrix.m34;
 
 	for (size_t i = 0; i < this->planes.size(); i++)
 	{
-		float length = sqrtf(this->planes[i].r *this->planes[i].r + this->planes[i].g * this->planes[i].g + this->planes[i].b * this->planes[i].b);
+		float length = sqrtf((this->planes[i].r * this->planes[i].r) + (this->planes[i].g * this->planes[i].g) + (this->planes[i].b * this->planes[i].b));
 		this->planes[i].r /= length;
 		this->planes[i].g /= length;
 		this->planes[i].b /= length;
@@ -829,6 +800,42 @@ void Rendering::CreateDescriptorSetLayout()
 	samplerSetLayoutBinding.pImmutableSamplers = nullptr;
 	descriptorSetLayoutBindings.push_back(samplerSetLayoutBinding);
 
+	//Sampler binding for fragment shader (texcoords).
+	VkDescriptorSetLayoutBinding samplerNormalMapSetLayoutBinding;
+	samplerNormalMapSetLayoutBinding.binding = 2;
+	samplerNormalMapSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerNormalMapSetLayoutBinding.descriptorCount = 1;
+	samplerNormalMapSetLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	samplerNormalMapSetLayoutBinding.pImmutableSamplers = nullptr;
+	descriptorSetLayoutBindings.push_back(samplerNormalMapSetLayoutBinding);
+
+	//Sampler binding for fragment shader (texcoords).
+	VkDescriptorSetLayoutBinding samplerEmissionMapSetLayoutBinding;
+	samplerEmissionMapSetLayoutBinding.binding = 3;
+	samplerEmissionMapSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerEmissionMapSetLayoutBinding.descriptorCount = 1;
+	samplerEmissionMapSetLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	samplerEmissionMapSetLayoutBinding.pImmutableSamplers = nullptr;
+	descriptorSetLayoutBindings.push_back(samplerEmissionMapSetLayoutBinding);
+
+	//Sampler binding for fragment shader (texcoords).
+	VkDescriptorSetLayoutBinding samplerRoughnessMapSetLayoutBinding;
+	samplerRoughnessMapSetLayoutBinding.binding = 4;
+	samplerRoughnessMapSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerRoughnessMapSetLayoutBinding.descriptorCount = 1;
+	samplerRoughnessMapSetLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	samplerRoughnessMapSetLayoutBinding.pImmutableSamplers = nullptr;
+	descriptorSetLayoutBindings.push_back(samplerRoughnessMapSetLayoutBinding);
+
+	//Sampler binding for fragment shader (texcoords).
+	VkDescriptorSetLayoutBinding samplerAmbientMapSetLayoutBinding;
+	samplerAmbientMapSetLayoutBinding.binding = 5;
+	samplerAmbientMapSetLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerAmbientMapSetLayoutBinding.descriptorCount = 1;
+	samplerAmbientMapSetLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	samplerAmbientMapSetLayoutBinding.pImmutableSamplers = nullptr;
+	descriptorSetLayoutBindings.push_back(samplerAmbientMapSetLayoutBinding);
+
 	//Descriptorset layout info using the bindings.
 	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutInfo;
 	descriptorSetLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -858,6 +865,26 @@ void Rendering::CreateDescriptorPool()
 	samplerPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	samplerPoolSize.descriptorCount = 1;
 	descriptorPoolSizes.push_back(samplerPoolSize);
+
+	VkDescriptorPoolSize samplerNormalMapPoolSize;
+	samplerNormalMapPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerNormalMapPoolSize.descriptorCount = 1;
+	descriptorPoolSizes.push_back(samplerNormalMapPoolSize);
+
+	VkDescriptorPoolSize samplerEmissionMapPoolSize;
+	samplerEmissionMapPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerEmissionMapPoolSize.descriptorCount = 1;
+	descriptorPoolSizes.push_back(samplerEmissionMapPoolSize);
+
+	VkDescriptorPoolSize samplerRoughnessMapPoolSize;
+	samplerRoughnessMapPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerRoughnessMapPoolSize.descriptorCount = 1;
+	descriptorPoolSizes.push_back(samplerRoughnessMapPoolSize);
+
+	VkDescriptorPoolSize samplerAmbientMapPoolSize;
+	samplerAmbientMapPoolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	samplerAmbientMapPoolSize.descriptorCount = 1;
+	descriptorPoolSizes.push_back(samplerAmbientMapPoolSize);
 
 	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
 	{
@@ -937,8 +964,8 @@ void Rendering::CreateDescriptorSet(Gameobject* gb, ui32 setIndex, bool instance
 
 	//Sampler info (for texcoords in fragment shader).
 	VkDescriptorImageInfo descriptorSamplerInfo;
-	descriptorSamplerInfo.sampler = gb->GetTexture()->GetSampler();
-	descriptorSamplerInfo.imageView = gb->GetTexture()->GetImageView();
+	descriptorSamplerInfo.sampler = gb->GetTextures()[0]->GetSampler();
+	descriptorSamplerInfo.imageView = gb->GetTextures()[0]->GetImageView();
 	descriptorSamplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	//Sampler write using descriptorSamplerInfo.
@@ -959,6 +986,106 @@ void Rendering::CreateDescriptorSet(Gameobject* gb, ui32 setIndex, bool instance
 	descriptorSamplerWrite.pBufferInfo = nullptr;
 	descriptorSamplerWrite.pTexelBufferView = nullptr;
 	descriptorSetWrites.push_back(descriptorSamplerWrite);
+
+	//Sampler info (for texcoords normalMap in fragment shader).
+	VkDescriptorImageInfo descriptorNormalMapInfo;
+	descriptorNormalMapInfo.sampler = gb->GetTextures()[1]->GetSampler();
+	descriptorNormalMapInfo.imageView = gb->GetTextures()[1]->GetImageView();
+	descriptorNormalMapInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	//Sampler write using descriptorSamplerInfo.
+	VkWriteDescriptorSet descriptorNormalMapWrite;
+	descriptorNormalMapWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorNormalMapWrite.pNext = nullptr;
+
+	if (instanced)
+		descriptorNormalMapWrite.dstSet = this->instancedDescriptorSets[setIndex];
+	else
+		descriptorNormalMapWrite.dstSet = this->descriptorSets[setIndex];
+
+	descriptorNormalMapWrite.dstBinding = 2;
+	descriptorNormalMapWrite.dstArrayElement = 0;
+	descriptorNormalMapWrite.descriptorCount = 1;
+	descriptorNormalMapWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorNormalMapWrite.pImageInfo = &descriptorNormalMapInfo;
+	descriptorNormalMapWrite.pBufferInfo = nullptr;
+	descriptorNormalMapWrite.pTexelBufferView = nullptr;
+	descriptorSetWrites.push_back(descriptorNormalMapWrite);
+
+	//Sampler info (for texcoords normalMap in fragment shader).
+	VkDescriptorImageInfo descriptorEmissionMapInfo;
+	descriptorEmissionMapInfo.sampler = gb->GetTextures()[2]->GetSampler();
+	descriptorEmissionMapInfo.imageView = gb->GetTextures()[2]->GetImageView();
+	descriptorEmissionMapInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	//Sampler write using descriptorSamplerInfo.
+	VkWriteDescriptorSet descriptorEmissionMapWrite;
+	descriptorEmissionMapWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorEmissionMapWrite.pNext = nullptr;
+
+	if (instanced)
+		descriptorEmissionMapWrite.dstSet = this->instancedDescriptorSets[setIndex];
+	else
+		descriptorEmissionMapWrite.dstSet = this->descriptorSets[setIndex];
+
+	descriptorEmissionMapWrite.dstBinding = 3;
+	descriptorEmissionMapWrite.dstArrayElement = 0;
+	descriptorEmissionMapWrite.descriptorCount = 1;
+	descriptorEmissionMapWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorEmissionMapWrite.pImageInfo = &descriptorEmissionMapInfo;
+	descriptorEmissionMapWrite.pBufferInfo = nullptr;
+	descriptorEmissionMapWrite.pTexelBufferView = nullptr;
+	descriptorSetWrites.push_back(descriptorEmissionMapWrite);
+
+	//Sampler info (for texcoords normalMap in fragment shader).
+	VkDescriptorImageInfo descriptorRoughnessMapInfo;
+	descriptorRoughnessMapInfo.sampler = gb->GetTextures()[3]->GetSampler();
+	descriptorRoughnessMapInfo.imageView = gb->GetTextures()[3]->GetImageView();
+	descriptorRoughnessMapInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	//Sampler write using descriptorSamplerInfo.
+	VkWriteDescriptorSet descriptorRoughnessMapWrite;
+	descriptorRoughnessMapWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorRoughnessMapWrite.pNext = nullptr;
+
+	if (instanced)
+		descriptorRoughnessMapWrite.dstSet = this->instancedDescriptorSets[setIndex];
+	else
+		descriptorRoughnessMapWrite.dstSet = this->descriptorSets[setIndex];
+
+	descriptorRoughnessMapWrite.dstBinding = 4;
+	descriptorRoughnessMapWrite.dstArrayElement = 0;
+	descriptorRoughnessMapWrite.descriptorCount = 1;
+	descriptorRoughnessMapWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorRoughnessMapWrite.pImageInfo = &descriptorRoughnessMapInfo;
+	descriptorRoughnessMapWrite.pBufferInfo = nullptr;
+	descriptorRoughnessMapWrite.pTexelBufferView = nullptr;
+	descriptorSetWrites.push_back(descriptorRoughnessMapWrite);
+
+	//Sampler info (for texcoords normalMap in fragment shader).
+	VkDescriptorImageInfo descriptorAmbientMapInfo;
+	descriptorAmbientMapInfo.sampler = gb->GetTextures()[4]->GetSampler();
+	descriptorAmbientMapInfo.imageView = gb->GetTextures()[4]->GetImageView();
+	descriptorAmbientMapInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+	//Sampler write using descriptorSamplerInfo.
+	VkWriteDescriptorSet descriptorAmbientMapWrite;
+	descriptorAmbientMapWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorAmbientMapWrite.pNext = nullptr;
+
+	if (instanced)
+		descriptorAmbientMapWrite.dstSet = this->instancedDescriptorSets[setIndex];
+	else
+		descriptorAmbientMapWrite.dstSet = this->descriptorSets[setIndex];
+
+	descriptorAmbientMapWrite.dstBinding = 5;
+	descriptorAmbientMapWrite.dstArrayElement = 0;
+	descriptorAmbientMapWrite.descriptorCount = 1;
+	descriptorAmbientMapWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorAmbientMapWrite.pImageInfo = &descriptorAmbientMapInfo;
+	descriptorAmbientMapWrite.pBufferInfo = nullptr;
+	descriptorAmbientMapWrite.pTexelBufferView = nullptr;
+	descriptorSetWrites.push_back(descriptorAmbientMapWrite);
 
 	//Update descriptorset using writes size and data.
 	vkUpdateDescriptorSets(this->logicalDevice, static_cast<ui32>(descriptorSetWrites.size()), descriptorSetWrites.data(), 0, nullptr);
@@ -1581,7 +1708,7 @@ void Rendering::LoadTextures(void)
 			{
 				if (this->instancedObjects[gb->GetModelID()].size() != 0)
 				{
-					if (!this->instancedObjects[gb->GetModelID()][0]->GetTexture()->isLoaded())
+					if (!this->instancedObjects[gb->GetModelID()][0]->GetTextures()[0]->isLoaded())
 					{
 						if (this->instancedObjects[gb->GetModelID()].size() > INSTANCE_AMOUNT)
 						{
@@ -1597,10 +1724,34 @@ void Rendering::LoadTextures(void)
 										tempName = tempName.substr(tempName.find_last_of("/") + 1);
 
 										std::string stringName(this->instancedObjects[gb->GetModelID()][k]->GetTextureName());
+										std::string normalMapName(this->instancedObjects[gb->GetModelID()][k]->GetNormalMapName());
+										std::string emissionMapName(this->instancedObjects[gb->GetModelID()][k]->GetEmissionMapName());
+										std::string roughnessMapName(this->instancedObjects[gb->GetModelID()][k]->GetRoughnessMapName());
+										std::string ambientMapName(this->instancedObjects[gb->GetModelID()][k]->GetAmbientMapName());
 										if (tempName == stringName)
 										{
-											this->instancedObjects[gb->GetModelID()][k]->GetTexture()->Load(tex.c_str());
-											this->instancedObjects[gb->GetModelID()][k]->GetTexture()->Upload(this->m_commandPool, this->graphicsQueue);
+											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[0]->Load(tex.c_str());
+											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[0]->Upload(this->m_commandPool, this->graphicsQueue);
+										}
+										if (tempName == normalMapName)
+										{
+											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[1]->Load(tex.c_str());
+											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[1]->Upload(this->m_commandPool, this->graphicsQueue);
+										}
+										if (tempName == emissionMapName)
+										{
+											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[2]->Load(tex.c_str());
+											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[2]->Upload(this->m_commandPool, this->graphicsQueue);
+										}
+										if (tempName == roughnessMapName)
+										{
+											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[3]->Load(tex.c_str());
+											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[3]->Upload(this->m_commandPool, this->graphicsQueue);
+										}
+										if (tempName == ambientMapName)
+										{
+											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[4]->Load(tex.c_str());
+											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[4]->Upload(this->m_commandPool, this->graphicsQueue);
 										}
 									}
 								}
@@ -1616,10 +1767,34 @@ void Rendering::LoadTextures(void)
 								tempName = tempName.substr(tempName.find_last_of("/") + 1);
 
 								std::string stringName(this->instancedObjects[gb->GetModelID()][0]->GetTextureName());
+								std::string normalMapName(this->instancedObjects[gb->GetModelID()][0]->GetNormalMapName());
+								std::string emissionMapName(this->instancedObjects[gb->GetModelID()][0]->GetEmissionMapName());
+								std::string roughnessMapName(this->instancedObjects[gb->GetModelID()][0]->GetRoughnessMapName());
+								std::string ambientMapName(this->instancedObjects[gb->GetModelID()][0]->GetAmbientMapName());
 								if (tempName == stringName)
 								{
-									this->instancedObjects[gb->GetModelID()][0]->GetTexture()->Load(tex.c_str());
-									this->instancedObjects[gb->GetModelID()][0]->GetTexture()->Upload(this->m_commandPool, this->graphicsQueue);
+									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[0]->Load(tex.c_str());
+									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[0]->Upload(this->m_commandPool, this->graphicsQueue);
+								}											 
+								if (tempName == normalMapName)				 
+								{											 
+									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[1]->Load(tex.c_str());
+									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[1]->Upload(this->m_commandPool, this->graphicsQueue);
+								}											 
+								if (tempName == emissionMapName)			 
+								{											 
+									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[2]->Load(tex.c_str());
+									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[2]->Upload(this->m_commandPool, this->graphicsQueue);
+								}											 										 
+								if (tempName == roughnessMapName)			 
+								{											 
+									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[3]->Load(tex.c_str());
+									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[3]->Upload(this->m_commandPool, this->graphicsQueue);
+								}											 
+								if (tempName == ambientMapName)				 
+								{											 
+									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[4]->Load(tex.c_str());
+									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[4]->Upload(this->m_commandPool, this->graphicsQueue);
 								}
 							}
 						}
@@ -1635,10 +1810,34 @@ void Rendering::LoadTextures(void)
 				tempName = tempName.substr(tempName.find_last_of("/") + 1);
 
 				std::string stringName(gb->GetTextureName());
+				std::string normalMapName(gb->GetNormalMapName());
+				std::string emissionMapName(gb->GetEmissionMapName());
+				std::string roughnessMapName(gb->GetRoughnessMapName());
+				std::string ambientlMapName(gb->GetAmbientMapName());
 				if (tempName == stringName)
 				{
-					gb->GetTexture()->Load(tex.c_str());
-					gb->GetTexture()->Upload(this->m_commandPool, this->graphicsQueue);
+					gb->GetTextures()[0]->Load(tex.c_str());
+					gb->GetTextures()[0]->Upload(this->m_commandPool, this->graphicsQueue);
+				}
+				if (tempName == normalMapName)
+				{
+					gb->GetTextures()[1]->Load(tex.c_str());
+					gb->GetTextures()[1]->Upload(this->m_commandPool, this->graphicsQueue);
+				}
+				if (tempName == emissionMapName)
+				{
+					gb->GetTextures()[2]->Load(tex.c_str());
+					gb->GetTextures()[2]->Upload(this->m_commandPool, this->graphicsQueue);
+				}
+				if (tempName == roughnessMapName)
+				{
+					gb->GetTextures()[3]->Load(tex.c_str());
+					gb->GetTextures()[3]->Upload(this->m_commandPool, this->graphicsQueue);
+				}
+				if (tempName == ambientlMapName)
+				{
+					gb->GetTextures()[4]->Load(tex.c_str());
+					gb->GetTextures()[4]->Upload(this->m_commandPool, this->graphicsQueue);
 				}
 			}
 		}
@@ -1715,24 +1914,24 @@ void Rendering::CreateBuffersForObjects(void)
 
 			gb->GetMesh().GetInitStatus() = true;
 
-			if (gb->GetIsInstanced())
+			if (gb->GetIsInstanced() && !gb->GetBufferCreated())
 			{
-				if (this->instancedObjects[gb->GetModelID()].size() != 0)
-				{
-					this->instancedObjects[gb->GetModelID()].push_back(gb);
-
-				}
-				else
-					this->instancedObjects[gb->GetModelID()].push_back(gb);
+				this->instancedObjects[gb->GetModelID()].push_back(gb);
 			}
 			else
 			{
-				gb->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gb->GetMesh().GetName()).size()));
-				CreateObjectBuffers
-				(
-					gb->GetMesh().GetVertexBuffer(), gb->GetMesh().GetIndexBuffer(), gb->GetMesh().GetUniformBuffer(), gb->GetMesh().GetVertexBufferMem(),
-					gb->GetMesh().GetIndexBufferMem(), gb->GetMesh().GetUniformBufferMem(), gb->GetMesh().GetName(), false
-				);
+				if (!gb->GetBufferCreated())
+				{
+					gb->GetBufferCreated() = true;
+
+					gb->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gb->GetMesh().GetName()).size()));
+					
+					CreateObjectBuffers
+					(
+						gb->GetMesh().GetVertexBuffer(), gb->GetMesh().GetIndexBuffer(), gb->GetMesh().GetUniformBuffer(), gb->GetMesh().GetVertexBufferMem(),
+						gb->GetMesh().GetIndexBufferMem(), gb->GetMesh().GetUniformBufferMem(), gb->GetMesh().GetName(), false
+					);
+				}
 			}
 		}
 	}
@@ -1745,22 +1944,34 @@ void Rendering::CreateBuffersForObjects(void)
 			{
 				for (ui32 i = 0; i < gbs.size() / INSTANCE_AMOUNT; i++)
 				{
-					gbs[i]->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gbs[i]->GetMesh().GetName()).size()));
-					CreateObjectBuffers
-					(
-						gbs[i]->GetMesh().GetVertexBuffer(), gbs[i]->GetMesh().GetIndexBuffer(), gbs[i]->GetMesh().GetUniformBuffer(), gbs[i]->GetMesh().GetVertexBufferMem(),
-						gbs[i]->GetMesh().GetIndexBufferMem(), gbs[i]->GetMesh().GetUniformBufferMem(), gbs[i]->GetMesh().GetName(), true
-					);
+					if (!gbs[i]->GetBufferCreated())
+					{
+						gbs[i]->GetBufferCreated() = true;
+
+						gbs[i]->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gbs[i]->GetMesh().GetName()).size()));
+						
+						CreateObjectBuffers
+						(
+							gbs[i]->GetMesh().GetVertexBuffer(), gbs[i]->GetMesh().GetIndexBuffer(), gbs[i]->GetMesh().GetUniformBuffer(), gbs[i]->GetMesh().GetVertexBufferMem(),
+							gbs[i]->GetMesh().GetIndexBufferMem(), gbs[i]->GetMesh().GetUniformBufferMem(), gbs[i]->GetMesh().GetName(), true
+						);
+					}
 				}
 			}
 			else
 			{
-				gbs[0]->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gbs[0]->GetMesh().GetName()).size()));
-				CreateObjectBuffers
-				(
-					gbs[0]->GetMesh().GetVertexBuffer(), gbs[0]->GetMesh().GetIndexBuffer(), gbs[0]->GetMesh().GetUniformBuffer(), gbs[0]->GetMesh().GetVertexBufferMem(),
-					gbs[0]->GetMesh().GetIndexBufferMem(), gbs[0]->GetMesh().GetUniformBufferMem(), gbs[0]->GetMesh().GetName(), true
-				);
+				if (!gbs[0]->GetBufferCreated())
+				{
+					gbs[0]->GetBufferCreated() = true;
+
+					gbs[0]->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gbs[0]->GetMesh().GetName()).size()));
+					
+					CreateObjectBuffers
+					(
+						gbs[0]->GetMesh().GetVertexBuffer(), gbs[0]->GetMesh().GetIndexBuffer(), gbs[0]->GetMesh().GetUniformBuffer(), gbs[0]->GetMesh().GetVertexBufferMem(),
+						gbs[0]->GetMesh().GetIndexBufferMem(), gbs[0]->GetMesh().GetUniformBufferMem(), gbs[0]->GetMesh().GetName(), true
+					);
+				}
 			}
 		}
 	}
@@ -2168,43 +2379,51 @@ void Rendering::Cleanup()
 	//Wait for the device idle.
 	VK_CHECK(vkDeviceWaitIdle(this->logicalDevice));
 
+	//Destroy semaphores and clear waitstage mask.
+	this->waitStageMask.clear();
+	vkDestroySemaphore(this->logicalDevice, this->imageAvailableSemaphore, nullptr);
+	vkDestroySemaphore(this->logicalDevice, this->renderingFinishedSemaphore, nullptr);
+
 	//Destroy depth image.
 	this->depthImage.Destroy();
 
 	//Destroy descriptorSet layout and descriptorpool.
-	if(this->descriptorSets.size() > 0)
+	if (this->descriptorSets.size() > 0)
+	{
 		vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->descriptorSets.size()), this->descriptorSets.data());
+		this->descriptorSets.clear();
+	}
 	if (this->instancedDescriptorSets.size() > 0)
+	{
 		vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->instancedDescriptorSets.size()), this->instancedDescriptorSets.data());
-	vkDestroyDescriptorSetLayout(this->logicalDevice, this->descriptorSetLayout, nullptr);
+		this->instancedDescriptorSets.clear();
+	}
 	vkDestroyDescriptorPool(this->logicalDevice, this->descriptorPool, nullptr);
+	vkDestroyDescriptorSetLayout(this->logicalDevice, this->descriptorSetLayout, nullptr);
 
 	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
 	{
-		vkFreeMemory(this->logicalDevice, gb->GetMesh().GetIndexBufferMem(), nullptr);
 		vkDestroyBuffer(this->logicalDevice, gb->GetMesh().GetIndexBuffer(), nullptr);
+		vkFreeMemory(this->logicalDevice, gb->GetMesh().GetIndexBufferMem(), nullptr);
 
-		vkFreeMemory(this->logicalDevice, gb->GetMesh().GetVertexBufferMem(), nullptr);
 		vkDestroyBuffer(this->logicalDevice, gb->GetMesh().GetVertexBuffer(), nullptr);
+		vkFreeMemory(this->logicalDevice, gb->GetMesh().GetVertexBufferMem(), nullptr);
 
-		vkFreeMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), nullptr);
 		vkDestroyBuffer(this->logicalDevice, gb->GetMesh().GetUniformBuffer(), nullptr);
+		vkFreeMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), nullptr);
 
 		gb->GetMesh().Cleanup();
-
-		gb->GetTexture()->Release();
+		for(Texture* tex : gb->GetTextures())
+		{
+			tex->Release();
+		}
 	}
-
 
 	for (Model* model : this->models)
 	{
 		delete model;
 	}
 
-	//Destroy semaphores and clear waitstage mask.
-	this->waitStageMask.clear();
-	vkDestroySemaphore(this->logicalDevice, this->imageAvailableSemaphore, nullptr);
-	vkDestroySemaphore(this->logicalDevice, this->renderingFinishedSemaphore, nullptr);
 
 	//Free memory of command buffers.
 	vkFreeCommandBuffers(this->logicalDevice, this->m_commandPool, static_cast<ui32>(this->commandBuffers.size()), this->commandBuffers.data());

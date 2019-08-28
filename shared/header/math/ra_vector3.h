@@ -35,6 +35,14 @@ namespace Math
 		return false;
 	}
 
+
+	inline bool operator!=(const Vec3& lhs, const Vec3& rhs)
+	{
+		if (lhs.x != rhs.x || lhs.y != rhs.y || lhs.z != rhs.z)
+			return true;
+		return false;
+	}
+
 	//Add each vector3 value with its counterpart.
 	inline Vec3 operator+(const Vec3& lhs, const Vec3& rhs)
 	{

@@ -5,18 +5,23 @@
 #include "math/ra_vector3.h"
 #include "math/ra_mat4x4.h"
 
+class Gameobject;
+
 class Camera
 {
 public:
 	void Initialize();
 
 	void Update();
+	void SetTarget(Gameobject* target);
 
 	float& GetOffset();
 	Math::Vec3& GetPostion();
 	Math::Vec3& GetRotation();
 	Math::Vec3& GetDirection();
 	Math::Vec3& GetOrientation();
+	Math::Vec3& GetTargetOffset();
+	Gameobject* GetTarget();
 	Math::Mat4x4 GetVPMatrix();
 	Math::Mat4x4 GetViewMatrix();
 	Math::Mat4x4 GetProjectionMatrix();
@@ -29,6 +34,8 @@ private:
 	Math::Vec3 rotation;
 	Math::Vec3 direction;
 	Math::Vec3 orientation;
+	Math::Vec3 targetOffset;
+	Gameobject* target;
 
 	float offset;
 

@@ -19,7 +19,7 @@ void SceneManager::Initialize()
 		renderingSceneRoot->MakeRoot();
 		renderingSceneRoot->SetName("RenderingSceneRoot");
 
-		std::vector<Gameobject*> cubes(10000);
+		std::vector<Gameobject*> cubes(1000);
 
 			float xOffset = -2.5f;
 			float yOffset = 2.0f;
@@ -31,9 +31,9 @@ void SceneManager::Initialize()
 			cubes[i] = new Gameobject;
 
 			if(i == 0)
-				cubes[i]->Initialize(renderingSceneRoot, s.c_str(), "cube.obj", "cubeTexture.png", true, true, true);
+				cubes[i]->Initialize(renderingSceneRoot, s.c_str(), "cube.obj", std::vector<const char*>{"cubeTexture.png"}, true, true, true);
 			else
-				cubes[i]->Initialize(cubes[0], s.c_str(), "cube.obj", "cubeTexture.png", true, true, true);
+				cubes[i]->Initialize(cubes[0], s.c_str(), "cube.obj", std::vector<const char*>{"cubeTexture.png"}, true, true, true);
 
 			cubes[i]->GetTransform().scaling *= 0.1f;
 
@@ -43,14 +43,14 @@ void SceneManager::Initialize()
 				yOffset -= 1.0f;
 			}
 
-			cubes[i]->GetTransform().position = Math::Vec3{ 0.0f, (yOffset * 5.0f) + 70.0f, (xOffset * 5.0f) - 70.0f };
+			cubes[i]->GetTransform().position = Math::Vec3{ (yOffset * 5.0f) + 70.0f, 0.0f, (xOffset * 5.0f) - 70.0f };
 
 			xOffset += 1.0f;
 		}
 
 		Camera* cam = new Camera;
 		cam->Initialize();
-		cam->GetPostion() = Math::Vec3{ 0, 10.0f, 0.0f };
+		cam->GetPostion() = Math::Vec3{ 0.0f, -20.0f, -1.0f };
 		
 
 		renderingExampleScene = GetVariableName(renderingSceneRoot);
@@ -66,17 +66,26 @@ void SceneManager::Initialize()
 		mainSceneRoot->SetName("MainSceneRoot");
 
 		Gameobject* player = new Gameobject;
-		player->Initialize(mainSceneRoot, "Player", "cube.obj", nullptr, true, true, false);
-		player->GetMaterial().fragColor = fColorRGBA{ 1, 0, 0, 1 };
+		player->Initialize(mainSceneRoot, "Player", "player.obj", 
+			std::vector<const char*>{"playerBase.png", "playerNormal.png", "playerEmission.png", 
+			"playerRoughness.png", "playerAmbient.png"}, true, true, false);
 		player->GetTransform().scaling *= 0.3f;
+		player->GetTransform().position = Math::Vec3{0, 0, 0};
 
-		Gameobject* frustum = new Gameobject;
-		frustum->Initialize(mainSceneRoot, "Frustum", "cube.obj", nullptr, true, true, false);
-		frustum->GetMaterial().fragColor = fColorRGBA{ 1, 1, 1, 1 };
+		Gameobject* player2 = new Gameobject;
+		player2->Initialize(mainSceneRoot, "Player2", "player.obj",
+			std::vector<const char*>{"playerBase.png", "playerNormal.png", "playerEmission.png",
+			"playerRoughness.png", "playerAmbient.png"}, true, true, false);
+		player2->GetTransform().scaling *= 0.3f;
+		player2->GetTransform().position = Math::Vec3{ 0, -100, 0 };
+		player2->GetTransform().eulerRotation = Math::Vec3{ 0, 0, 180 };
+		player2->GetMaterial().fragColor = fColorRGBA{1, 0, 0, 1};
 
 		Camera* cam = new Camera;
 		cam->Initialize();
-		cam->GetPostion() = Math::Vec3{ 0.0f, -10.0f, 2.0f };
+		cam->GetPostion() = Math::Vec3{ 0.0f, -1.0f, 22.0f };
+		cam->GetTargetOffset() = Math::Vec3{ 0.0f, 5, 0.0f };
+		cam->SetTarget(player);
 
 		mainSceneName = GetVariableName(mainSceneRoot);
 		this->scenes[mainSceneName] = mainSceneRoot;
@@ -85,7 +94,7 @@ void SceneManager::Initialize()
 	#pragma endregion
 
 	this->currentSceneName = mainSceneName;
-	this->currentScene = this->scenes[mainSceneName];
+	this->currentScene = this->scenes[this->currentSceneName];
 	this->currentCamera = this->cameras[this->currentScene];
 }
 

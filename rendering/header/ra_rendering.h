@@ -35,7 +35,6 @@ class Rendering
 		Math::Mat4x4 viewMatrix;
 		Math::Mat4x4 projectionMatrix;
 		fColorRGBA color;
-		fColorRGBA specColor;
 		Math::Vec3 lightPosition;
 		float ambientVal;
 		float specularVal;
@@ -47,7 +46,6 @@ class Rendering
 		Math::Mat4x4 viewMatrix;
 		Math::Mat4x4 projectionMatrix;
 		fColorRGBA color;
-		fColorRGBA specColor;
 		Math::Vec3 lightPosition;
 		float ambientVal;
 		float specularVal;

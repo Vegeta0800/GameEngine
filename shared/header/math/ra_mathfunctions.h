@@ -31,6 +31,15 @@ namespace Math
 		};
 	}
 
+	inline float Dot(const fColorRGBA& lhs, const fColorRGBA& rhs)
+	{
+		return
+			(lhs.r * rhs.r) +
+			(lhs.g * rhs.g) +
+			(lhs.b * rhs.b) +
+			(lhs.a * rhs.a);
+	}
+
 	inline Vec3 operator*(const Vec3& lhs, const Math::Mat4x4& mat)
 	{
 		return Vec3

@@ -17,7 +17,7 @@ class Gameobject
 {
 public:
 	Gameobject();
-	void Initialize(Gameobject* parent = nullptr, std::string name = "", const char* meshName = "", const char* textureName = "", bool render = false, bool act = true, bool instanced = false);
+	void Initialize(Gameobject* parent = nullptr, std::string name = "", const char* meshName = "", const std::vector<const char*>& textureNames = std::vector<const char*>(), bool render = false, bool act = true, bool instanced = false);
 	void Initialize(Gameobject* copyGb, std::string name = "", bool render = false);
 	void Update();
 	void Cleanup();
@@ -40,7 +40,7 @@ public:
 	Gameobject* GetParent();
 	Transform& GetTransform();
 	Mesh& GetMesh();
-	Texture* GetTexture();
+	std::vector<Texture*> GetTextures();
 	BoxCollider* GetBoxCollider();
 	Math::Mat4x4 GetModelMatrix();
 	Material& GetMaterial();
@@ -50,6 +50,10 @@ public:
 	std::string GetName();
 	const char* GetMeshName();
 	const char* GetTextureName();
+	const char* GetNormalMapName();
+	const char* GetEmissionMapName();
+	const char* GetRoughnessMapName();
+	const char* GetAmbientMapName();
 
 	bool hasRoot();
 	bool isMoved();
@@ -58,6 +62,7 @@ public:
 	bool& GetIsActive();
 	bool& GetIsInstanced();
 	bool& GetIsInFrustum();
+	bool& GetBufferCreated();
 
 	bool operator==(Gameobject* other);
 
@@ -67,6 +72,10 @@ private:
 	std::string name;
 	const char* meshName;
 	const char* textureName;
+	const char* normalMapName;
+	const char* emissionMapName;
+	const char* roughnessMapName;
+	const char* ambientMapName;
 
 	Transform transform;
 	
@@ -80,7 +89,7 @@ private:
 	Material material;
 
 	Mesh mesh;
-	Texture* texture;
+	std::vector<Texture*> textures;
 
 	BoxCollider* collider;
 
@@ -92,6 +101,7 @@ private:
 	bool isRoot = false;
 	bool moved = false;
 	bool renderable = false;
+	bool bufferCreated = false;
 	bool active = false;
 	bool instanced = false;
 	bool inFrustum = true;
