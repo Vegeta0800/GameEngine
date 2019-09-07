@@ -1,24 +1,19 @@
-
 #pragma once
 
 //EXTERNAL INCLUDES
 #include <list>
 //INTERNAL INCLUDES
 #include "math/ra_mat4x4.h"
-#include "ra_mesh.h"
-#include "ra_component.h"
 #include "ra_transform.h"
-#include "ra_material.h"
-#include "ra_boxcollider.h"
+#include "components/ra_components.h"
 
-class Texture;
+class Component;
 
 class Gameobject
 {
 public:
 	Gameobject();
-	void Initialize(Gameobject* parent = nullptr, std::string name = "", const char* meshName = "", const std::vector<const char*>& textureNames = std::vector<const char*>(), bool render = false, bool act = true, bool instanced = false);
-	void Initialize(Gameobject* copyGb, std::string name = "", bool render = false);
+	void Initialize(Gameobject* parent = nullptr, std::string name = "");
 	void Update();
 	void Cleanup();
 	
@@ -35,29 +30,25 @@ public:
 	void AddChild(Gameobject* child);
 	void AddComponent(Component* component);
 
+	void SetHitObject(Gameobject* gb);
+
 	std::list<Gameobject*> GetChildren();
 	std::list<Gameobject*> GetAllChildren();
 	Gameobject* GetParent();
+	Gameobject* GetHitObject();
 	Transform& GetTransform();
-	Mesh& GetMesh();
-	std::vector<Texture*> GetTextures();
-	BoxCollider* GetBoxCollider();
 	Math::Mat4x4 GetModelMatrix();
-	Material& GetMaterial();
 
 	ui32& GetModelID();
 
 	std::string GetName();
-	const char* GetMeshName();
-	const char* GetTextureName();
-	const char* GetNormalMapName();
-	const char* GetEmissionMapName();
-	const char* GetRoughnessMapName();
-	const char* GetAmbientMapName();
 
 	bool hasRoot();
 	bool isMoved();
 
+	bool& hasCollision();
+	bool& isTrigger();
+	bool& isColliding();
 	bool& GetIsRenderable();
 	bool& GetIsActive();
 	bool& GetIsInstanced();
@@ -67,16 +58,12 @@ public:
 	bool operator==(Gameobject* other);
 
 private:
+	Gameobject* hitObject = nullptr;
+
 	void ListAllChildren(std::list<Gameobject*>& list);
 
 	std::string name;
-	const char* meshName;
-	const char* textureName;
-	const char* normalMapName;
-	const char* emissionMapName;
-	const char* roughnessMapName;
-	const char* ambientMapName;
-
+	
 	Transform transform;
 	
 	Math::Vec3 oldPosition;
@@ -86,13 +73,6 @@ private:
 
 	Gameobject* parent;
 
-	Material material;
-
-	Mesh mesh;
-	std::vector<Texture*> textures;
-
-	BoxCollider* collider;
-
 	ui32 modelID;
 
 	std::list<Gameobject*> children;
@@ -100,9 +80,13 @@ private:
 
 	bool isRoot = false;
 	bool moved = false;
-	bool renderable = false;
+	bool renderable = true;
 	bool bufferCreated = false;
-	bool active = false;
+	bool active = true;
 	bool instanced = false;
 	bool inFrustum = true;
+
+	bool collision = true;
+	bool colliding = false;
+	bool trigger = false;
 }; 

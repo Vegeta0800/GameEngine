@@ -9,8 +9,8 @@ class Texture
 public:
 	Texture();
 
-	void Load(const char* texturePath);
-	void Upload(VkCommandPool commandPool, VkQueue queue);
+	void Load();
+	void Upload();
 	void Release();
 
 	byte* GetPixels();
@@ -21,7 +21,7 @@ public:
 	int GetByteSize();
 
 	std::string GetName();
-	const char* GetPath();
+	std::string& GetPath();
 
 	bool isLoaded();
 
@@ -38,7 +38,7 @@ private:
 	byte* pixels = nullptr;
 	std::string name;
 
-	const char* path;
+	std::string path;
 
 	bool loaded = false;
 	bool uploaded = false;

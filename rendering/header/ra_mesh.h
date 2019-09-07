@@ -2,17 +2,21 @@
 #pragma once
 //EXTERNAL INCLUDES
 #include <vulkan/vulkan.h>
+#include <vector>
+#include <string>
 //INTERNAL INCLUDES
 #include "ra_types.h"
+
+class Texture;
 
 class Mesh
 {
 public:
-	Mesh();
+	Mesh(std::vector<Texture*> textures);
 
 	void SetIndicesSize(ui32 size);
 
-	const char* GetName();
+	std::string GetName();
 
 	VkBuffer& GetVertexBuffer();
 	VkBuffer& GetIndexBuffer();
@@ -22,12 +26,16 @@ public:
 	VkDeviceMemory& GetIndexBufferMem();
 	VkDeviceMemory& GetUniformBufferMem();
 
+	std::vector<Texture*> GetTextures();
+
 	ui32 GetIndicesSize();
 	bool& GetInitStatus();
 
-	void CreateMesh(const char* name);
+	void CreateMesh(std::string name);
 	void Cleanup();
 private:
+
+	std::vector<Texture*> textures;
 
 	VkBuffer vertexBuffer;
 	VkBuffer indexBuffer;
@@ -39,7 +47,7 @@ private:
 
 	ui32 indicesSize = 0;
 
-	const char* name;
+	std::string name;
 
 	bool initialized = false;
 };

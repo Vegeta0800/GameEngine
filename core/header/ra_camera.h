@@ -5,7 +5,7 @@
 #include "math/ra_vector3.h"
 #include "math/ra_mat4x4.h"
 
-class Gameobject;
+class Transform;
 
 class Camera
 {
@@ -13,7 +13,7 @@ public:
 	void Initialize();
 
 	void Update();
-	void SetTarget(Gameobject* target);
+	void SetTarget(Transform* target);
 
 	float& GetOffset();
 	Math::Vec3& GetPostion();
@@ -21,7 +21,7 @@ public:
 	Math::Vec3& GetDirection();
 	Math::Vec3& GetOrientation();
 	Math::Vec3& GetTargetOffset();
-	Gameobject* GetTarget();
+	Transform* GetTarget();
 	Math::Mat4x4 GetVPMatrix();
 	Math::Mat4x4 GetViewMatrix();
 	Math::Mat4x4 GetProjectionMatrix();
@@ -35,7 +35,7 @@ private:
 	Math::Vec3 direction;
 	Math::Vec3 orientation;
 	Math::Vec3 targetOffset;
-	Gameobject* target;
+	Transform* target;
 
 	float offset;
 

@@ -75,7 +75,7 @@ void Camera::UpdatePosition()
 	}
 
 	if (this->target != nullptr)
-		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position, this->target->GetTransform().position + this->targetOffset, this->orientation);
+		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position, this->target->position + this->targetOffset, this->orientation);
 	else
 		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position, this->position + (this->direction * this->offset), this->orientation);
 
@@ -93,12 +93,12 @@ Math::Vec3& Camera::GetRotation()
 	return this->rotation;
 }
 
-Gameobject* Camera::GetTarget()
+Transform* Camera::GetTarget()
 {
 	return this->target;
 }
 
-void Camera::SetTarget(Gameobject* target)
+void Camera::SetTarget(Transform* target)
 {
 	this->target = target;
 }

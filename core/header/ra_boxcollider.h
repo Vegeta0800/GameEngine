@@ -5,12 +5,12 @@
 #include "math/ra_vector3.h"
 #include "math/ra_mat4x4.h"
 
-class Gameobject;
+class Transform;
 
 class BoxCollider
 {
 public:
-	BoxCollider(Gameobject* gb);
+	BoxCollider(Transform* transform);
 
 	void SetMinMax(Math::Vec3 min, Math::Vec3 max);
 
@@ -18,5 +18,5 @@ public:
 	Math::Vec3 GetMax();
 private:
 	std::vector<Math::Vec3> minMax;
-	Gameobject* gb;
+	Transform* transform;
 };

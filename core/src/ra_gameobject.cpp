@@ -1,99 +1,28 @@
 #include "ra_gameobject.h"
 #include "ra_texture.h"
 #include "ra_boxcollider.h"
+#include "components/ra_component.h"
+#include "physic/ra_rigidbody.h"
 
 Gameobject::Gameobject() :
 	isRoot(false)
 {
-	this->Initialize();
 }
 
-void Gameobject::Initialize(Gameobject* parent, std::string name, const char* meshName, const std::vector<const char*>& textureNames, bool render, bool act, bool instanced)
+void Gameobject::Initialize(Gameobject* parent, std::string name)
 {
 	this->parent = nullptr;
 	this->transform = Transform();
 	this->oldPosition = Math::Vec3::zero;
 	this->oldEulerRotation = Math::Vec3::zero;
-	this->transform.position = Math::Vec3{ 0, 0, 0.0f };
+	this->transform.position = Math::Vec3{ 0, 0, 0 };
 	this->transform.eulerRotation = Math::Vec3{0, 0, 0};
 	this->transform.rotation = Math::Quaternion::identity;
-	this->transform.scaling = Math::Vec3::unit_scale;
-
+	this->transform.scaling = Math::Vec3::unit_scale * 0.2f;
 	this->name = name;
-	this->meshName = meshName;
-
-	this->inFrustum = true;
-
-	this->collider = new BoxCollider(this);
-
-	this->textureName = "empty.png";
-	this->normalMapName = "empty.png";
-	this->emissionMapName = "empty.png";
-	this->roughnessMapName = "empty.png";
-	this->ambientMapName = "empty.png";
-
-	if (textureNames.size() != 0)
-	{
-		if(textureNames.size() >= 1)
-			this->textureName = textureNames[0];
-		if (textureNames.size() >= 2)
-			this->normalMapName = textureNames[1];
-		if (textureNames.size() >= 3)
-			this->emissionMapName = textureNames[2];
-		if (textureNames.size() >= 4)
-			this->roughnessMapName = textureNames[3];
-		if (textureNames.size() == 5)
-			this->ambientMapName = textureNames[4];
-	}
-
-	this->active = act;
-	this->renderable = render;
-	this->instanced = instanced;
-
-	this->mesh.CreateMesh(meshName);
-	this->textures.resize(5);
-	this->textures[0] = new Texture;
-	this->textures[1] = new Texture;
-	this->textures[2] = new Texture;
-	this->textures[3] = new Texture;
-	this->textures[4] = new Texture;
-
-	this->material.fragColor = fColorRGBA{ 1, 1, 1, 1 };
-	this->material.ambientValue = 0.1f;
-	this->material.specularValue = 16.0f;
 
 	if (parent != nullptr)
 		this->SetParent(parent);
-}
-
-void Gameobject::Initialize(Gameobject* copyGb, std::string name, bool render)
-{
-	this->parent = nullptr;
-	this->transform = copyGb->GetTransform();
-	this->oldPosition = copyGb->GetTransform().position;
-	this->oldEulerRotation = copyGb->GetTransform().eulerRotation;
-	this->transform.position = copyGb->GetTransform().position;
-	this->transform.eulerRotation = copyGb->GetTransform().eulerRotation;
-	this->transform.rotation = copyGb->GetTransform().rotation;
-	this->transform.scaling = copyGb->GetTransform().scaling;
-
-	this->name = name;
-	this->meshName = copyGb->GetMeshName();
-	this->textureName = copyGb->GetTextureName();
-
-	this->mesh.CreateMesh(this->meshName);
-
-	this->active = copyGb->GetIsActive();
-	this->renderable = render;
-	this->instanced = copyGb->GetIsInstanced();
-
-	//this->material.fragColor = Math::Vec3{ 0.164f, 0.749f, 0.874f };
-	this->material.fragColor = fColorRGBA{ 0, 1, 0, 1 };
-	this->material.ambientValue = 0.1f;
-	this->material.specularValue = 16.0f;
-
-	if (copyGb->GetParent() != nullptr)
-		this->SetParent(copyGb->GetParent());
 }
 
 void Gameobject::Update()
@@ -108,16 +37,10 @@ void Gameobject::Update()
 			child->Update();
 	}
 
+
 	for (Component* component : this->components)
 	{
 	}
-
-	//if (this->parent != nullptr && this->parent->isRoot)
-	//{
-	//	this->transform.eulerRotation.z += 0.5f;
-	//	this->transform.eulerRotation.y -= 0.5f;
-	//	this->transform.eulerRotation.x += 0.5f;
-	//}
 
 	if (!(this->transform.position == this->oldPosition) || !(this->transform.eulerRotation == this->oldEulerRotation))
 	{
@@ -145,6 +68,7 @@ void Gameobject::Cleanup()
 
 	for (Component* component : this->components)
 	{
+		
 		delete component;
 	}
 
@@ -247,6 +171,11 @@ void Gameobject::AddChild(Gameobject* child)
 	}
 }
 
+void Gameobject::SetHitObject(Gameobject* gb)
+{
+	this->hitObject = gb;
+}
+
 std::list<Gameobject*> Gameobject::GetChildren()
 {
 	return this->children;
@@ -264,14 +193,34 @@ Gameobject* Gameobject::GetParent()
 	return this->parent;
 }
 
+Gameobject* Gameobject::GetHitObject()
+{
+	return this->hitObject;
+}
+
 bool Gameobject::hasRoot()
 {
 	return this->isRoot;
 }
 
+bool& Gameobject::hasCollision()
+{
+	return this->collision;
+}
+
 bool Gameobject::isMoved()
 {
 	return this->moved;
+}
+
+bool& Gameobject::isTrigger()
+{
+	return this->trigger;
+}
+
+bool& Gameobject::isColliding()
+{
+	return this->colliding;
 }
 
 void Gameobject::ListAllChildren(std::list<Gameobject*>& list)
@@ -306,64 +255,9 @@ Math::Mat4x4 Gameobject::GetModelMatrix()
 	return Math::CreateModelMatrix((this->transform.position * 0.1f), this->transform.scaling, this->transform.eulerRotation);
 }
 
-Material& Gameobject::GetMaterial()
-{
-	return this->material;
-}
-
 std::string Gameobject::GetName()
 {
 	return this->name;
-}
-
-const char* Gameobject::GetMeshName()
-{
-	return this->meshName;
-}
-
-const char* Gameobject::GetTextureName()
-{
-	return this->textureName;
-}
-
-const char* Gameobject::GetNormalMapName()
-{
-	return this->normalMapName;
-}
-
-const char* Gameobject::GetEmissionMapName()
-{
-	return this->emissionMapName;
-}
-
-const char* Gameobject::GetRoughnessMapName()
-{
-	return this->roughnessMapName;
-}
-
-const char* Gameobject::GetAmbientMapName()
-{
-	return this->ambientMapName;
-}
-
-std::vector<Texture*> Gameobject::GetTextures()
-{
-	return this->textures;
-}
-
-BoxCollider* Gameobject::GetBoxCollider()
-{
-	return this->collider;
-}
-
-Mesh& Gameobject::GetMesh()
-{
-	return this->mesh;
-}
-
-ui32& Gameobject::GetModelID()
-{
-	return this->modelID;
 }
 
 bool& Gameobject::GetIsActive()
@@ -389,5 +283,10 @@ bool& Gameobject::GetIsInFrustum()
 bool& Gameobject::GetBufferCreated()
 {
 	return this->bufferCreated;
+}
+
+ui32& Gameobject::GetModelID()
+{
+	return this->modelID;
 }
 

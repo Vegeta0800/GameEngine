@@ -60,8 +60,8 @@ public:
 	
 	ui32 FindMemoryTypeIndex(ui32 typeFilter, VkMemoryPropertyFlags properties);
 
-	std::vector<Vertex> GetVerticesOfObject(const char* name);
-	std::vector<ui32> GetIndicesOfObject(const char* name);
+	std::vector<Vertex> GetVerticesOfObject(std::string name);
+	std::vector<ui32> GetIndicesOfObject(std::string name);
 
 	VkDevice GetLogicalDevice(void);
 	VkFormat GetSupportedFormats(VkPhysicalDevice phyDevice, const std::vector<VkFormat>& formats, VkImageTiling tiling, VkFormatFeatureFlags featureFlags);
@@ -80,6 +80,9 @@ public:
 	template <typename T>
 	void CreateBufferOnGPU(std::vector<T> data, VkBufferUsageFlags usage, VkBuffer& buffer, VkDeviceMemory& memory);
 	void CreateDescriptorSets();
+
+	VkCommandPool GetCommandPool();
+	VkQueue GetGraphicsQueue();
 private:
 	void DrawFrame(void);
 	void UpdateMVP(); //TODO
@@ -115,7 +118,6 @@ private:
 
 	void CreateObjectBuffers(VkBuffer& vertexBuffer, VkBuffer& indexBuffer, VkBuffer& uniformBuffer, VkDeviceMemory& vertexBufferMemory, VkDeviceMemory& indexBufferMemory, VkDeviceMemory& uniformBufferMemory, const char* meshName, bool instanced);
 
-	void LoadTextures(void);
 	void LoadModels(void);
 
 	void CreateBuffersForObjects(void);

@@ -6,8 +6,10 @@
 
 // INTERNAL INCLUDES
 #include "ra_model.h"
+#include "ra_boxcollider.h"
 #include "ra_mesh.h"
 #include "ra_gameobject.h"
+#include "ra_material.h"
 #include "ra_rendering.h"
 #include "ra_vkcheck.h"
 #include "ra_types.h"
@@ -19,6 +21,7 @@
 #include "math/ra_mat4x4.h"
 #include "ra_depthimage.h"
 #include "ra_scenemanager.h"
+#include "ra_scene.h"
 #include "ra_camera.h"
 #include "math/ra_mathfunctions.h"
 
@@ -42,7 +45,6 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 	this->LoadModels();
 	this->instancedObjects.resize(this->models.size());
 	this->CreateBuffersForObjects();
-	this->LoadTextures();
 	this->CreateDescriptorPool();
 	this->CreateDescriptorSets();
 	this->CreateCommandbuffer();
@@ -54,7 +56,7 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 	//Finished initializing.
 	this->initialized = true;
 	this->planes.resize(6);
-	this->gameObjectCount = static_cast<ui32>(SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size());
+	this->gameObjectCount = SceneManager::GetInstancePtr()->GetActiveScene()->GetObjectCount();
 
 	Window::GetInstancePtr()->SetState(Window::WindowState::Started);
 	Window::GetInstancePtr()->ShowActiveWindow();
@@ -63,9 +65,9 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 //Update function called every frame.
 void Rendering::Update()
 {
-	if (SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size() > this->gameObjectCount)
+	if (SceneManager::GetInstancePtr()->GetActiveScene()->GetObjectCount() > this->gameObjectCount)
 	{
-		this->gameObjectCount = static_cast<ui32>(SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren().size());
+		this->gameObjectCount = SceneManager::GetInstancePtr()->GetActiveScene()->GetObjectCount();
 	}
 
 	this->ExtractPlanes(SceneManager::GetInstancePtr()->GetActiveCamera()->GetVPMatrix());
@@ -76,8 +78,10 @@ void Rendering::Update()
 
 void Rendering::UpdateMVP()
 {
+	Scene* scene = SceneManager::GetInstancePtr()->GetActiveScene();
+
 	//Update MVP Matrix for every object in the scene that isnt instanced
-	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+	for (Gameobject* gb : scene->GetSceneRoot()->GetAllChildren())
 	{
 		if (gb->GetIsRenderable() && gb->GetIsActive() && !gb->GetIsInstanced())
 		{
@@ -89,69 +93,69 @@ void Rendering::UpdateMVP()
 			{
 				VertexInputInfo vertexInfo;
 				vertexInfo.modelMatrix = gb->GetModelMatrix();
-				vertexInfo.lightPosition = SceneManager::GetInstancePtr()->GetActiveCamera()->GetPostion() - gb->GetTransform().position;
+				vertexInfo.lightPosition = SceneManager::GetInstancePtr()->GetActiveCamera()->GetPostion();
 				vertexInfo.viewMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetViewMatrix();
 				vertexInfo.projectionMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix();
-				vertexInfo.color = gb->GetMaterial().fragColor;
+				vertexInfo.color = scene->GetMaterial(gb->GetName())->fragColor;
 				vertexInfo.ambientVal = 0.1f;
 				vertexInfo.specularVal = 16.0f;
 
 				void* data;
-				vkMapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
+				vkMapMemory(this->logicalDevice, scene->GetMesh(gb->GetName())->GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
 				memcpy(data, &vertexInfo, sizeof(vertexInfo));
-				vkUnmapMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem());
+				vkUnmapMemory(this->logicalDevice, scene->GetMesh(gb->GetName())->GetUniformBufferMem());
 			}
 		}
 	}
 
-	//Update MVP Matrix for instanced objects
-	for (std::vector<Gameobject*> gbs : this->instancedObjects)
-	{
-		if (gbs.size() != 0)
-		{
-			VertexInstancedInputInfo vertexInfo;
+	////Update MVP Matrix for instanced objects
+	//for (std::vector<Gameobject*> gbs : this->instancedObjects)
+	//{
+	//	if (gbs.size() != 0)
+	//	{
+	//		VertexInstancedInputInfo vertexInfo;
 
-			vertexInfo.lightPosition = gbs[0]->GetTransform().position;
-			vertexInfo.viewMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetViewMatrix();
-			vertexInfo.projectionMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix();
-			vertexInfo.ambientVal = 0.1f;
-			vertexInfo.specularVal = 16.0f;
-			vertexInfo.color = gbs[0]->GetMaterial().fragColor;
-			if (gbs.size() > INSTANCE_AMOUNT)
-			{
-				ui32 k = 0;
-				while (gbs.size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
-				{
-					for (size_t i = 0; i < INSTANCE_AMOUNT; i++)
-					{
-						gbs[i + (k * INSTANCE_AMOUNT)]->GetIsInFrustum() = SceneManager::GetInstancePtr()->GetActiveCamera()->FrustumCulling(gbs[i]->GetBoxCollider()->GetMin(), gbs[i]->GetBoxCollider()->GetMax(), this->planes);
+	//		vertexInfo.lightPosition = SceneManager::GetInstancePtr()->GetActiveCamera()->GetPostion();
+	//		vertexInfo.viewMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetViewMatrix();
+	//		vertexInfo.projectionMatrix = SceneManager::GetInstancePtr()->GetActiveCamera()->GetProjectionMatrix();
+	//		vertexInfo.ambientVal = 0.1f;
+	//		vertexInfo.specularVal = 16.0f;
+	//		vertexInfo.color = gbs[0]->GetMaterial().fragColor;
+	//		if (gbs.size() > INSTANCE_AMOUNT)
+	//		{
+	//			ui32 k = 0;
+	//			while (gbs.size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
+	//			{
+	//				for (size_t i = 0; i < INSTANCE_AMOUNT; i++)
+	//				{
+	//					gbs[i + (k * INSTANCE_AMOUNT)]->GetIsInFrustum() = SceneManager::GetInstancePtr()->GetActiveCamera()->FrustumCulling(gbs[i]->GetBoxCollider()->GetMin(), gbs[i]->GetBoxCollider()->GetMax(), this->planes);
 
-						if (gbs[i + (k * INSTANCE_AMOUNT)]->GetIsRenderable() && gbs[i + (k * INSTANCE_AMOUNT)]->GetIsInFrustum())
-						{
-							vertexInfo.modelMatrix[i] = gbs[i + (k * INSTANCE_AMOUNT)]->GetModelMatrix();
-						}
-					}
+	//					if (gbs[i + (k * INSTANCE_AMOUNT)]->GetIsRenderable() && gbs[i + (k * INSTANCE_AMOUNT)]->GetIsInFrustum())
+	//					{
+	//						vertexInfo.modelMatrix[i] = gbs[i + (k * INSTANCE_AMOUNT)]->GetModelMatrix();
+	//					}
+	//				}
 
-					void* data;
-					vkMapMemory(this->logicalDevice, gbs[k]->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
-					memcpy(data, &vertexInfo, sizeof(vertexInfo));
-					vkUnmapMemory(this->logicalDevice, gbs[k]->GetMesh().GetUniformBufferMem());
-					k++;
-				}
-			}
-			else
-			{
-				for (size_t i = 0; i < gbs.size(); i++)
-				{
-					vertexInfo.modelMatrix[i] = gbs[i]->GetModelMatrix();
-				}
-				void* data;
-				vkMapMemory(this->logicalDevice, gbs[0]->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
-				memcpy(data, &vertexInfo, sizeof(vertexInfo));
-				vkUnmapMemory(this->logicalDevice, gbs[0]->GetMesh().GetUniformBufferMem());
-			}
-		}
-	}
+	//				void* data;
+	//				vkMapMemory(this->logicalDevice, gbs[k]->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
+	//				memcpy(data, &vertexInfo, sizeof(vertexInfo));
+	//				vkUnmapMemory(this->logicalDevice, gbs[k]->GetMesh().GetUniformBufferMem());
+	//				k++;
+	//			}
+	//		}
+	//		else
+	//		{
+	//			for (size_t i = 0; i < gbs.size(); i++)
+	//			{
+	//				vertexInfo.modelMatrix[i] = gbs[i]->GetModelMatrix();
+	//			}
+	//			void* data;
+	//			vkMapMemory(this->logicalDevice, gbs[0]->GetMesh().GetUniformBufferMem(), 0, sizeof(vertexInfo), 0, &data);
+	//			memcpy(data, &vertexInfo, sizeof(vertexInfo));
+	//			vkUnmapMemory(this->logicalDevice, gbs[0]->GetMesh().GetUniformBufferMem());
+	//		}
+	//	}
+	//}
 }
 
 void Rendering::ExtractPlanes(Math::Mat4x4 matrix)
@@ -886,7 +890,7 @@ void Rendering::CreateDescriptorPool()
 	samplerAmbientMapPoolSize.descriptorCount = 1;
 	descriptorPoolSizes.push_back(samplerAmbientMapPoolSize);
 
-	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetSceneRoot()->GetAllChildren())
 	{
 		if (gb->GetIsRenderable() && !gb->GetIsInstanced())
 		{
@@ -894,7 +898,7 @@ void Rendering::CreateDescriptorPool()
 		}
 	}
 
-	for (std::vector<Gameobject*> gbs : this->instancedObjects)
+	/*for (std::vector<Gameobject*> gbs : this->instancedObjects)
 	{
 		if (gbs.size() != 0)
 		{
@@ -915,7 +919,7 @@ void Rendering::CreateDescriptorPool()
 				this->descriptorPoolSize++;
 			}
 		}
-	}
+	}*/
 
 	//Descriptorpool info using pool sizes.
 	VkDescriptorPoolCreateInfo descriptorPoolInfo;
@@ -932,10 +936,12 @@ void Rendering::CreateDescriptorPool()
 
 void Rendering::CreateDescriptorSet(Gameobject* gb, ui32 setIndex, bool instanced)
 {
+	Mesh* mesh = SceneManager::GetInstancePtr()->GetActiveScene()->GetMesh(gb->GetName());
+
 	std::vector<VkWriteDescriptorSet> descriptorSetWrites;
 	//Uniform buffer info (for mvp matrix and fragInfos in vertex shader).
 	VkDescriptorBufferInfo uniformDescriptorBufferInfo;
-	uniformDescriptorBufferInfo.buffer = gb->GetMesh().GetUniformBuffer();
+	uniformDescriptorBufferInfo.buffer = mesh->GetUniformBuffer();
 	uniformDescriptorBufferInfo.offset = 0;
 
 	if(instanced)
@@ -964,8 +970,8 @@ void Rendering::CreateDescriptorSet(Gameobject* gb, ui32 setIndex, bool instance
 
 	//Sampler info (for texcoords in fragment shader).
 	VkDescriptorImageInfo descriptorSamplerInfo;
-	descriptorSamplerInfo.sampler = gb->GetTextures()[0]->GetSampler();
-	descriptorSamplerInfo.imageView = gb->GetTextures()[0]->GetImageView();
+	descriptorSamplerInfo.sampler = mesh->GetTextures()[0]->GetSampler();
+	descriptorSamplerInfo.imageView = mesh->GetTextures()[0]->GetImageView();
 	descriptorSamplerInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	//Sampler write using descriptorSamplerInfo.
@@ -989,8 +995,8 @@ void Rendering::CreateDescriptorSet(Gameobject* gb, ui32 setIndex, bool instance
 
 	//Sampler info (for texcoords normalMap in fragment shader).
 	VkDescriptorImageInfo descriptorNormalMapInfo;
-	descriptorNormalMapInfo.sampler = gb->GetTextures()[1]->GetSampler();
-	descriptorNormalMapInfo.imageView = gb->GetTextures()[1]->GetImageView();
+	descriptorNormalMapInfo.sampler = mesh->GetTextures()[1]->GetSampler();
+	descriptorNormalMapInfo.imageView = mesh->GetTextures()[1]->GetImageView();
 	descriptorNormalMapInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	//Sampler write using descriptorSamplerInfo.
@@ -1014,8 +1020,8 @@ void Rendering::CreateDescriptorSet(Gameobject* gb, ui32 setIndex, bool instance
 
 	//Sampler info (for texcoords normalMap in fragment shader).
 	VkDescriptorImageInfo descriptorEmissionMapInfo;
-	descriptorEmissionMapInfo.sampler = gb->GetTextures()[2]->GetSampler();
-	descriptorEmissionMapInfo.imageView = gb->GetTextures()[2]->GetImageView();
+	descriptorEmissionMapInfo.sampler = mesh->GetTextures()[2]->GetSampler();
+	descriptorEmissionMapInfo.imageView = mesh->GetTextures()[2]->GetImageView();
 	descriptorEmissionMapInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	//Sampler write using descriptorSamplerInfo.
@@ -1039,8 +1045,8 @@ void Rendering::CreateDescriptorSet(Gameobject* gb, ui32 setIndex, bool instance
 
 	//Sampler info (for texcoords normalMap in fragment shader).
 	VkDescriptorImageInfo descriptorRoughnessMapInfo;
-	descriptorRoughnessMapInfo.sampler = gb->GetTextures()[3]->GetSampler();
-	descriptorRoughnessMapInfo.imageView = gb->GetTextures()[3]->GetImageView();
+	descriptorRoughnessMapInfo.sampler = mesh->GetTextures()[3]->GetSampler();
+	descriptorRoughnessMapInfo.imageView = mesh->GetTextures()[3]->GetImageView();
 	descriptorRoughnessMapInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	//Sampler write using descriptorSamplerInfo.
@@ -1064,8 +1070,8 @@ void Rendering::CreateDescriptorSet(Gameobject* gb, ui32 setIndex, bool instance
 
 	//Sampler info (for texcoords normalMap in fragment shader).
 	VkDescriptorImageInfo descriptorAmbientMapInfo;
-	descriptorAmbientMapInfo.sampler = gb->GetTextures()[4]->GetSampler();
-	descriptorAmbientMapInfo.imageView = gb->GetTextures()[4]->GetImageView();
+	descriptorAmbientMapInfo.sampler = mesh->GetTextures()[4]->GetSampler();
+	descriptorAmbientMapInfo.imageView = mesh->GetTextures()[4]->GetImageView();
 	descriptorAmbientMapInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
 	//Sampler write using descriptorSamplerInfo.
@@ -1100,7 +1106,7 @@ void Rendering::CreateDescriptorSets()
 	std::vector<VkDescriptorSetLayout> layouts;
 	std::vector<VkDescriptorSetLayout> instLayouts;
 
-	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetSceneRoot()->GetAllChildren())
 	{
 		if (gb->GetIsRenderable() && !gb->GetIsInstanced())
 		{
@@ -1695,155 +1701,6 @@ void Rendering::CreateBufferOnGPU(std::vector<T> data, VkBufferUsageFlags usage,
 	vkFreeMemory(this->logicalDevice, stagingBufferMemory, nullptr);
 }
 
-//Load texture.
-void Rendering::LoadTextures(void)
-{
-	std::vector<std::string> paths = Application::GetInstancePtr()->GetFilesystem()->FilesInDirectory("textures");
-
-	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
-	{
-		if (gb->GetIsRenderable())
-		{
-			if (gb->GetIsInstanced())
-			{
-				if (this->instancedObjects[gb->GetModelID()].size() != 0)
-				{
-					if (!this->instancedObjects[gb->GetModelID()][0]->GetTextures()[0]->isLoaded())
-					{
-						if (this->instancedObjects[gb->GetModelID()].size() > INSTANCE_AMOUNT)
-						{
-							ui32 k = 0;
-							while (this->instancedObjects[gb->GetModelID()].size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
-							{
-								if (this->instancedObjects[gb->GetModelID()][k]->GetIsRenderable())
-								{
-									for (std::string tex : paths)
-									{
-										std::string tempName(tex);
-
-										tempName = tempName.substr(tempName.find_last_of("/") + 1);
-
-										std::string stringName(this->instancedObjects[gb->GetModelID()][k]->GetTextureName());
-										std::string normalMapName(this->instancedObjects[gb->GetModelID()][k]->GetNormalMapName());
-										std::string emissionMapName(this->instancedObjects[gb->GetModelID()][k]->GetEmissionMapName());
-										std::string roughnessMapName(this->instancedObjects[gb->GetModelID()][k]->GetRoughnessMapName());
-										std::string ambientMapName(this->instancedObjects[gb->GetModelID()][k]->GetAmbientMapName());
-										if (tempName == stringName)
-										{
-											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[0]->Load(tex.c_str());
-											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[0]->Upload(this->m_commandPool, this->graphicsQueue);
-										}
-										if (tempName == normalMapName)
-										{
-											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[1]->Load(tex.c_str());
-											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[1]->Upload(this->m_commandPool, this->graphicsQueue);
-										}
-										if (tempName == emissionMapName)
-										{
-											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[2]->Load(tex.c_str());
-											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[2]->Upload(this->m_commandPool, this->graphicsQueue);
-										}
-										if (tempName == roughnessMapName)
-										{
-											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[3]->Load(tex.c_str());
-											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[3]->Upload(this->m_commandPool, this->graphicsQueue);
-										}
-										if (tempName == ambientMapName)
-										{
-											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[4]->Load(tex.c_str());
-											this->instancedObjects[gb->GetModelID()][k]->GetTextures()[4]->Upload(this->m_commandPool, this->graphicsQueue);
-										}
-									}
-								}
-								k++;
-							}
-						}
-						else if (this->instancedObjects[gb->GetModelID()][0]->GetIsRenderable())
-						{
-							for (std::string tex : paths)
-							{
-								std::string tempName(tex);
-
-								tempName = tempName.substr(tempName.find_last_of("/") + 1);
-
-								std::string stringName(this->instancedObjects[gb->GetModelID()][0]->GetTextureName());
-								std::string normalMapName(this->instancedObjects[gb->GetModelID()][0]->GetNormalMapName());
-								std::string emissionMapName(this->instancedObjects[gb->GetModelID()][0]->GetEmissionMapName());
-								std::string roughnessMapName(this->instancedObjects[gb->GetModelID()][0]->GetRoughnessMapName());
-								std::string ambientMapName(this->instancedObjects[gb->GetModelID()][0]->GetAmbientMapName());
-								if (tempName == stringName)
-								{
-									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[0]->Load(tex.c_str());
-									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[0]->Upload(this->m_commandPool, this->graphicsQueue);
-								}											 
-								if (tempName == normalMapName)				 
-								{											 
-									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[1]->Load(tex.c_str());
-									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[1]->Upload(this->m_commandPool, this->graphicsQueue);
-								}											 
-								if (tempName == emissionMapName)			 
-								{											 
-									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[2]->Load(tex.c_str());
-									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[2]->Upload(this->m_commandPool, this->graphicsQueue);
-								}											 										 
-								if (tempName == roughnessMapName)			 
-								{											 
-									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[3]->Load(tex.c_str());
-									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[3]->Upload(this->m_commandPool, this->graphicsQueue);
-								}											 
-								if (tempName == ambientMapName)				 
-								{											 
-									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[4]->Load(tex.c_str());
-									this->instancedObjects[gb->GetModelID()][0]->GetTextures()[4]->Upload(this->m_commandPool, this->graphicsQueue);
-								}
-							}
-						}
-					}
-					continue;
-				}
-			}
-
-			for (std::string tex : paths)
-			{
-				std::string tempName(tex);
-
-				tempName = tempName.substr(tempName.find_last_of("/") + 1);
-
-				std::string stringName(gb->GetTextureName());
-				std::string normalMapName(gb->GetNormalMapName());
-				std::string emissionMapName(gb->GetEmissionMapName());
-				std::string roughnessMapName(gb->GetRoughnessMapName());
-				std::string ambientlMapName(gb->GetAmbientMapName());
-				if (tempName == stringName)
-				{
-					gb->GetTextures()[0]->Load(tex.c_str());
-					gb->GetTextures()[0]->Upload(this->m_commandPool, this->graphicsQueue);
-				}
-				if (tempName == normalMapName)
-				{
-					gb->GetTextures()[1]->Load(tex.c_str());
-					gb->GetTextures()[1]->Upload(this->m_commandPool, this->graphicsQueue);
-				}
-				if (tempName == emissionMapName)
-				{
-					gb->GetTextures()[2]->Load(tex.c_str());
-					gb->GetTextures()[2]->Upload(this->m_commandPool, this->graphicsQueue);
-				}
-				if (tempName == roughnessMapName)
-				{
-					gb->GetTextures()[3]->Load(tex.c_str());
-					gb->GetTextures()[3]->Upload(this->m_commandPool, this->graphicsQueue);
-				}
-				if (tempName == ambientlMapName)
-				{
-					gb->GetTextures()[4]->Load(tex.c_str());
-					gb->GetTextures()[4]->Upload(this->m_commandPool, this->graphicsQueue);
-				}
-			}
-		}
-	}
-}
-
 //Load models.
 void Rendering::LoadModels(void)
 {
@@ -1857,11 +1714,13 @@ void Rendering::LoadModels(void)
 		this->models[i]->Create(paths[i].c_str());
 	}
 
-	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+	Scene* scene = SceneManager::GetInstancePtr()->GetActiveScene();
+
+	for (Gameobject* gb : scene->GetSceneRoot()->GetAllChildren())
 	{
 		for (ui32 i = 0; i < this->models.size(); i++)
 		{
-			std::string stringName(gb->GetMesh().GetName());
+			std::string stringName(scene->GetMesh(gb->GetName())->GetName());
 			if (this->models[i]->GetName() == stringName)
 			{
 				gb->GetModelID() = i;
@@ -1897,7 +1756,7 @@ void Rendering::LoadModels(void)
 						min.z = vertex.position.z;
 					}
 				}
-				gb->GetBoxCollider()->SetMinMax(min, max);
+				scene->GetBoxCollider(gb->GetName())->SetMinMax(min, max);
 			}
 		}
 	}
@@ -1905,14 +1764,16 @@ void Rendering::LoadModels(void)
 
 void Rendering::CreateBuffersForObjects(void)
 {
-	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+	Scene* scene = SceneManager::GetInstancePtr()->GetActiveScene();
+
+	for (Gameobject* gb : scene->GetSceneRoot()->GetAllChildren())
 	{
 		if (gb->GetIsRenderable())
 		{
-			if (gb->GetMesh().GetInitStatus())
+			if (scene->GetMesh(gb->GetName())->GetInitStatus())
 				continue;
 
-			gb->GetMesh().GetInitStatus() = true;
+			scene->GetMesh(gb->GetName())->GetInitStatus() = true;
 
 			if (gb->GetIsInstanced() && !gb->GetBufferCreated())
 			{
@@ -1924,57 +1785,72 @@ void Rendering::CreateBuffersForObjects(void)
 				{
 					gb->GetBufferCreated() = true;
 
-					gb->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gb->GetMesh().GetName()).size()));
-					
-					CreateObjectBuffers
-					(
-						gb->GetMesh().GetVertexBuffer(), gb->GetMesh().GetIndexBuffer(), gb->GetMesh().GetUniformBuffer(), gb->GetMesh().GetVertexBufferMem(),
-						gb->GetMesh().GetIndexBufferMem(), gb->GetMesh().GetUniformBufferMem(), gb->GetMesh().GetName(), false
+					scene->GetMesh(gb->GetName())->SetIndicesSize(
+						static_cast<ui32>(
+							this->GetIndicesOfObject(scene->GetMesh(gb->GetName())->GetName()).size()
+							)
 					);
-				}
-			}
-		}
-	}
 
-	for (std::vector<Gameobject*> gbs : this->instancedObjects)
-	{
-		if (gbs.size() != 0)
-		{
-			if (gbs.size() > INSTANCE_AMOUNT)
-			{
-				for (ui32 i = 0; i < gbs.size() / INSTANCE_AMOUNT; i++)
-				{
-					if (!gbs[i]->GetBufferCreated())
+					for (Texture* tex : scene->GetMesh(gb->GetName())->GetTextures())
 					{
-						gbs[i]->GetBufferCreated() = true;
-
-						gbs[i]->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gbs[i]->GetMesh().GetName()).size()));
-						
-						CreateObjectBuffers
-						(
-							gbs[i]->GetMesh().GetVertexBuffer(), gbs[i]->GetMesh().GetIndexBuffer(), gbs[i]->GetMesh().GetUniformBuffer(), gbs[i]->GetMesh().GetVertexBufferMem(),
-							gbs[i]->GetMesh().GetIndexBufferMem(), gbs[i]->GetMesh().GetUniformBufferMem(), gbs[i]->GetMesh().GetName(), true
-						);
+						tex->Load();
+						tex->Upload();
 					}
-				}
-			}
-			else
-			{
-				if (!gbs[0]->GetBufferCreated())
-				{
-					gbs[0]->GetBufferCreated() = true;
-
-					gbs[0]->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gbs[0]->GetMesh().GetName()).size()));
 					
 					CreateObjectBuffers
 					(
-						gbs[0]->GetMesh().GetVertexBuffer(), gbs[0]->GetMesh().GetIndexBuffer(), gbs[0]->GetMesh().GetUniformBuffer(), gbs[0]->GetMesh().GetVertexBufferMem(),
-						gbs[0]->GetMesh().GetIndexBufferMem(), gbs[0]->GetMesh().GetUniformBufferMem(), gbs[0]->GetMesh().GetName(), true
+						scene->GetMesh(gb->GetName())->GetVertexBuffer(), 
+						scene->GetMesh(gb->GetName())->GetIndexBuffer(), 
+						scene->GetMesh(gb->GetName())->GetUniformBuffer(), 
+						scene->GetMesh(gb->GetName())->GetVertexBufferMem(),
+						scene->GetMesh(gb->GetName())->GetIndexBufferMem(), 
+						scene->GetMesh(gb->GetName())->GetUniformBufferMem(), 
+						scene->GetMesh(gb->GetName())->GetName().c_str(), false
 					);
 				}
 			}
 		}
 	}
+
+	//for (std::vector<Gameobject*> gbs : this->instancedObjects)
+	//{
+	//	if (gbs.size() != 0)
+	//	{
+	//		if (gbs.size() > INSTANCE_AMOUNT)
+	//		{
+	//			for (ui32 i = 0; i < gbs.size() / INSTANCE_AMOUNT; i++)
+	//			{
+	//				if (!gbs[i]->GetBufferCreated())
+	//				{
+	//					gbs[i]->GetBufferCreated() = true;
+
+	//					gbs[i]->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gbs[i]->GetMesh().GetName()).size()));
+	//					
+	//					CreateObjectBuffers
+	//					(
+	//						gbs[i]->GetMesh().GetVertexBuffer(), gbs[i]->GetMesh().GetIndexBuffer(), gbs[i]->GetMesh().GetUniformBuffer(), gbs[i]->GetMesh().GetVertexBufferMem(),
+	//						gbs[i]->GetMesh().GetIndexBufferMem(), gbs[i]->GetMesh().GetUniformBufferMem(), gbs[i]->GetMesh().GetName(), true
+	//					);
+	//				}
+	//			}
+	//		}
+	//		else
+	//		{
+	//			if (!gbs[0]->GetBufferCreated())
+	//			{
+	//				gbs[0]->GetBufferCreated() = true;
+
+	//				gbs[0]->GetMesh().SetIndicesSize(static_cast<ui32>(this->GetIndicesOfObject(gbs[0]->GetMesh().GetName()).size()));
+	//				
+	//				CreateObjectBuffers
+	//				(
+	//					gbs[0]->GetMesh().GetVertexBuffer(), gbs[0]->GetMesh().GetIndexBuffer(), gbs[0]->GetMesh().GetUniformBuffer(), gbs[0]->GetMesh().GetVertexBufferMem(),
+	//					gbs[0]->GetMesh().GetIndexBufferMem(), gbs[0]->GetMesh().GetUniformBufferMem(), gbs[0]->GetMesh().GetName(), true
+	//				);
+	//			}
+	//		}
+	//	}
+	//}
 }
 
 //Record commands for the graphics queue.
@@ -1987,37 +1863,37 @@ void Rendering::RecordCommands()
 	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 	commandBufferBeginInfo.pInheritanceInfo = nullptr;
 
-	std::vector<Gameobject*> tempInstGbs;
+	std::vector<Gameobject*> tempInstGbs(0);
 
-	for (std::vector<Gameobject*> gbs : this->instancedObjects)
-	{
-		if (gbs.size() != 0)
-		{
-			if (gbs.size() > INSTANCE_AMOUNT)
-			{
-				ui32 k = 0;
-				while (gbs.size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
-				{
-					if (gbs[k]->GetIsRenderable() && gbs[k]->GetIsInFrustum() && gbs[k]->GetIsActive())
-					{
-						tempInstGbs.push_back(gbs[k]);
-					}
-					k++;
-				}
-			}
-			else if (gbs[0]->GetIsRenderable() && gbs[0]->GetIsInFrustum() && gbs[0]->GetIsActive())
-			{
-				tempInstGbs.push_back(gbs[0]);
-			}
-		}
-	}
+	//for (std::vector<Gameobject*> gbs : this->instancedObjects)
+	//{
+	//	if (gbs.size() != 0)
+	//	{
+	//		if (gbs.size() > INSTANCE_AMOUNT)
+	//		{
+	//			ui32 k = 0;
+	//			while (gbs.size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
+	//			{
+	//				if (gbs[k]->GetIsRenderable() && gbs[k]->GetIsInFrustum() && gbs[k]->GetIsActive())
+	//				{
+	//					tempInstGbs.push_back(gbs[k]);
+	//				}
+	//				k++;
+	//			}
+	//		}
+	//		else if (gbs[0]->GetIsRenderable() && gbs[0]->GetIsInFrustum() && gbs[0]->GetIsActive())
+	//		{
+	//			tempInstGbs.push_back(gbs[0]);
+	//		}
+	//	}
+	//}
 
-	std::vector<Gameobject*> tempGbs;
+	std::vector<std::string> tempGbs;
 
-	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetSceneRoot()->GetAllChildren())
 	{
 		if(!gb->GetIsInstanced() && gb->GetIsRenderable() && gb->GetIsInFrustum() && gb->GetIsActive())
-			tempGbs.push_back(gb);
+			tempGbs.push_back(gb->GetName());
 	}
 
 	//For every image in swapchain
@@ -2064,16 +1940,18 @@ void Rendering::RecordCommands()
 		//Define offset for drawing the mesh instances.
 		VkDeviceSize offsets[] = {0};
 
+		Scene* scene = SceneManager::GetInstancePtr()->GetActiveScene();
+
 		if (tempGbs.size() > 0)
 		{
 			vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipeline);
 
 			for (size_t j = 0; j < tempGbs.size(); j++)
 			{
-				vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempGbs[j]->GetMesh().GetVertexBuffer(), offsets);
-				vkCmdBindIndexBuffer(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+				vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &scene->GetMesh(tempGbs[j])->GetVertexBuffer(), offsets);
+				vkCmdBindIndexBuffer(this->commandBuffers[i], scene->GetMesh(tempGbs[j])->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 				vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->descriptorSets[j], 0, nullptr);
-				vkCmdDrawIndexed(this->commandBuffers[i], tempGbs[j]->GetMesh().GetIndicesSize(), 1, 0, 0, 0);
+				vkCmdDrawIndexed(this->commandBuffers[i], scene->GetMesh(tempGbs[j])->GetIndicesSize(), 1, 0, 0, 0);
 			}
 		}
 
@@ -2089,13 +1967,13 @@ void Rendering::RecordCommands()
 
 		vkCmdBindPipeline(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->instancePipeline);
 
-		for (size_t j = 0; j < tempInstGbs.size(); j++)
-		{
-			vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempInstGbs[j]->GetMesh().GetVertexBuffer(), offsets);
-			vkCmdBindIndexBuffer(this->commandBuffers[i], tempInstGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-			vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->instancedDescriptorSets[j], 0, nullptr);
-			vkCmdDrawIndexed(this->commandBuffers[i], tempInstGbs[j]->GetMesh().GetIndicesSize(), static_cast<ui32>(this->instancedObjects[tempInstGbs[j]->GetModelID()].size() / tempInstGbs.size()), 0, 0, 0);
-		}
+		//for (size_t j = 0; j < tempInstGbs.size(); j++)
+		//{
+		//	vkCmdBindVertexBuffers(this->commandBuffers[i], 0, 1, &tempInstGbs[j]->GetMesh().GetVertexBuffer(), offsets);
+		//	vkCmdBindIndexBuffer(this->commandBuffers[i], tempInstGbs[j]->GetMesh().GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
+		//	vkCmdBindDescriptorSets(this->commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, this->pipelineLayout, 0, 1, &this->instancedDescriptorSets[j], 0, nullptr);
+		//	vkCmdDrawIndexed(this->commandBuffers[i], tempInstGbs[j]->GetMesh().GetIndicesSize(), static_cast<ui32>(this->instancedObjects[tempInstGbs[j]->GetModelID()].size() / tempInstGbs.size()), 0, 0, 0);
+		//}
 
 		//End renderpass.
 		vkCmdEndRenderPass(this->commandBuffers[i]);
@@ -2273,7 +2151,7 @@ ui32 Rendering::FindMemoryTypeIndex(ui32 typeFilter, VkMemoryPropertyFlags prope
 	return 0;
 }
 
-std::vector<Vertex> Rendering::GetVerticesOfObject(const char * name)
+std::vector<Vertex> Rendering::GetVerticesOfObject(std::string name)
 {
 	for (ui32 i = 0; i < this->models.size(); i++)
 	{
@@ -2285,7 +2163,7 @@ std::vector<Vertex> Rendering::GetVerticesOfObject(const char * name)
 	return std::vector<Vertex>();
 }
 
-std::vector<ui32> Rendering::GetIndicesOfObject(const char * name)
+std::vector<ui32> Rendering::GetIndicesOfObject(std::string name)
 {
 	for (Model* model : this->models)
 	{
@@ -2295,6 +2173,16 @@ std::vector<ui32> Rendering::GetIndicesOfObject(const char * name)
 	}
 
 	return std::vector<ui32>();
+}
+
+VkCommandPool Rendering::GetCommandPool()
+{
+	return this->m_commandPool;
+}
+
+VkQueue Rendering::GetGraphicsQueue()
+{
+	return this->graphicsQueue;
 }
 
 //Get logical device.
@@ -2401,19 +2289,21 @@ void Rendering::Cleanup()
 	vkDestroyDescriptorPool(this->logicalDevice, this->descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(this->logicalDevice, this->descriptorSetLayout, nullptr);
 
-	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllChildren())
+	Scene* scene = SceneManager::GetInstancePtr()->GetActiveScene();
+
+	for (Gameobject* gb : scene->GetSceneRoot()->GetAllChildren())
 	{
-		vkDestroyBuffer(this->logicalDevice, gb->GetMesh().GetIndexBuffer(), nullptr);
-		vkFreeMemory(this->logicalDevice, gb->GetMesh().GetIndexBufferMem(), nullptr);
+		vkDestroyBuffer(this->logicalDevice, scene->GetMesh(gb->GetName())->GetIndexBuffer(), nullptr);
+		vkFreeMemory(this->logicalDevice, scene->GetMesh(gb->GetName())->GetIndexBufferMem(), nullptr);
 
-		vkDestroyBuffer(this->logicalDevice, gb->GetMesh().GetVertexBuffer(), nullptr);
-		vkFreeMemory(this->logicalDevice, gb->GetMesh().GetVertexBufferMem(), nullptr);
+		vkDestroyBuffer(this->logicalDevice, scene->GetMesh(gb->GetName())->GetVertexBuffer(), nullptr);
+		vkFreeMemory(this->logicalDevice, scene->GetMesh(gb->GetName())->GetVertexBufferMem(), nullptr);
 
-		vkDestroyBuffer(this->logicalDevice, gb->GetMesh().GetUniformBuffer(), nullptr);
-		vkFreeMemory(this->logicalDevice, gb->GetMesh().GetUniformBufferMem(), nullptr);
+		vkDestroyBuffer(this->logicalDevice, scene->GetMesh(gb->GetName())->GetUniformBuffer(), nullptr);
+		vkFreeMemory(this->logicalDevice, scene->GetMesh(gb->GetName())->GetUniformBufferMem(), nullptr);
 
-		gb->GetMesh().Cleanup();
-		for(Texture* tex : gb->GetTextures())
+		scene->GetMesh(gb->GetName())->Cleanup();
+		for(Texture* tex : scene->GetMesh(gb->GetName())->GetTextures())
 		{
 			tex->Release();
 		}

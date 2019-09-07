@@ -1,7 +1,9 @@
 #include "ra_mesh.h"
+#include "ra_texture.h"
 
-Mesh::Mesh()
+Mesh::Mesh(std::vector<Texture*> textures)
 {
+	this->textures = textures;
 }
 
 void Mesh::SetIndicesSize(ui32 size)
@@ -9,7 +11,7 @@ void Mesh::SetIndicesSize(ui32 size)
 	this->indicesSize = size;
 }
 
-const char* Mesh::GetName()
+std::string Mesh::GetName()
 {
 	return this->name;
 }
@@ -44,9 +46,14 @@ VkDeviceMemory& Mesh::GetIndexBufferMem()
 	return this->indexBufferMemory;
 }
 
-void Mesh::CreateMesh(const char* name)
+void Mesh::CreateMesh(std::string name)
 {
 	this->name = name;
+}
+
+std::vector<Texture*> Mesh::GetTextures()
+{
+	return this->textures;
 }
 
 ui32 Mesh::GetIndicesSize()

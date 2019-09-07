@@ -9,17 +9,16 @@ Texture::Texture()
 {
 }
 
-void Texture::Load(const char* texturePath)
+void Texture::Load()
 {
-	this->pixels = stbi_load(texturePath, &this->width, &this->height, &this->channels, STBI_rgb_alpha);
+	this->pixels = stbi_load(this->path.c_str(), &this->width, &this->height, &this->channels, STBI_rgb_alpha);
 	this->logicalDeviceHandle = Rendering::GetInstancePtr()->GetLogicalDevice();
 
-	std::string tempName(texturePath);
+	std::string tempName(this->path.c_str());
 
 	tempName = tempName.substr(tempName.find_last_of("/") + 1);
 
 	this->name = tempName;
-	this->path = texturePath;
 
 	if (this->pixels == nullptr)
 		throw;
@@ -27,8 +26,11 @@ void Texture::Load(const char* texturePath)
 	this->loaded = true;
 }
 
-void Texture::Upload(VkCommandPool commandPool, VkQueue queue)
+void Texture::Upload()
 {
+	VkCommandPool commandPool = Rendering::GetInstancePtr()->GetCommandPool();
+	VkQueue queue = Rendering::GetInstancePtr()->GetGraphicsQueue();
+
 	if (!this->loaded)
 		throw printf("Image not loaded!");
 	else if (this->uploaded)
@@ -150,7 +152,7 @@ int Texture::GetByteSize()
 	return this->width * this->height * 4;
 }
 
-const char* Texture::GetPath()
+std::string& Texture::GetPath()
 {
 	return this->path;
 }

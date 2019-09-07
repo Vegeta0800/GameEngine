@@ -6,8 +6,14 @@
 //INTERNAL INCLDUES
 #include "ra_utils.h"
 
-class Gameobject;
+class Scene;
 class Camera;
+
+class Rigidbody;
+class Gameobject;
+class BoxCollider;
+class Mesh;
+class Material;
 
 class SceneManager
 {
@@ -20,12 +26,13 @@ public:
 
 	void SwitchScene(std::string sceneName);
 
-	Gameobject* GetActiveScene();
+	Scene* GetActiveScene();
 	Camera* GetActiveCamera();
+
 private:
-	std::unordered_map<std::string, Gameobject*> scenes;
-	std::unordered_map<Gameobject*, Camera*> cameras;
-	Gameobject* currentScene;
+	std::unordered_map<std::string, Scene*> scenes;
+	std::unordered_map<Scene*, Camera*> cameras;
+	Scene* currentScene;
 	Camera* currentCamera;
 	std::string currentSceneName;
 

@@ -2,8 +2,9 @@
 #include "ra_types.h"
 #include "math/ra_vector3.h"
 
-struct Material
+class Material
 {
+public:
 	fColorRGBA fragColor;
 	float ambientValue;
 	float specularValue;
