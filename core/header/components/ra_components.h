@@ -54,6 +54,7 @@ struct RigidbodyValues
 	float airDensity;
 	float dragCoefficient;
 	float velocity;
+	float force;
 
 	Math::Vec3 gravityDir;
 	Math::Vec3 movementDir;

@@ -24,6 +24,7 @@ public:
 	ui32 GetObjectCount();
 	Gameobject* GetSceneRoot();
 	Gameobject* GetGameobject(std::string objectName);
+	std::vector<Gameobject*> GetAllGameobjects();
 	Material* GetMaterial(std::string objectName);
 	Mesh* GetMesh(std::string objectName);
 	BoxCollider* GetBoxCollider(std::string objectName);
@@ -35,6 +36,7 @@ private:
 	std::string sceneName;
 
 	std::vector<std::string> objects;
+	std::vector<Gameobject*> gameObjectVector;
 
 	std::unordered_map<std::string, Gameobject*> gameObjects;
 	std::unordered_map<std::string, Mesh*> meshes;

@@ -81,7 +81,7 @@ void Rendering::UpdateMVP()
 	Scene* scene = SceneManager::GetInstancePtr()->GetActiveScene();
 
 	//Update MVP Matrix for every object in the scene that isnt instanced
-	for (Gameobject* gb : scene->GetSceneRoot()->GetAllChildren())
+	for (Gameobject* gb : scene->GetAllGameobjects())
 	{
 		if (gb->GetIsRenderable() && gb->GetIsActive() && !gb->GetIsInstanced())
 		{
@@ -890,7 +890,7 @@ void Rendering::CreateDescriptorPool()
 	samplerAmbientMapPoolSize.descriptorCount = 1;
 	descriptorPoolSizes.push_back(samplerAmbientMapPoolSize);
 
-	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetSceneRoot()->GetAllChildren())
+	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllGameobjects())
 	{
 		if (gb->GetIsRenderable() && !gb->GetIsInstanced())
 		{
@@ -1106,7 +1106,7 @@ void Rendering::CreateDescriptorSets()
 	std::vector<VkDescriptorSetLayout> layouts;
 	std::vector<VkDescriptorSetLayout> instLayouts;
 
-	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetSceneRoot()->GetAllChildren())
+	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllGameobjects())
 	{
 		if (gb->GetIsRenderable() && !gb->GetIsInstanced())
 		{
@@ -1716,7 +1716,7 @@ void Rendering::LoadModels(void)
 
 	Scene* scene = SceneManager::GetInstancePtr()->GetActiveScene();
 
-	for (Gameobject* gb : scene->GetSceneRoot()->GetAllChildren())
+	for (Gameobject* gb : scene->GetAllGameobjects())
 	{
 		for (ui32 i = 0; i < this->models.size(); i++)
 		{
@@ -1766,7 +1766,7 @@ void Rendering::CreateBuffersForObjects(void)
 {
 	Scene* scene = SceneManager::GetInstancePtr()->GetActiveScene();
 
-	for (Gameobject* gb : scene->GetSceneRoot()->GetAllChildren())
+	for (Gameobject* gb : scene->GetAllGameobjects())
 	{
 		if (gb->GetIsRenderable())
 		{
@@ -1890,7 +1890,7 @@ void Rendering::RecordCommands()
 
 	std::vector<std::string> tempGbs;
 
-	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetSceneRoot()->GetAllChildren())
+	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllGameobjects())
 	{
 		if(!gb->GetIsInstanced() && gb->GetIsRenderable() && gb->GetIsInFrustum() && gb->GetIsActive())
 			tempGbs.push_back(gb->GetName());
@@ -2291,7 +2291,7 @@ void Rendering::Cleanup()
 
 	Scene* scene = SceneManager::GetInstancePtr()->GetActiveScene();
 
-	for (Gameobject* gb : scene->GetSceneRoot()->GetAllChildren())
+	for (Gameobject* gb : scene->GetAllGameobjects())
 	{
 		vkDestroyBuffer(this->logicalDevice, scene->GetMesh(gb->GetName())->GetIndexBuffer(), nullptr);
 		vkFreeMemory(this->logicalDevice, scene->GetMesh(gb->GetName())->GetIndexBufferMem(), nullptr);

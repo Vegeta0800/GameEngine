@@ -60,6 +60,11 @@ Gameobject* Scene::GetGameobject(std::string objectName)
 	return this->gameObjects[objectName];
 }
 
+std::vector<Gameobject*> Scene::GetAllGameobjects()
+{
+	return this->gameObjectVector;
+}
+
 Material* Scene::GetMaterial(std::string objectName)
 {
 	return this->materials[objectName];
@@ -117,4 +122,5 @@ void Scene::AddObject(std::string name, std::string modelPath, std::vector<std::
 	this->boxCollider[name] = new BoxCollider(&this->gameObjects[name]->GetTransform());
 
 	this->objects.push_back(name);
+	this->gameObjectVector.push_back(this->gameObjects[name]);
 }

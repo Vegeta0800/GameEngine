@@ -20,10 +20,12 @@ void SceneManager::Initialize()
 		mainSceneRoot->AddObject("Player", "player", std::vector<std::string>{"playerBase", "playerNormal", "playerEmission",
 			"playerRoughness", "playerAmbient"});
 
-		//player2->GetTransform().scaling *= 0.22f;
-		//player2->GetTransform().position = Math::Vec3{ 0, -140, 0 };
-		//player2->GetTransform().eulerRotation = Math::Vec3{ 0, 0, 180 };
-		//player2->GetMaterial().fragColor = fColorRGBA{1, 0, 0, 1};
+		mainSceneRoot->Initialize("MainSceneRoot");
+		mainSceneRoot->AddObject("Enemy", "player", std::vector<std::string>{"enemyBase", "playerNormal", "playerEmission",
+			"playerRoughness", "playerAmbient"});
+
+		mainSceneRoot->GetGameobject("Enemy")->GetTransform().position = Math::Vec3{ 0, 140, 0 };
+		mainSceneRoot->GetGameobject("Enemy")->GetTransform().eulerRotation = Math::Vec3{ 0, 0, 180 };
 
 		Camera* cam = new Camera;
 		cam->Initialize();

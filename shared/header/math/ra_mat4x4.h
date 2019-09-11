@@ -218,8 +218,8 @@ namespace Math
 		return Mat4x4
 		{
 			1, 0, 0, transformVec.x,
-			0, 1, 0, -transformVec.y,
-			0, 0, 1, transformVec.z,
+			0, 1, 0, transformVec.y,
+			0, 0, 1, -transformVec.z,
 			0, 0, 0, 1
 		};
 	}

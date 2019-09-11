@@ -10,26 +10,41 @@ Rigidbody::Rigidbody(Transform* transform)
 {
 	//this->collision = new Collision(gb);
 	this->transform = transform;
+	this->rigidBody.movementDir = Math::Vec3::neg_unit_y;
+	this->rigidBody.mass = 100.0f;
+	this->rigidBody.isEnabled = true;
+	this->rigidBody.force = 0.0f;
+	this->rigidBody.isKinematic = false;
+	this->rigidBody.gravityEnabled = false;
+	this->rigidBody.hasCollision = false;
+	this->rigidBody.isColliding = false;
+	this->rigidBody.airDensity = 1.20f;
+	this->rigidBody.dragCoefficient = 0.024f;
 	this->rigidBody.velocity = 0.0f;
-	this->rigidBody.movementDir = Math::Vec3::zero;
+
+	this->massOfCenter = 10000000.0f;
+	this->gravityCenter = Math::Vec3{ 0, -10000, 0 };
 }
 
 void Rigidbody::Update()
 {
-	//if(this->rigidBody.hasCollision)
-	//	this->collision->Update();
-
-	if (this->rigidBody.velocity != 0.0f)
+	if (this->rigidBody.isEnabled)
 	{
-		AddForce(this->rigidBody.movementDir, this->rigidBody.velocity);
-	}
+		//if(this->rigidBody.hasCollision)
+		//	this->collision->Update();
 
-	//Gravity
-	if (this->rigidBody.isEnabled && !this->rigidBody.isKinematic && this->rigidBody.gravityEnabled)
-	{
-		if (this->rigidBody.isColliding == false)
+		if (this->rigidBody.force != 0.0f)
 		{
-			Gravity();
+			AddForce(this->rigidBody.movementDir, this->rigidBody.force);
+		}
+
+		//Gravity
+		if (!this->rigidBody.isKinematic && this->rigidBody.gravityEnabled)
+		{
+			if (this->rigidBody.isColliding == false)
+			{
+				Gravity();
+			}
 		}
 	}
 }
@@ -40,7 +55,7 @@ void Rigidbody::Cleanup(void)
 
 void Rigidbody::AddForce(Math::Vec3 direction, float force)
 {
-	float v = CalculateVelocity((force / this->rigidBody.mass));
+	float v = CalculateVelocity((force));
 	this->transform->position += ((direction * v) * Application::GetInstancePtr()->GetDeltaTime());
 }
 
@@ -84,7 +99,5 @@ void Rigidbody::Gravity()
 
 float Rigidbody::CalculateVelocity(float force)
 {
-	return 
-		sqrt((2.0f * abs(force)) / 
-		(this->rigidBody.airDensity * this->rigidBody.dragCoefficient * 100.0f));
+	return force / this->rigidBody.mass;
 }
