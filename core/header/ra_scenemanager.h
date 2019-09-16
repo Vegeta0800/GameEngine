@@ -31,9 +31,7 @@ public:
 
 private:
 	std::unordered_map<std::string, Scene*> scenes;
-	std::unordered_map<Scene*, Camera*> cameras;
 	Scene* currentScene;
-	Camera* currentCamera;
 	std::string currentSceneName;
 
 };

@@ -11,28 +11,24 @@ Rigidbody::Rigidbody(Transform* transform)
 	//this->collision = new Collision(gb);
 	this->transform = transform;
 	this->rigidBody.movementDir = Math::Vec3::neg_unit_y;
-	this->rigidBody.mass = 100.0f;
+	this->rigidBody.mass = 1.0f;
 	this->rigidBody.isEnabled = true;
 	this->rigidBody.force = 0.0f;
 	this->rigidBody.isKinematic = false;
-	this->rigidBody.gravityEnabled = false;
+	this->rigidBody.gravityEnabled = true;
 	this->rigidBody.hasCollision = false;
 	this->rigidBody.isColliding = false;
 	this->rigidBody.airDensity = 1.20f;
 	this->rigidBody.dragCoefficient = 0.024f;
 	this->rigidBody.velocity = 0.0f;
 
-	this->massOfCenter = 10000000.0f;
-	this->gravityCenter = Math::Vec3{ 0, -10000, 0 };
+	this->massOfCenter = 12004000000.0f;
 }
 
 void Rigidbody::Update()
 {
 	if (this->rigidBody.isEnabled)
 	{
-		//if(this->rigidBody.hasCollision)
-		//	this->collision->Update();
-
 		if (this->rigidBody.force != 0.0f)
 		{
 			AddForce(this->rigidBody.movementDir, this->rigidBody.force);
@@ -58,16 +54,6 @@ void Rigidbody::AddForce(Math::Vec3 direction, float force)
 	float v = CalculateVelocity((force));
 	this->transform->position += ((direction * v) * Application::GetInstancePtr()->GetDeltaTime());
 }
-
-//Math::Vec3 Rigidbody::GetImpactDirection()
-//{
-//	return this->collision->GetImpactDirection();
-//}
-//
-//Math::Vec3 Rigidbody::GetImpactNormal()
-//{
-//	return this->collision->GetImpactNormal();
-//}
 
 bool Rigidbody::RayCast(Math::Vec3 start, Math::Vec3 end)
 {
@@ -100,4 +86,9 @@ void Rigidbody::Gravity()
 float Rigidbody::CalculateVelocity(float force)
 {
 	return force / this->rigidBody.mass;
+}
+
+Math::Vec3& Rigidbody::GetGravityCenter()
+{
+	return this->gravityCenter;
 }

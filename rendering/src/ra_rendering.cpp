@@ -87,7 +87,7 @@ void Rendering::UpdateMVP()
 		{
 			gb->GetIsInFrustum() = true;//SceneManager::GetInstancePtr()->GetActiveCamera()->FrustumCulling(gb->GetBoxCollider()->GetMin(), gb->GetBoxCollider()->GetMax(), this->planes);
 			
-			printf("%d \n", gb->GetIsInFrustum());
+			//printf("%d \n", gb->GetIsInFrustum());
 
 			if (gb->GetIsInFrustum())
 			{

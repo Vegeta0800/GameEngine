@@ -46,9 +46,6 @@ public:
 	bool hasRoot();
 	bool isMoved();
 
-	bool& hasCollision();
-	bool& isTrigger();
-	bool& isColliding();
 	bool& GetIsRenderable();
 	bool& GetIsActive();
 	bool& GetIsInstanced();
@@ -85,8 +82,4 @@ private:
 	bool active = true;
 	bool instanced = false;
 	bool inFrustum = true;
-
-	bool collision = true;
-	bool colliding = false;
-	bool trigger = false;
 }; 

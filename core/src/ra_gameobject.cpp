@@ -203,24 +203,9 @@ bool Gameobject::hasRoot()
 	return this->isRoot;
 }
 
-bool& Gameobject::hasCollision()
-{
-	return this->collision;
-}
-
 bool Gameobject::isMoved()
 {
 	return this->moved;
-}
-
-bool& Gameobject::isTrigger()
-{
-	return this->trigger;
-}
-
-bool& Gameobject::isColliding()
-{
-	return this->colliding;
 }
 
 void Gameobject::ListAllChildren(std::list<Gameobject*>& list)

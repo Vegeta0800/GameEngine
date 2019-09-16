@@ -30,7 +30,7 @@ Math::Vec3 BoxCollider::GetMin()
 		this->transform->position.z + projection.b,
 	};
 
-	return min;
+	return Math::Vec3{-50, -50, -50};
 }
 
 Math::Vec3 BoxCollider::GetMax()
@@ -47,6 +47,20 @@ Math::Vec3 BoxCollider::GetMax()
 		this->transform->position.z + projection.b,
 	};
 
-	return max;
+	return Math::Vec3{ 50, 50, 50 };
 }
 
+bool& BoxCollider::GetIsColliding()
+{
+	return this->isColliding;
+}
+
+bool& BoxCollider::hasCollision()
+{
+	return this->activeCollision;
+}
+
+bool& BoxCollider::isTrigger()
+{
+	return this->trigger;
+}

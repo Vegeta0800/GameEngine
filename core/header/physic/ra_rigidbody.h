@@ -24,6 +24,8 @@ public:
 	Math::Vec3 GetImpactDirection();
 	Math::Vec3 GetImpactNormal();
 
+	Math::Vec3& GetGravityCenter();
+
 	bool RayCast(Math::Vec3 start, Math::Vec3 end);
 	bool RayCast(Math::Vec3 start, Math::Vec3 end, RaycastInfo& hitInfo);
 	RigidbodyValues& GetRigidbodyValues();

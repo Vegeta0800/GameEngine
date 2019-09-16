@@ -22,6 +22,8 @@ namespace Math
 
 	inline fColorRGBA operator*(const fColorRGBA& vec4, Math::Mat4x4 mat)
 	{
+		mat = Math::Transpose(mat);
+
 		return fColorRGBA
 		{
 			mat.m11 * vec4.r + mat.m12 * vec4.g + mat.m13 * vec4.b + mat.m14 * vec4.a,
