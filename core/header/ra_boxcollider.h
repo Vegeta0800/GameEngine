@@ -16,6 +16,9 @@ public:
 
 	Math::Vec3 GetMin();
 	Math::Vec3 GetMax();
+
+	std::vector<Math::Vec3> GetMinMax();
+
 	bool& GetIsColliding();
 	bool& hasCollision();
 	bool& isTrigger();

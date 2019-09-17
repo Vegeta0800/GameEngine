@@ -30,7 +30,7 @@ Math::Vec3 BoxCollider::GetMin()
 		this->transform->position.z + projection.b,
 	};
 
-	return Math::Vec3{-50, -50, -50};
+	return min;
 }
 
 Math::Vec3 BoxCollider::GetMax()
@@ -47,7 +47,12 @@ Math::Vec3 BoxCollider::GetMax()
 		this->transform->position.z + projection.b,
 	};
 
-	return Math::Vec3{ 50, 50, 50 };
+	return max;
+}
+
+std::vector<Math::Vec3> BoxCollider::GetMinMax()
+{
+	return this->minMax;
 }
 
 bool& BoxCollider::GetIsColliding()

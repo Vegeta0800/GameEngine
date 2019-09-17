@@ -65,11 +65,15 @@ void Scene::UpdateCollisions()
 				{
 					if (checkedGameobjects.find(this->gameObjectVector[j]) == checkedGameobjects.end())
 					{
-						bool b = CheckCollision(this->gameObjectVector[i], this->gameObjectVector[j]);
-
-						if (b)
+						if (CheckCollision(this->gameObjectVector[i], this->gameObjectVector[j]))
 						{
-							printf("COLLIDING");
+							this->rigidBodies[this->gameObjectVector[i]->GetName()]->GetRigidbodyValues().isColliding = true;
+							this->rigidBodies[this->gameObjectVector[j]->GetName()]->GetRigidbodyValues().isColliding = true;
+						}
+						else
+						{
+							this->rigidBodies[this->gameObjectVector[i]->GetName()]->GetRigidbodyValues().isColliding = false;
+							this->rigidBodies[this->gameObjectVector[j]->GetName()]->GetRigidbodyValues().isColliding = false;
 						}
 					}
 				}
@@ -214,58 +218,34 @@ bool Scene::isProjectionIntersecting(Math::Vec3 aCorners[], Math::Vec3 bCorners[
 
 bool Scene::CheckCollision(Gameobject* gbA, Gameobject* gbB)
 {
-	Math::Mat4x4 aTemp = this->mainCamera->GetVPMatrix() *
-		Math::CreateModelMatrix((gbA->GetTransform().position), gbA->GetTransform().scaling, Math::Vec3::zero);
-
-	Math::Mat4x4 bTemp = this->mainCamera->GetVPMatrix() *
-		Math::CreateModelMatrix((gbB->GetTransform().position), gbB->GetTransform().scaling, Math::Vec3::zero);
-
 	std::string aString = gbA->GetName();
 	std::string bString = gbB->GetName();
 
-	Vec4 aCorners4[4] =
-	{
-		Vec4{this->boxCollider[aString]->GetMax().x , this->boxCollider[aString]->GetMax().y, 0.0f, 1.0f} * aTemp,
-		Vec4{this->boxCollider[aString]->GetMin().x , this->boxCollider[aString]->GetMax().y, 0.0f, 1.0f} * aTemp,
-		Vec4{this->boxCollider[aString]->GetMin().x , this->boxCollider[aString]->GetMin().y, 0.0f, 1.0f} * aTemp,
-		Vec4{this->boxCollider[aString]->GetMax().x , this->boxCollider[aString]->GetMin().y, 0.0f, 1.0f} * aTemp,
-	};																									    
-																										    
-	Vec4 bCorners4[4] =																					    
-	{																									    
-		Vec4{this->boxCollider[bString]->GetMax().x , this->boxCollider[bString]->GetMax().y, 0.0f, 1.0f} * bTemp,
-		Vec4{this->boxCollider[bString]->GetMin().x , this->boxCollider[bString]->GetMax().y, 0.0f, 1.0f} * bTemp,
-		Vec4{this->boxCollider[bString]->GetMin().x , this->boxCollider[bString]->GetMin().y, 0.0f, 1.0f} * bTemp,
-		Vec4{this->boxCollider[bString]->GetMax().x , this->boxCollider[bString]->GetMin().y, 0.0f, 1.0f} * bTemp,
-	};
+	Transform object1 = gbA->GetTransform();
+	Transform object2 = gbB->GetTransform();
 
-	Math::Vec3 aCorners[4] =
-	{
-		Math::Vec3{ aCorners4[0].r, aCorners4[0].g, 0.0f},
-		Math::Vec3{ aCorners4[1].r, aCorners4[1].g, 0.0f},
-		Math::Vec3{ aCorners4[2].r, aCorners4[2].g, 0.0f},
-		Math::Vec3{ aCorners4[3].r, aCorners4[3].g, 0.0f},
-	};
+	float object1Width = Math::Distance(
+		Math::Vec3{ this->boxCollider[aString]->GetMinMax()[1].x, this->boxCollider[aString]->GetMinMax()[1].y, 0 },
+		Math::Vec3{ this->boxCollider[aString]->GetMinMax()[0].x, this->boxCollider[aString]->GetMinMax()[1].y, 0}
+	);
 
-	Math::Vec3 bCorners[4] =
-	{
-		Math::Vec3{ bCorners4[0].r, bCorners4[0].g, 0.0f},
-		Math::Vec3{ bCorners4[1].r, bCorners4[1].g, 0.0f},
-		Math::Vec3{ bCorners4[2].r, bCorners4[2].g, 0.0f},
-		Math::Vec3{ bCorners4[3].r, bCorners4[3].g, 0.0f},
-	};
+	float object2Width = Math::Distance(
+			Math::Vec3{ this->boxCollider[aString]->GetMinMax()[1].x, this->boxCollider[aString]->GetMinMax()[1].y, 0 },
+			Math::Vec3{ this->boxCollider[aString]->GetMinMax()[0].x, this->boxCollider[aString]->GetMinMax()[1].y, 0 }
+	);
 
-	Math::Vec3 axis1 = GetAxis(aCorners[0], aCorners[1]);
-	if (!isProjectionIntersecting(aCorners, bCorners, axis1)) return false;
+	float object1Height = Math::Distance(
+		Math::Vec3{ this->boxCollider[bString]->GetMinMax()[1].x, this->boxCollider[bString]->GetMinMax()[1].y, 0 },
+		Math::Vec3{ this->boxCollider[bString]->GetMinMax()[1].x, this->boxCollider[bString]->GetMinMax()[0].y, 0 }
+	);
 
-	Math::Vec3 axis2 = GetAxis(aCorners[0], aCorners[3]);
-	if (!isProjectionIntersecting(aCorners, bCorners, axis2)) return false;
+	float object2Height = Math::Distance(
+		Math::Vec3{ this->boxCollider[bString]->GetMinMax()[1].x, this->boxCollider[bString]->GetMinMax()[1].y, 0 },
+		Math::Vec3{ this->boxCollider[bString]->GetMinMax()[1].x, this->boxCollider[bString]->GetMinMax()[0].y, 0 }
+	);
 
-	Math::Vec3 axis3 = GetAxis(bCorners[1], bCorners[2]);
-	if (!isProjectionIntersecting(aCorners, bCorners, axis3)) return false;
-
-	Math::Vec3 axis4 = GetAxis(bCorners[1], bCorners[0]);
-	if (!isProjectionIntersecting(aCorners, bCorners, axis4)) return false;
-
-	return true;
+	return (object1.position.x < object2.position.x + object2Width &&
+		object1.position.x + object1Width > object2.position.x &&
+		object1.position.y < object2.position.y + object2Height &&
+		object1.position.y + object1Height > object2.position.y);
 }

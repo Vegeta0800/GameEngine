@@ -1756,7 +1756,7 @@ void Rendering::LoadModels(void)
 						min.z = vertex.position.z;
 					}
 				}
-				scene->GetBoxCollider(gb->GetName())->SetMinMax(min, max);
+				scene->GetBoxCollider(gb->GetName())->SetMinMax(min - 8.0f, max + 8.0f);
 			}
 		}
 	}

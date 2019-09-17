@@ -75,7 +75,7 @@ void Camera::UpdatePosition()
 	}
 
 	if (this->target != nullptr)
-		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position, this->target->position + this->targetOffset, this->orientation);
+		this->viewMatrix = Math::CreateViewMatrixLookAt(this->target->position * 0.1f + this->targetOffset, this->target->position * 0.1f, this->orientation);
 	else
 		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position, this->position + (this->direction * this->offset), this->orientation);
 

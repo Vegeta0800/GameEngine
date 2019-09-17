@@ -18,8 +18,8 @@ void SceneManager::Initialize()
 		Scene* mainSceneRoot = new Scene;
 		Camera* cam = new Camera;
 		cam->Initialize();
-		//cam->GetPostion() = Math::Vec3{ 0.0f, -5.0f, 22.0f };
-		//cam->GetTargetOffset() = Math::Vec3{ 0.0f, 8, 0.0f };
+		cam->GetPostion() = Math::Vec3{ 0.0f, -5.0f, 22.0f };
+		cam->GetTargetOffset() = Math::Vec3{ 0.0f, -1.0f, 22.0f };
 
 		mainSceneRoot->Initialize("MainSceneRoot", cam);
 		mainSceneRoot->AddObject("Player", "player", std::vector<std::string>{"playerBase", "playerNormal", "playerEmission",
@@ -28,13 +28,13 @@ void SceneManager::Initialize()
 		mainSceneRoot->AddObject("Enemy", "player", std::vector<std::string>{"enemyBase", "playerNormal", "playerEmission",
 			"playerRoughness", "playerAmbient"});
 
-		mainSceneRoot->GetGameobject("Enemy")->GetTransform().position = Math::Vec3{ 0, 20, 0 };
+		mainSceneRoot->GetGameobject("Enemy")->GetTransform().position = Math::Vec3{ 0, 150, 0 };
 		mainSceneRoot->GetGameobject("Enemy")->GetTransform().eulerRotation = Math::Vec3{ 0, 0, 180 };
 
 		mainSceneRoot->GetRigidBody("Player")->GetGravityCenter() = mainSceneRoot->GetGameobject("Enemy")->GetTransform().position;
 		mainSceneRoot->GetRigidBody("Enemy")->GetRigidbodyValues().isEnabled = false;
 
-		//cam->SetTarget(&mainSceneRoot->GetGameobject("Player")->GetTransform());
+		cam->SetTarget(&mainSceneRoot->GetGameobject("Player")->GetTransform());
 
 		mainSceneName = GetVariableName(mainSceneRoot);
 		this->scenes[mainSceneName] = mainSceneRoot;
