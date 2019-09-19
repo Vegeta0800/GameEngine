@@ -37,11 +37,6 @@ void Gameobject::Update()
 			child->Update();
 	}
 
-
-	for (Component* component : this->components)
-	{
-	}
-
 	if (!(this->transform.position == this->oldPosition) || !(this->transform.eulerRotation == this->oldEulerRotation))
 	{
 		this->moved = true;
@@ -66,12 +61,6 @@ void Gameobject::Cleanup()
 		}
 	}
 
-	for (Component* component : this->components)
-	{
-		
-		delete component;
-	}
-
 	delete this;
 }
 
@@ -87,11 +76,6 @@ void Gameobject::SetParent(Gameobject* parent)
 void Gameobject::SetName(std::string name)
 {
 	this->name = name;
-}
-
-void Gameobject::AddComponent(Component* component)
-{
-	this->components.push_back(component);
 }
 
 void Gameobject::DeleteParent()
@@ -171,11 +155,6 @@ void Gameobject::AddChild(Gameobject* child)
 	}
 }
 
-void Gameobject::SetHitObject(Gameobject* gb)
-{
-	this->hitObject = gb;
-}
-
 std::list<Gameobject*> Gameobject::GetChildren()
 {
 	return this->children;
@@ -191,11 +170,6 @@ std::list<Gameobject*> Gameobject::GetAllChildren()
 Gameobject* Gameobject::GetParent()
 {
 	return this->parent;
-}
-
-Gameobject* Gameobject::GetHitObject()
-{
-	return this->hitObject;
 }
 
 bool Gameobject::hasRoot()

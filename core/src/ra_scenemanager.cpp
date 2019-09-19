@@ -5,6 +5,7 @@
 #include "ra_rendering.h"
 #include "ra_mesh.h"
 #include "ra_camera.h"
+#include "components/player/ra_player.h"
 #include "ra_scene.h"
 #include "physic/ra_rigidbody.h"
 
@@ -18,8 +19,8 @@ void SceneManager::Initialize()
 		Scene* mainSceneRoot = new Scene;
 		Camera* cam = new Camera;
 		cam->Initialize();
-		cam->GetPostion() = Math::Vec3{ 0.0f, -5.0f, 22.0f };
-		cam->GetTargetOffset() = Math::Vec3{ 0.0f, -1.0f, 22.0f };
+		cam->GetPostion() = Math::Vec3{ 0.0f, 5.0f, 230.0f };
+		cam->GetTargetOffset() = Math::Vec3{ 0.0f, 8.0f, 0.0f };
 
 		mainSceneRoot->Initialize("MainSceneRoot", cam);
 		mainSceneRoot->AddObject("Player", "player", std::vector<std::string>{"playerBase", "playerNormal", "playerEmission",
@@ -28,11 +29,15 @@ void SceneManager::Initialize()
 		mainSceneRoot->AddObject("Enemy", "player", std::vector<std::string>{"enemyBase", "playerNormal", "playerEmission",
 			"playerRoughness", "playerAmbient"});
 
-		mainSceneRoot->GetGameobject("Enemy")->GetTransform().position = Math::Vec3{ 0, 150, 0 };
+		mainSceneRoot->GetGameobject("Enemy")->GetTransform().position = Math::Vec3{ 0, 190, 0 };
 		mainSceneRoot->GetGameobject("Enemy")->GetTransform().eulerRotation = Math::Vec3{ 0, 0, 180 };
 
-		mainSceneRoot->GetRigidBody("Player")->GetGravityCenter() = mainSceneRoot->GetGameobject("Enemy")->GetTransform().position;
-		mainSceneRoot->GetRigidBody("Enemy")->GetRigidbodyValues().isEnabled = false;
+		mainSceneRoot->GetRigidBody("Player")->GetRigidbodyValues().gravityEnabled = false;
+		mainSceneRoot->GetRigidBody("Enemy")->GetRigidbodyValues().gravityEnabled = false;
+
+		Player* player = new Player();
+		player->Initialize(mainSceneRoot->GetRigidBody("Player"));
+		mainSceneRoot->AddComponent(player);
 
 		cam->SetTarget(&mainSceneRoot->GetGameobject("Player")->GetTransform());
 

@@ -33,5 +33,4 @@ private:
 	std::unordered_map<std::string, Scene*> scenes;
 	Scene* currentScene;
 	std::string currentSceneName;
-
 };

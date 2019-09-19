@@ -14,6 +14,7 @@ class Texture;
 class Rigidbody;
 class BoxCollider;
 class Camera;
+class Component;
 
 
 class Scene
@@ -34,6 +35,7 @@ public:
 	BoxCollider* GetBoxCollider(std::string objectName);
 
 	void AddObject(std::string name, std::string modelPath, std::vector<std::string> texturePaths, std::string parentName = "");
+	void AddComponent(Component* component);
 	bool isProjectionIntersecting(Math::Vec3 aCorners[], Math::Vec3 bCorners[], Math::Vec3 axis);
 	Math::Vec3 GetAxis(Math::Vec3 point1, Math::Vec3 point2);
 private:
@@ -48,6 +50,7 @@ private:
 
 	std::vector<std::string> objects;
 	std::vector<Gameobject*> gameObjectVector;
+	std::vector<Component*> components;
 
 	std::unordered_map<std::string, Gameobject*> gameObjects;
 	std::unordered_map<std::string, Mesh*> meshes;

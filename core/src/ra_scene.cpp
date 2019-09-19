@@ -12,6 +12,7 @@
 #include "ra_boxcollider.h"
 #include "math/ra_mathfunctions.h"
 #include "input/ra_inputhandler.h"
+#include "components/player/ra_player.h"
 
 void Scene::Initialize(std::string name, Camera* camera)
 {
@@ -34,6 +35,15 @@ void Scene::Initialize(std::string name, Camera* camera)
 void Scene::Update()
 {
 	UpdateCollisions();
+
+	for (Component* comp : this->components)
+	{
+		switch (comp->GetType())
+		{
+		case ComponentType::Player:
+			reinterpret_cast<Player*>(comp)->Update();
+		}
+	}
 
 	for (std::string object : this->objects)
 	{
@@ -86,6 +96,15 @@ void Scene::UpdateCollisions()
 
 void Scene::Cleanup()
 {
+	for (Component* comp : this->components)
+	{
+		switch (comp->GetType())
+		{
+		case ComponentType::Player:
+			reinterpret_cast<Player*>(comp)->Cleanup();
+		}
+	}
+
 	for (std::string object : this->objects)
 	{
 		this->rigidBodies[object]->Cleanup();
@@ -193,6 +212,11 @@ void Scene::AddObject(std::string name, std::string modelPath, std::vector<std::
 
 	this->objects.push_back(name);
 	this->gameObjectVector.push_back(this->gameObjects[name]);
+}
+
+void Scene::AddComponent(Component* comp)
+{
+	this->components.push_back(comp);
 }
 
 Math::Vec3 Scene::GetAxis(Math::Vec3 point1, Math::Vec3 point2)

@@ -42,42 +42,12 @@ bool Camera::FrustumCulling(Math::Vec3 Min, Math::Vec3 Max, std::vector<Vec4> fr
 
 void Camera::UpdatePosition()
 {
-	float time = Application::GetInstancePtr()->GetDeltaTime();
-
-	if (Input::GetInstancePtr()->GetKey(KeyCode::D))
-	{
-		this->position.x += 10.0f * time;
-	}
-
-	if (Input::GetInstancePtr()->GetKey(KeyCode::A))
-	{
-		this->position.x -= 10.0f * time;
-	}
-
-	if (Input::GetInstancePtr()->GetKey(KeyCode::W))
-	{
-		this->position.z += 10.0f * time;
-	}
-
-	if (Input::GetInstancePtr()->GetKey(KeyCode::S))
-	{
-		this->position.z -= 10.0f * time;
-	}
-
-	if (Input::GetInstancePtr()->GetKey(KeyCode::Q))
-	{
-		this->position.y += 10.0f * time;
-	}
-
-	if (Input::GetInstancePtr()->GetKey(KeyCode::E))
-	{
-		this->position.y -= 10.0f * time;
-	}
-
 	if (this->target != nullptr)
-		this->viewMatrix = Math::CreateViewMatrixLookAt(this->target->position * 0.1f + this->targetOffset, this->target->position * 0.1f, this->orientation);
+	{
+		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position * 0.1f, this->targetOffset, this->orientation);
+	}
 	else
-		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position, this->position + (this->direction * this->offset), this->orientation);
+		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position * 0.1f, this->position * 0.1f + (this->direction * this->offset), this->orientation);
 
 	this->projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), Application::GetInstancePtr()->GetAspectRatio(), 0.1f, 100.0f);
 	this->projectionMatrix.m22 *= -1.0f;

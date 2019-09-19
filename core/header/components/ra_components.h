@@ -10,6 +10,12 @@ enum class ComponentType
 	Collision = 3,
 	Health = 4,
 	GravityShot = 5,
+	Player = 6,
+};
+
+struct PlayerValues
+{
+	float speed;
 };
 
 struct MovementValues

@@ -19,11 +19,7 @@ void Component::Update(void)
 void Component::Cleanup(void)
 {
 	this->name = "";
-}
-
-void Component::SetGameObject(Gameobject* gb)
-{
-	this->gameObject = gb;
+	delete this;
 }
 
 //GetType.
@@ -31,11 +27,6 @@ ComponentType Component::GetType(void) const
 {
 	//Returns this components component type.
 	return this->type;
-}
-
-Gameobject* Component::GetGameObject(void) const
-{
-	return this->gameObject;
 }
 
 //Compare two Components.

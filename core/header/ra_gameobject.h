@@ -35,7 +35,6 @@ public:
 	std::list<Gameobject*> GetChildren();
 	std::list<Gameobject*> GetAllChildren();
 	Gameobject* GetParent();
-	Gameobject* GetHitObject();
 	Transform& GetTransform();
 	Math::Mat4x4 GetModelMatrix();
 
@@ -55,8 +54,6 @@ public:
 	bool operator==(Gameobject* other);
 
 private:
-	Gameobject* hitObject = nullptr;
-
 	void ListAllChildren(std::list<Gameobject*>& list);
 
 	std::string name;
@@ -73,7 +70,6 @@ private:
 	ui32 modelID;
 
 	std::list<Gameobject*> children;
-	std::list<Component*> components;
 
 	bool isRoot = false;
 	bool moved = false;
