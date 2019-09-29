@@ -53,5 +53,5 @@ void main()
 
 	color += emissive;
 
-	outColor = vec4(color, SRGBtoLinear(texture(tex, fragUVCoord)).a);
+	outColor = vec4(color * fragLightColor, SRGBtoLinear(texture(tex, fragUVCoord)).a);
 }

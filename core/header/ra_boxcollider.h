@@ -19,11 +19,17 @@ public:
 
 	std::vector<Math::Vec3> GetMinMax();
 
+	float& GetWidth();
+	float& GetHeight();
+
 	bool& GetIsColliding();
 	bool& hasCollision();
 	bool& isTrigger();
 private:
 	std::vector<Math::Vec3> minMax;
+
+	float width = 5.0f;
+	float height = 5.0f;
 
 	Transform* transform;
 	bool activeCollision;

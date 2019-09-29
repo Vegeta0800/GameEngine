@@ -1,4 +1,3 @@
-
 #pragma once
 //EXTERNAL INCLUDES
 #include <string>
@@ -8,22 +7,23 @@
 class Rigidbody;
 
 //Class Movement that is derived from class Component.
-class Player : public Component
+class Bullet : public Component
 {
 	//Declare the public functions that are overwritten.
 public:
-	Player();
+	Bullet();
+	Bullet(Bullet* comp);
 
 	void Initialize(Rigidbody* rigidBody);
+
+	void SetParent(Rigidbody* rigidBody);
+
 	virtual void Update(void) override;
 	virtual void Cleanup(void) override;
 
-	PlayerValues& GetPlayerValues(void);
-
+	BulletValues& GetBulletValues(void);
 private:
-	void Move();
-	void Shoot();
-
-	PlayerValues player;
+	BulletValues bullet;
 	Rigidbody* rigidBody;
+	Rigidbody* parentRigidBody;
 };

@@ -5,7 +5,7 @@
 #include "ra_application.h"
 #include "ra_gameobject.h"
 
-Rigidbody::Rigidbody(Transform* transform)
+Rigidbody::Rigidbody(Transform* transform, std::string name)
 {
 	//this->collision = new Collision(gb);
 	this->transform = transform;
@@ -14,12 +14,13 @@ Rigidbody::Rigidbody(Transform* transform)
 	this->rigidBody.isEnabled = true;
 	this->rigidBody.force = 0.0f;
 	this->rigidBody.isKinematic = false;
-	this->rigidBody.gravityEnabled = true;
+	this->rigidBody.gravityEnabled = false;
 	this->rigidBody.hasCollision = false;
 	this->rigidBody.isColliding = false;
 	this->rigidBody.airDensity = 1.20f;
 	this->rigidBody.dragCoefficient = 0.024f;
 	this->rigidBody.velocity = 0.0f;
+	this->name = name;
 
 	this->massOfCenter = 12004000000.0f;
 }
@@ -65,6 +66,11 @@ bool Rigidbody::RayCast(Math::Vec3 start, Math::Vec3 end, RaycastInfo & hitInfo)
 	return false;
 }
 
+Transform* Rigidbody::GetTransform()
+{
+	return this->transform;
+}
+
 RigidbodyValues& Rigidbody::GetRigidbodyValues()
 {
 	return this->rigidBody;
@@ -90,4 +96,19 @@ float Rigidbody::CalculateVelocity(float force)
 Math::Vec3& Rigidbody::GetGravityCenter()
 {
 	return this->gravityCenter;
+}
+
+Rigidbody* Rigidbody::GetHitObject()
+{
+	return this->hitObject;
+}
+
+void Rigidbody::SetHitObject(Rigidbody* object)
+{
+	this->hitObject = object;
+}
+
+std::string Rigidbody::GetName()
+{
+	return this->name;
 }

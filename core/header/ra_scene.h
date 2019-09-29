@@ -28,14 +28,25 @@ public:
 	Gameobject* GetSceneRoot();
 	Gameobject* GetGameobject(std::string objectName);
 	std::vector<Gameobject*> GetAllGameobjects();
+	std::vector<std::string> GetObjectPool(std::string poolName);
+
+	std::string GetObjectOfPool(std::string poolName);
+
 	Material* GetMaterial(std::string objectName);
 	Mesh* GetMesh(std::string objectName);
 	Camera* GetCamera();
 	Rigidbody* GetRigidBody(std::string objectName);
 	BoxCollider* GetBoxCollider(std::string objectName);
 
-	void AddObject(std::string name, std::string modelPath, std::vector<std::string> texturePaths, std::string parentName = "");
-	void AddComponent(Component* component);
+	Component* GetObjectComponent(std::string objectName);
+
+	void AddObject(std::string name, std::string modelPath, bool active = true, std::vector<std::string> texturePaths = std::vector<std::string>(), std::string parentName = "");
+	void AddObjectPool(std::string objectPoolName, ui32 poolSize, std::string name, std::string modelPath, bool active = true, std::vector<std::string> texturePaths = std::vector<std::string>(), std::string parentName = "");
+	void AddComponent(Component* component, std::string name);
+	void AddComponentToObjectPool(std::string name, Component* component);
+
+	void SetActive(std::string objectName, bool active);
+
 	bool isProjectionIntersecting(Math::Vec3 aCorners[], Math::Vec3 bCorners[], Math::Vec3 axis);
 	Math::Vec3 GetAxis(Math::Vec3 point1, Math::Vec3 point2);
 private:
@@ -52,7 +63,9 @@ private:
 	std::vector<Gameobject*> gameObjectVector;
 	std::vector<Component*> components;
 
+	std::unordered_map<std::string, Component*> componentMap;
 	std::unordered_map<std::string, Gameobject*> gameObjects;
+	std::unordered_map<std::string, std::vector<std::string>> objectPooledObjects;
 	std::unordered_map<std::string, Mesh*> meshes;
 	std::unordered_map<std::string, Material*> materials;
 	std::unordered_map<std::string, Rigidbody*> rigidBodies;

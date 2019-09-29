@@ -55,6 +55,16 @@ std::vector<Math::Vec3> BoxCollider::GetMinMax()
 	return this->minMax;
 }
 
+float& BoxCollider::GetWidth()
+{
+	return this->width;
+}
+
+float& BoxCollider::GetHeight()
+{
+	return this->height;
+}
+
 bool& BoxCollider::GetIsColliding()
 {
 	return this->isColliding;

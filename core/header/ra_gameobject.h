@@ -13,7 +13,7 @@ class Gameobject
 {
 public:
 	Gameobject();
-	void Initialize(Gameobject* parent = nullptr, std::string name = "");
+	void Initialize(Gameobject* parent = nullptr, std::string name = "", bool active = true);
 	void Update();
 	void Cleanup();
 	
@@ -41,6 +41,7 @@ public:
 	ui32& GetModelID();
 
 	std::string GetName();
+	std::string& GetTag();
 
 	bool hasRoot();
 	bool isMoved();
@@ -57,6 +58,7 @@ private:
 	void ListAllChildren(std::list<Gameobject*>& list);
 
 	std::string name;
+	std::string tag;
 	
 	Transform transform;
 	

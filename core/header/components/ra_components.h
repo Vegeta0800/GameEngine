@@ -16,6 +16,19 @@ enum class ComponentType
 struct PlayerValues
 {
 	float speed;
+	float bulletSpeed;
+	float bulletTimer;
+	float bulletTime;
+	Math::Vec3 bulletDir;
+};
+
+struct EnemyValues
+{
+	float speed;
+	float interval;
+	float health;
+	float bulletSpeed;
+	Math::Vec3 bulletDir;
 };
 
 struct MovementValues

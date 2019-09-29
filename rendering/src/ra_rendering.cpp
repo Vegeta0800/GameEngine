@@ -65,14 +65,14 @@ void Rendering::Initialize(const char* applicationName, ui32 applicationVersion)
 //Update function called every frame.
 void Rendering::Update()
 {
-	if (SceneManager::GetInstancePtr()->GetActiveScene()->GetObjectCount() > this->gameObjectCount)
+	if (SceneManager::GetInstancePtr()->GetActiveScene()->GetObjectCount() != this->gameObjectCount)
 	{
 		this->gameObjectCount = SceneManager::GetInstancePtr()->GetActiveScene()->GetObjectCount();
+		this->ReRecordCommands();
 	}
 
 	this->ExtractPlanes(SceneManager::GetInstancePtr()->GetActiveCamera()->GetVPMatrix());
 	this->UpdateMVP();
-	this->ReRecordCommands();
 	this->DrawFrame();
 }
 
@@ -892,7 +892,7 @@ void Rendering::CreateDescriptorPool()
 
 	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllGameobjects())
 	{
-		if (gb->GetIsRenderable() && !gb->GetIsInstanced())
+		if (gb->GetIsRenderable() && !gb->GetIsInstanced() && gb->GetIsActive())
 		{
 			this->descriptorPoolSize++;
 		}
@@ -1108,7 +1108,7 @@ void Rendering::CreateDescriptorSets()
 
 	for (Gameobject* gb : SceneManager::GetInstancePtr()->GetActiveScene()->GetAllGameobjects())
 	{
-		if (gb->GetIsRenderable() && !gb->GetIsInstanced())
+		if (gb->GetIsRenderable() && !gb->GetIsInstanced() && gb->GetIsActive())
 		{
 			tempGbs.push_back(gb);
 			layouts.push_back(this->descriptorSetLayout);
@@ -1167,7 +1167,7 @@ void Rendering::CreateDescriptorSets()
 	//Store write infos needed for shader data.
 	for (ui32 i = 0; i < tempGbs.size(); i++)
 	{
-		if (tempGbs[i]->GetIsRenderable())
+		if (tempGbs[i]->GetIsRenderable() && tempGbs[i]->GetIsActive())
 		{
 			this->CreateDescriptorSet(tempGbs[i], i, false);
 		}
@@ -1757,6 +1757,15 @@ void Rendering::LoadModels(void)
 					}
 				}
 				scene->GetBoxCollider(gb->GetName())->SetMinMax(min - 8.0f, max + 8.0f);
+
+				float width = Math::Distance(Math::Vec3{ min.x - 8.0f, max.y + 1.0f, 0.0f },
+					Math::Vec3{ min.x + 8.0f, max.y + 1.0f, 0.0f });
+
+				float height = Math::Distance(Math::Vec3{ max.x + 8.0f, min.y - 1.0f, 0.0f },
+					Math::Vec3{ max.x + 8.0f, max.y + 1.0f, 0.0f });
+
+				scene->GetBoxCollider(gb->GetName())->GetHeight() = width;
+				scene->GetBoxCollider(gb->GetName())->GetWidth() = height;
 			}
 		}
 	}
@@ -1865,28 +1874,28 @@ void Rendering::RecordCommands()
 
 	std::vector<Gameobject*> tempInstGbs(0);
 
-	//for (std::vector<Gameobject*> gbs : this->instancedObjects)
-	//{
-	//	if (gbs.size() != 0)
-	//	{
-	//		if (gbs.size() > INSTANCE_AMOUNT)
-	//		{
-	//			ui32 k = 0;
-	//			while (gbs.size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
-	//			{
-	//				if (gbs[k]->GetIsRenderable() && gbs[k]->GetIsInFrustum() && gbs[k]->GetIsActive())
-	//				{
-	//					tempInstGbs.push_back(gbs[k]);
-	//				}
-	//				k++;
-	//			}
-	//		}
-	//		else if (gbs[0]->GetIsRenderable() && gbs[0]->GetIsInFrustum() && gbs[0]->GetIsActive())
-	//		{
-	//			tempInstGbs.push_back(gbs[0]);
-	//		}
-	//	}
-	//}
+	for (std::vector<Gameobject*> gbs : this->instancedObjects)
+	{
+		if (gbs.size() != 0)
+		{
+			if (gbs.size() > INSTANCE_AMOUNT)
+			{
+				ui32 k = 0;
+				while (gbs.size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
+				{
+					if (gbs[k]->GetIsRenderable() && gbs[k]->GetIsInFrustum() && gbs[k]->GetIsActive())
+					{
+						tempInstGbs.push_back(gbs[k]);
+					}
+					k++;
+				}
+			}
+			else if (gbs[0]->GetIsRenderable() && gbs[0]->GetIsInFrustum() && gbs[0]->GetIsActive())
+			{
+				tempInstGbs.push_back(gbs[0]);
+			}
+		}
+	}
 
 	std::vector<std::string> tempGbs;
 

@@ -6,7 +6,7 @@ int main(int argc, const char* argv[])
 {
 	INIT_TIMER;
 	START_TIMER;
-	Application::GetInstancePtr()->Initialize(argv[0], iVec2{ 800, 600 }, "render");
+	Application::GetInstancePtr()->Initialize(argv[0], iVec2{ 800, 600 }, "Game");
 	STOP_TIMER("Initialization took: ");
 	
 	Application::GetInstancePtr()->Update();

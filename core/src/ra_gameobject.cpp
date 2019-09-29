@@ -9,7 +9,7 @@ Gameobject::Gameobject() :
 {
 }
 
-void Gameobject::Initialize(Gameobject* parent, std::string name)
+void Gameobject::Initialize(Gameobject* parent, std::string name, bool active)
 {
 	this->parent = nullptr;
 	this->transform = Transform();
@@ -18,8 +18,10 @@ void Gameobject::Initialize(Gameobject* parent, std::string name)
 	this->transform.position = Math::Vec3{ 0, 0, 0 };
 	this->transform.eulerRotation = Math::Vec3{0, 0, 0};
 	this->transform.rotation = Math::Quaternion::identity;
-	this->transform.scaling = Math::Vec3::unit_scale * 0.2f;
+	this->transform.scaling = Math::Vec3::unit_scale;
 	this->name = name;
+	this->active = active;
+	this->tag = "";
 
 	if (parent != nullptr)
 		this->SetParent(parent);
@@ -217,6 +219,11 @@ Math::Mat4x4 Gameobject::GetModelMatrix()
 std::string Gameobject::GetName()
 {
 	return this->name;
+}
+
+std::string& Gameobject::GetTag()
+{
+	return this->tag;
 }
 
 bool& Gameobject::GetIsActive()

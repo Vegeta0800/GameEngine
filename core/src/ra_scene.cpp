@@ -13,6 +13,7 @@
 #include "math/ra_mathfunctions.h"
 #include "input/ra_inputhandler.h"
 #include "components/player/ra_player.h"
+#include "components/player/ra_bullet.h"
 
 void Scene::Initialize(std::string name, Camera* camera)
 {
@@ -42,12 +43,17 @@ void Scene::Update()
 		{
 		case ComponentType::Player:
 			reinterpret_cast<Player*>(comp)->Update();
+			break;
+		case ComponentType::Bullet:
+			reinterpret_cast<Bullet*>(comp)->Update();
+			break;
 		}
 	}
 
 	for (std::string object : this->objects)
 	{
-		this->rigidBodies[object]->Update();
+		if(this->gameObjects[object]->GetIsActive())
+			this->rigidBodies[object]->Update();
 	}
 
 	this->gameObjects[this->sceneName]->Update();
@@ -60,18 +66,16 @@ void Scene::UpdateCollisions()
 {
 	std::unordered_set<Gameobject*> checkedGameobjects;
 
-	if (Input::GetInstancePtr()->GetKeyDown(KeyCode::B))
-	{
-		bool be = true;
-	}
-
 	for (int i = 0; i < this->gameObjectVector.size(); i++)
 	{
-		if (this->boxCollider[this->gameObjectVector[i]->GetName()]->hasCollision())
+		if (this->boxCollider[this->gameObjectVector[i]->GetName()]->hasCollision() 
+			&& this->gameObjectVector[i]->GetIsActive())
 		{
 			for (int j = 0; j < this->gameObjectVector.size(); j++)
 			{
-				if (j != i)
+				if (j != i && this->gameObjectVector[j]->GetIsActive()
+					&& this->boxCollider[this->gameObjectVector[j]->GetName()]->hasCollision()
+					&& this->gameObjectVector[i]->GetTag() != this->gameObjectVector[j]->GetTag())
 				{
 					if (checkedGameobjects.find(this->gameObjectVector[j]) == checkedGameobjects.end())
 					{
@@ -79,11 +83,19 @@ void Scene::UpdateCollisions()
 						{
 							this->rigidBodies[this->gameObjectVector[i]->GetName()]->GetRigidbodyValues().isColliding = true;
 							this->rigidBodies[this->gameObjectVector[j]->GetName()]->GetRigidbodyValues().isColliding = true;
+
+							this->rigidBodies[this->gameObjectVector[i]->GetName()]
+								->SetHitObject(this->rigidBodies[this->gameObjectVector[j]->GetName()]);
+							this->rigidBodies[this->gameObjectVector[j]->GetName()]
+								->SetHitObject(this->rigidBodies[this->gameObjectVector[i]->GetName()]);
 						}
 						else
 						{
 							this->rigidBodies[this->gameObjectVector[i]->GetName()]->GetRigidbodyValues().isColliding = false;
 							this->rigidBodies[this->gameObjectVector[j]->GetName()]->GetRigidbodyValues().isColliding = false;
+
+							this->rigidBodies[this->gameObjectVector[i]->GetName()]->SetHitObject(nullptr);
+							this->rigidBodies[this->gameObjectVector[j]->GetName()]->SetHitObject(nullptr);
 						}
 					}
 				}
@@ -142,6 +154,22 @@ std::vector<Gameobject*> Scene::GetAllGameobjects()
 	return this->gameObjectVector;
 }
 
+std::vector<std::string> Scene::GetObjectPool(std::string poolName)
+{
+	return this->objectPooledObjects[poolName];
+}
+
+std::string Scene::GetObjectOfPool(std::string poolName)
+{
+	this->objectPooledObjects[poolName];
+
+	std::string tempStr = this->objectPooledObjects[poolName][0];
+	this->objectPooledObjects[poolName].erase(this->objectPooledObjects[poolName].begin());
+	this->objectPooledObjects[poolName].push_back(tempStr);
+
+	return tempStr;
+}
+
 Material* Scene::GetMaterial(std::string objectName)
 {
 	return this->materials[objectName];
@@ -167,14 +195,22 @@ BoxCollider* Scene::GetBoxCollider(std::string objectName)
 	return this->boxCollider[objectName];
 }
 
-void Scene::AddObject(std::string name, std::string modelPath, std::vector<std::string> texturePaths, std::string parentName)
+Component* Scene::GetObjectComponent(std::string objectName)
 {
+	return this->componentMap[objectName];
+}
+
+void Scene::AddObject(std::string name, std::string modelPath, bool active, std::vector<std::string> texturePaths, std::string parentName)
+{
+	if (active)
+		this->objectCount++;
+
 	//Gameobject
 	this->gameObjects[name] = new Gameobject();
 	if (parentName != "")
-		this->gameObjects[name]->Initialize(this->gameObjects[parentName], name);
+		this->gameObjects[name]->Initialize(this->gameObjects[parentName], name, active);
 	else
-		this->gameObjects[name]->Initialize(this->gameObjects[this->sceneName], name);
+		this->gameObjects[name]->Initialize(this->gameObjects[this->sceneName], name, active);
 
 	//Textures
 	std::vector<Texture*> objectTextures(5);
@@ -182,12 +218,24 @@ void Scene::AddObject(std::string name, std::string modelPath, std::vector<std::
 
 	path.pop_back();
 
-	for(int i = 0; i < texturePaths.size(); i++)
+	if (texturePaths.size() == 0) 
 	{
-		Texture* tex = new Texture();
-		texturePaths[i] = path + texturePaths[i] + ".png";
-		tex->GetPath() = texturePaths[i];
-		objectTextures[i] = tex;
+		for (int i = 0; i < objectTextures.size(); i++)
+		{
+			Texture* tex = new Texture();
+			tex->GetPath() = path + "empty.png";
+			objectTextures[i] = tex;
+		}
+	}
+	else
+	{
+		for (int i = 0; i < texturePaths.size(); i++)
+		{
+			Texture* tex = new Texture();
+			texturePaths[i] = path + texturePaths[i] + ".png";
+			tex->GetPath() = texturePaths[i];
+			objectTextures[i] = tex;
+		}
 	}
 
 	modelPath = modelPath + ".obj";
@@ -203,7 +251,7 @@ void Scene::AddObject(std::string name, std::string modelPath, std::vector<std::
 	this->materials[name]->specularValue = 16.0f;
 
 	//Rigidbody
-	this->rigidBodies[name] = new Rigidbody(&this->gameObjects[name]->GetTransform());
+	this->rigidBodies[name] = new Rigidbody(&this->gameObjects[name]->GetTransform(), name);
 
 	//BoxColliders
 	this->boxCollider[name] = new BoxCollider(&this->gameObjects[name]->GetTransform());
@@ -214,9 +262,50 @@ void Scene::AddObject(std::string name, std::string modelPath, std::vector<std::
 	this->gameObjectVector.push_back(this->gameObjects[name]);
 }
 
-void Scene::AddComponent(Component* comp)
+void Scene::AddComponentToObjectPool(std::string name, Component* component)
+{
+	for (std::string str : this->objectPooledObjects[name])
+	{
+		switch (component->GetType())
+		{
+		case ComponentType::Bullet:
+		{
+			Bullet* bullet = new Bullet(reinterpret_cast<Bullet*>(component));
+			bullet->Initialize(this->rigidBodies[str]);
+			AddComponent(bullet, str);
+			break;
+		}
+		}
+	}
+}
+
+void Scene::AddObjectPool(std::string objectPoolName, ui32 poolSize, std::string name, std::string modelPath, bool active, std::vector<std::string> texturePaths, std::string parentName)
+{
+	for (ui32 i = 0; i < poolSize; i++)
+	{
+		std::string tempName = name;
+		tempName = tempName + ' ' + std::to_string(i);
+		AddObject(tempName, modelPath, active, texturePaths, parentName);
+		this->objectPooledObjects[objectPoolName].push_back(tempName);
+		this->gameObjects[tempName]->GetTag() = name;
+
+	}
+}
+
+void Scene::AddComponent(Component* comp, std::string name)
 {
 	this->components.push_back(comp);
+	this->componentMap[name] = comp;
+}
+
+void Scene::SetActive(std::string objectName, bool active)
+{
+	if(active)
+		this->objectCount++;
+	else
+		this->objectCount--;
+
+	this->gameObjects[objectName]->GetIsActive() = active;
 }
 
 Math::Vec3 Scene::GetAxis(Math::Vec3 point1, Math::Vec3 point2)
@@ -248,28 +337,8 @@ bool Scene::CheckCollision(Gameobject* gbA, Gameobject* gbB)
 	Transform object1 = gbA->GetTransform();
 	Transform object2 = gbB->GetTransform();
 
-	float object1Width = Math::Distance(
-		Math::Vec3{ this->boxCollider[aString]->GetMinMax()[1].x, this->boxCollider[aString]->GetMinMax()[1].y, 0 },
-		Math::Vec3{ this->boxCollider[aString]->GetMinMax()[0].x, this->boxCollider[aString]->GetMinMax()[1].y, 0}
-	);
-
-	float object2Width = Math::Distance(
-			Math::Vec3{ this->boxCollider[aString]->GetMinMax()[1].x, this->boxCollider[aString]->GetMinMax()[1].y, 0 },
-			Math::Vec3{ this->boxCollider[aString]->GetMinMax()[0].x, this->boxCollider[aString]->GetMinMax()[1].y, 0 }
-	);
-
-	float object1Height = Math::Distance(
-		Math::Vec3{ this->boxCollider[bString]->GetMinMax()[1].x, this->boxCollider[bString]->GetMinMax()[1].y, 0 },
-		Math::Vec3{ this->boxCollider[bString]->GetMinMax()[1].x, this->boxCollider[bString]->GetMinMax()[0].y, 0 }
-	);
-
-	float object2Height = Math::Distance(
-		Math::Vec3{ this->boxCollider[bString]->GetMinMax()[1].x, this->boxCollider[bString]->GetMinMax()[1].y, 0 },
-		Math::Vec3{ this->boxCollider[bString]->GetMinMax()[1].x, this->boxCollider[bString]->GetMinMax()[0].y, 0 }
-	);
-
-	return (object1.position.x < object2.position.x + object2Width &&
-		object1.position.x + object1Width > object2.position.x &&
-		object1.position.y < object2.position.y + object2Height &&
-		object1.position.y + object1Height > object2.position.y);
+	return (object1.position.x < object2.position.x + this->boxCollider[bString]->GetWidth() &&
+		object1.position.x + this->boxCollider[aString]->GetWidth() > object2.position.x &&
+		object1.position.y < object2.position.y + this->boxCollider[bString]->GetHeight() &&
+		object1.position.y + this->boxCollider[aString]->GetHeight() > object2.position.y);
 }

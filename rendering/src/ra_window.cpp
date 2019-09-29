@@ -98,7 +98,7 @@ void Window::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* ti
 		throw;
 
 	//Set the window style.
-	style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_CLIPCHILDREN | WS_CLIPSIBLINGS | WS_THICKFRAME;
+	style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX;
 
 	//Get the selected display.
 	Display* selectedDisplay = GetDisplay(displayID);
