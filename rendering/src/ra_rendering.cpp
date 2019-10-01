@@ -931,7 +931,7 @@ void Rendering::CreateDescriptorPool()
 	descriptorPoolInfo.pPoolSizes = descriptorPoolSizes.data();
 
 	//Create descriptorpool using the descriptorpool info.
-	vkCreateDescriptorPool(this->logicalDevice, &descriptorPoolInfo, nullptr, &this->descriptorPool);
+	VK_CHECK(vkCreateDescriptorPool(this->logicalDevice, &descriptorPoolInfo, nullptr, &this->descriptorPool));
 }
 
 void Rendering::CreateDescriptorSet(Gameobject* gb, ui32 setIndex, bool instanced)
@@ -1115,30 +1115,30 @@ void Rendering::CreateDescriptorSets()
 		}
 	}
 
-	for (std::vector<Gameobject*> gbs : this->instancedObjects)
-	{
-		if (gbs.size() != 0)
-		{
-			if (gbs.size() > INSTANCE_AMOUNT)
-			{
-				ui32 k = 0;
-				while (gbs.size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
-				{
-					if (gbs[k]->GetIsRenderable())
-					{
-						tempInstGbs.push_back(gbs[k]);
-						instLayouts.push_back(this->descriptorSetLayout);
-					}
-					k++;
-				}
-			}
-			else if (gbs[0]->GetIsRenderable())
-			{
-				tempInstGbs.push_back(gbs[0]);
-				instLayouts.push_back(this->descriptorSetLayout);
-			}
-		}
-	}
+	//for (std::vector<Gameobject*> gbs : this->instancedObjects)
+	//{
+	//	if (gbs.size() != 0)
+	//	{
+	//		if (gbs.size() > INSTANCE_AMOUNT)
+	//		{
+	//			ui32 k = 0;
+	//			while (gbs.size() - (k * INSTANCE_AMOUNT) >= INSTANCE_AMOUNT)
+	//			{
+	//				if (gbs[k]->GetIsRenderable())
+	//				{
+	//					tempInstGbs.push_back(gbs[k]);
+	//					instLayouts.push_back(this->descriptorSetLayout);
+	//				}
+	//				k++;
+	//			}
+	//		}
+	//		else if (gbs[0]->GetIsRenderable())
+	//		{
+	//			tempInstGbs.push_back(gbs[0]);
+	//			instLayouts.push_back(this->descriptorSetLayout);
+	//		}
+	//	}
+	//}
 
 	this->descriptorSets.resize(tempGbs.size());
 	this->instancedDescriptorSets.resize(tempInstGbs.size());
@@ -1151,20 +1151,21 @@ void Rendering::CreateDescriptorSets()
 		descriptorSetAllocateInfo.descriptorPool = this->descriptorPool;
 		descriptorSetAllocateInfo.descriptorSetCount = static_cast<ui32>(this->descriptorSets.size());
 		descriptorSetAllocateInfo.pSetLayouts = layouts.data();
-		vkAllocateDescriptorSets(this->logicalDevice, &descriptorSetAllocateInfo, this->descriptorSets.data());
+		VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &descriptorSetAllocateInfo, this->descriptorSets.data()));
 	}
 
-	if (this->instancedDescriptorSets.size() > 0)
-	{
-		VkDescriptorSetAllocateInfo instancedDescriptorSetAllocateInfo;
-		instancedDescriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		instancedDescriptorSetAllocateInfo.pNext = nullptr;
-		instancedDescriptorSetAllocateInfo.descriptorPool = this->descriptorPool;
-		instancedDescriptorSetAllocateInfo.descriptorSetCount = static_cast<ui32>(this->instancedDescriptorSets.size());
-		instancedDescriptorSetAllocateInfo.pSetLayouts = instLayouts.data();
-		vkAllocateDescriptorSets(this->logicalDevice, &instancedDescriptorSetAllocateInfo, this->instancedDescriptorSets.data());
-	}
+	//if (this->instancedDescriptorSets.size() > 0)
+	//{
+	//	VkDescriptorSetAllocateInfo instancedDescriptorSetAllocateInfo;
+	//	instancedDescriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	//	instancedDescriptorSetAllocateInfo.pNext = nullptr;
+	//	instancedDescriptorSetAllocateInfo.descriptorPool = this->descriptorPool;
+	//	instancedDescriptorSetAllocateInfo.descriptorSetCount = static_cast<ui32>(this->instancedDescriptorSets.size());
+	//	instancedDescriptorSetAllocateInfo.pSetLayouts = instLayouts.data();
+	//	VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &instancedDescriptorSetAllocateInfo, this->instancedDescriptorSets.data()));
+	//}
 	//Store write infos needed for shader data.
+
 	for (ui32 i = 0; i < tempGbs.size(); i++)
 	{
 		if (tempGbs[i]->GetIsRenderable() && tempGbs[i]->GetIsActive())
