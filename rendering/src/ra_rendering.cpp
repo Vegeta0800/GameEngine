@@ -1149,9 +1149,13 @@ void Rendering::CreateDescriptorSets()
 		descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		descriptorSetAllocateInfo.pNext = nullptr;
 		descriptorSetAllocateInfo.descriptorPool = this->descriptorPool;
-		descriptorSetAllocateInfo.descriptorSetCount = static_cast<ui32>(this->descriptorSets.size());
-		descriptorSetAllocateInfo.pSetLayouts = layouts.data();
-		VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &descriptorSetAllocateInfo, this->descriptorSets.data()));
+		descriptorSetAllocateInfo.descriptorSetCount = 1;
+
+		for (ui32 i = 0; i < this->descriptorSets.size(); i++)
+		{
+			descriptorSetAllocateInfo.pSetLayouts = &layouts[i];
+			VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &descriptorSetAllocateInfo, &this->descriptorSets[i]));
+		}
 	}
 
 	//if (this->instancedDescriptorSets.size() > 0)
