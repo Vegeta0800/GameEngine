@@ -9,7 +9,6 @@
 #include "ra_utils.h"
 #include "filesystem/ra_filesystem.h"
 
-
 class Window
 {
 	DEFINE_SINGLETON(Window)

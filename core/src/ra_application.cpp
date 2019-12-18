@@ -1,4 +1,6 @@
 
+#include <ctime>
+#include <chrono>
 #include "ra_application.h"
 #include "ra_utils.h"
 #include "console/ra_cvar.h"
@@ -8,8 +10,6 @@
 #include "input/ra_inputhandler.h"
 #include "ra_scenemanager.h"
 #include "ra_gameobject.h"
-#include <ctime>
-#include <chrono>
 
 DECLARE_SINGLETON(Application)
 
@@ -91,4 +91,14 @@ float Application::GetDeltaTime()
 float& Application::GetAspectRatio()
 {
 	return this->aspectRatio;
+}
+
+bool& Application::GetEstablishState()
+{
+	return this->establishConnection;
+}
+
+bool& Application::GetStartUpState()
+{
+	return this->startUp;
 }
