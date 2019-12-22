@@ -11,4 +11,8 @@ public:
 
 private:
 	SOCKET ServerSocket;
+
+	bool startConnection;
+
+	SOCKADDR_IN enemyAddress;
 };

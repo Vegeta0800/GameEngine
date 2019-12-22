@@ -6,9 +6,7 @@
 #define LoginButton_ID 0 //ID for send button events.
 #define Name_ID 1 //ID for send button events.
 #define Password_ID 2 //ID for send button events.
-
-#define StartMatch_ID 3
-
+#define CreateRoom_ID 3 //ID for send button events.
 
 //Global variables needed outside of the window class.
 std::vector<Display> g_displays2;
@@ -16,6 +14,8 @@ std::unordered_map<HWND, LWindow*> g_windowMapping2;
 
 HWND hwndName; //Name textbox window.
 HWND hwndPassword; //Password textbox window.
+HWND hwndChat; //Window where the chat is spawned in.
+HWND hwndButton;
 
 DECLARE_SINGLETON(LWindow);
 
@@ -39,7 +39,7 @@ LRESULT CALLBACK WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			char* name = new char;
 			GetWindowText(hwndName, name, 300);
 
-			char* password = new char;
+			char* password = new char;  
 			GetWindowText(hwndPassword, password, 300);
 
 			LoginData data = { std::string(name), std::string(password) };
@@ -48,6 +48,12 @@ LRESULT CALLBACK WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			SetWindowText(hwndPassword, "");
 			g_windowMapping2[hwnd]->SetLoginData(data);
 			g_windowMapping2[hwnd]->GetQueryState() = true;
+			break;
+		}
+		case CreateRoom_ID:
+		{
+
+
 			break;
 		}
 		}
@@ -167,8 +173,8 @@ void LWindow::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* t
 	);
 
 	//Create the LoginButton
-	HWND hwndButton = HWND();
-	hwndButton = CreateWindowEx(0, "BUTTON", "Send Message",
+	hwndButton = HWND();
+	hwndButton = CreateWindowEx(0, "BUTTON", "Login",
 		WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 315, 480, 120, 25, this->handle,
 		(HMENU)LoginButton_ID, (HINSTANCE)(LONG_PTR)GetWindowLong(this->handle, -6), NULL);
 
@@ -214,6 +220,36 @@ void LWindow::SetLoginData(LoginData loginData)
 	this->loginData = loginData;
 }
 
+void LWindow::Update()
+{
+	if (this->roomActive)
+	{
+		this->roomActive = false;
+		DestroyWindow(hwndName);
+		DestroyWindow(hwndPassword);
+		DestroyWindow(hwndButton);
+
+		//Create the SendButton
+		HWND hwndCreateButton = HWND(); 
+		hwndCreateButton = CreateWindowEx(0, "BUTTON", "Create Room",
+			WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 315, 480, 120, 25, this->handle,
+			(HMENU)CreateRoom_ID, (HINSTANCE)(LONG_PTR)GetWindowLong(this->handle, -6), NULL);
+
+		//Create the chat window.
+		hwndChat = HWND();
+		hwndChat = CreateWindowEx(0, "static", "",
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP, 50, 50, 340, 400, this->handle,
+			NULL, (HINSTANCE)(LONG_PTR)GetWindowLong(this->handle, -6), NULL);
+	}
+
+	MSG msg = { };
+	if (PeekMessageA(&msg, LWindow::GetInstancePtr()->GetHandle(), 0, 0, PM_REMOVE))
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+
+}
 LWindow::LWindowState LWindow::GetState()
 {
 	return this->state;
@@ -229,6 +265,11 @@ bool& LWindow::GetQueryState()
 	return this->queryLogin;
 }
 
+bool& LWindow::GetRoomState()
+{
+	return this->roomActive;
+}
+
 LoginData LWindow::GetLoginData()
 {
 	return this->loginData;
@@ -238,3 +279,10 @@ Display* LWindow::GetDisplay(ui32 displayID)
 {
 	return &g_displays2[displayID];
 }
+
+Data LWindow::GetData()
+{
+	return this->data;
+}
+
+void

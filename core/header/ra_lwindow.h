@@ -38,6 +38,10 @@ public:
 	//Set messages
 	void SetLoginData(LoginData loginData);
 
+	void SetData(Data data);
+
+	void Update();
+
 	//Get Display by ID
 	Display* GetDisplay(ui32 displayID);
 
@@ -48,12 +52,13 @@ public:
 	HWND GetHandle();
 
 	//Get states for messages
-
 	bool& GetQueryState();
+	bool& GetRoomState();
 
 	//Get LoginData for session
 	LoginData GetLoginData();
 
+	Data GetData();
 private:
 	HWND handle = 0;
 	LWindowState state = LWindowState::Started;
@@ -62,9 +67,12 @@ private:
 	ui32 height = 0;
 
 	LoginData loginData;
+	Data data;
 
 	bool send = false;
 	bool recieve = false;
 
 	bool queryLogin = false;
+
+	bool roomActive = false;
 };

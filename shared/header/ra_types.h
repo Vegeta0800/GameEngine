@@ -34,6 +34,15 @@ enum class Meshes
 	TRIANGLE
 };
 
+#pragma pack(push, 1)
+struct Data
+{
+	char* data;
+	int ID;
+};
+#pragma pack(pop)
+
+
 struct iVec2
 {
 	ui32 x;

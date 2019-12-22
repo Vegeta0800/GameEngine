@@ -14,14 +14,14 @@
 
 // link with Ws2_32.lib
 #pragma comment(lib, "Ws2_32.lib")
-
 #define DEFAULT_PORT 12307 //Use any port you want. Has to be in port forwarding settings.
 #define SERVER_IP "127.0.0.1" //Public IP used for clients outside of servers network. (public IPv4 of server)
 //#define SERVER_IP "" //LAN Address used for clients inside of servers network, because they cant connect to the public IP due to the NAT. (LAN IPv4 of Server)
-#define DEFAULT_BUFLEN 64
 
 //Global variables used by all threads.
 bool running = true;
+bool loggedIn = false;
+bool sendData = false;
 
 DWORD WINAPI WindowHandling(LPVOID lpParameter)
 {
@@ -31,21 +31,8 @@ DWORD WINAPI WindowHandling(LPVOID lpParameter)
 	//While the window is opened
 	while (LWindow::GetInstancePtr()->GetState() == LWindow::LWindowState::Started && running)
 	{
-		////Spawn new messages when a message is recieved.
-		//if (Window::GetInstancePtr()->GetRecievedState())
-		//{
-		//	Window::GetInstancePtr()->GetRecievedState() = false;
-		//	Window::GetInstancePtr()->RecievedMessage(Window::GetInstancePtr()->GetRecievedMessage());
-		//	UpdateWindow(Window::GetInstancePtr()->GetHandle());
-		//}
-
 		//Check for incoming window messages and handle them.
-		MSG msg = { };
-		if (PeekMessageA(&msg, LWindow::GetInstancePtr()->GetHandle(), 0, 0, PM_REMOVE))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
+		LWindow::GetInstancePtr()->Update();
 	}
 
 	running = false;
@@ -62,8 +49,6 @@ DWORD WINAPI RecieveData(LPVOID lpParameter)
 
 	char buff[1];
 	int rResult;
-
-	bool loggedIn = false;
 
 	//Receive data until the server closes the connection
 	do
@@ -82,12 +67,15 @@ DWORD WINAPI RecieveData(LPVOID lpParameter)
 					printf("Recieved %d bytes from server \n", rResult);
 					printf("Logged in");
 					loggedIn = true;
+
+					LWindow::GetInstancePtr()->GetRoomState() = true;
 				}
 			}
 			else
 			{
 				if (buff[0] == 1)
 				{
+					sendData = true;
 				}
 			}
 		}
@@ -177,8 +165,14 @@ void Launcher::Login()
 	//While the window is opened.
 	while (running)
 	{
-		//When the send button is pressed and a message is in the textbox.
-		if (LWindow::GetInstancePtr()->GetQueryState())
+		if (loggedIn)
+		{
+
+		}
+		else
+		{
+			//When the send button is pressed and a message is in the textbox.
+			if (LWindow::GetInstancePtr()->GetQueryState())
 		{
 			//Send that message to the server.
 			LoginData data = LWindow::GetInstancePtr()->GetLoginData();
@@ -200,6 +194,7 @@ void Launcher::Login()
 			}
 
 			LWindow::GetInstancePtr()->GetQueryState() = false;
+		}
 		}
 	}
 
