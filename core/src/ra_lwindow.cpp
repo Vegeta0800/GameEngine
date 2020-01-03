@@ -12,6 +12,9 @@
 std::vector<Display> g_displays2;
 std::unordered_map<HWND, LWindow*> g_windowMapping2;
 
+//Messages as the text on the window.
+std::vector<HWND> messages;
+
 HWND hwndName; //Name textbox window.
 HWND hwndPassword; //Password textbox window.
 HWND hwndChat; //Window where the chat is spawned in.
@@ -28,6 +31,61 @@ LRESULT CALLBACK WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_LBUTTONDOWN: //If Left mouse button is pressed
 		SetFocus(hwnd); //Set focus to the window.
 		break;
+	case WM_KEYDOWN: //If a key is pressed:
+	{
+		switch (wParam)
+		{
+		case 38: //Up button.
+		{
+			if (messages.size() != 0)
+			{
+				//Get the position of the lowest message.
+				RECT Rect;
+				GetWindowRect(messages[messages.size() - 1], &Rect);
+				MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&Rect, 2);
+
+				//If its not over the screen.
+				if (true)
+				{
+					//Move all messages up by 3 units.
+					for (HWND text : messages)
+					{
+						GetWindowRect(text, &Rect);
+						MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&Rect, 2);
+						SetWindowPos(text, 0, Rect.left, Rect.top - 3, Rect.right, Rect.bottom, SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW);
+					}
+				}
+			}
+			break;
+		}
+		case 40: //Down button.
+		{
+			if (messages.size() != 0)
+			{
+				//Get the position of the uppest message.
+				RECT Rect;
+				GetWindowRect(messages[0], &Rect);
+				MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&Rect, 2);
+
+				printf("Rect top: %d", Rect.top);
+
+				//If its over the screen.
+				if (Rect.top < 1)
+				{
+					//Move all messages down by 3 units.
+					for (HWND text : messages)
+					{
+						GetWindowRect(text, &Rect);
+						MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&Rect, 2);
+						SetWindowPos(text, 0, Rect.left, Rect.top + 3, Rect.right, Rect.bottom, SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW);
+					}
+				}
+			}
+			break;
+		}
+		}
+		break;
+	}
 	case WM_COMMAND:
 	{
 		switch (LOWORD(wParam)) //Convert command
@@ -52,8 +110,18 @@ LRESULT CALLBACK WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 		case CreateRoom_ID:
 		{
+			std::string mess(g_windowMapping2[hwnd]->GetName());
+			mess += "'s Room";
+			g_windowMapping2[hwnd]->SetRecievedMessage(mess);
+			g_windowMapping2[hwnd]->GetRecievedState() = true;
 
+			Data data = Data();
 
+			data.ID = 1;
+
+			g_windowMapping2[hwnd]->SetData(data);
+
+			g_windowMapping2[hwnd]->GetSendState() = true;
 			break;
 		}
 		}
@@ -242,6 +310,15 @@ void LWindow::Update()
 			NULL, (HINSTANCE)(LONG_PTR)GetWindowLong(this->handle, -6), NULL);
 	}
 
+	//Spawn new messages when a message is recieved.
+	if (LWindow::GetInstancePtr()->GetRecievedState())
+	{
+		LWindow::GetInstancePtr()->GetRecievedState() = false;
+		LWindow::GetInstancePtr()->RecievedMessage(LWindow::GetInstancePtr()->GetRecievedMessage());
+		LWindow::GetInstancePtr()->SetRecievedMessage("");
+		UpdateWindow(LWindow::GetInstancePtr()->GetHandle());
+	}
+
 	MSG msg = { };
 	if (PeekMessageA(&msg, LWindow::GetInstancePtr()->GetHandle(), 0, 0, PM_REMOVE))
 	{
@@ -275,6 +352,48 @@ LoginData LWindow::GetLoginData()
 	return this->loginData;
 }
 
+void LWindow::RecievedMessage(std::string message)
+{
+	HWND hwndChatText;
+	RECT Rect;
+
+	if (messages.size() == 0)
+	{
+		//Create message text at top position if its the first one.
+		hwndChatText = CreateWindowEx(0, "static", message.c_str(),
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP, 1, 1, 500, 22, hwndChat,
+			NULL, (HINSTANCE)(LONG_PTR)GetWindowLong(hwndChat, -6), NULL);
+	}
+	else
+	{
+		//Get position of the lowest message.
+		GetWindowRect(messages[messages.size() - 1], &Rect);
+		MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&Rect, 2);
+
+		//Create message text 22 units under the lowest message.
+		hwndChatText = CreateWindowEx(0, "static", message.c_str(),
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP, 1, Rect.top + 22, 500, 22, hwndChat,
+			NULL, (HINSTANCE)(LONG_PTR)GetWindowLong(hwndChat, -6), NULL);
+
+		//If spawned message is under the screen.
+		if (Rect.top + 22 > 380)
+		{
+			//Move all messages up by top - 380 units.
+			for (HWND text : messages)
+			{
+				RECT textRect;
+				GetWindowRect(text, &textRect);
+				MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&textRect, 2);
+				SetWindowPos(text, 0, textRect.left, textRect.top - 22, textRect.right, textRect.bottom, SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW);
+			}
+		}
+	}
+
+	//Save message to global message vector.s
+	messages.push_back(hwndChatText);
+
+}
+
 Display* LWindow::GetDisplay(ui32 displayID)
 {
 	return &g_displays2[displayID];
@@ -285,4 +404,37 @@ Data LWindow::GetData()
 	return this->data;
 }
 
-void
+void LWindow::SetData(Data data)
+{
+	this->data = data;
+}
+
+bool& LWindow::GetRecievedState()
+{
+	return this->recieve;
+}
+
+std::string LWindow::GetRecievedMessage()
+{
+	return this->currentMessage;
+}
+
+void LWindow::SetRecievedMessage(std::string message)
+{
+	this->currentMessage = message;
+}
+
+std::string LWindow::GetName()
+{
+	return this->name;
+}
+
+void LWindow::SetName(std::string name)
+{
+	this->name = name;
+}
+
+bool& LWindow::GetSendState()
+{
+	return this->send;
+}

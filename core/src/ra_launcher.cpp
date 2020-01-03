@@ -47,14 +47,14 @@ DWORD WINAPI RecieveData(LPVOID lpParameter)
 	//Parameter conversion
 	SOCKET ServerSocket = (SOCKET)lpParameter;
 
-	char buff[1];
+	char buff[sizeof(Data)];
 	int rResult;
 
 	//Receive data until the server closes the connection
 	do
 	{
 		//Recieve data
-		rResult = recv(ServerSocket, buff, 1, 0);
+		rResult = recv(ServerSocket, buff, sizeof(Data), 0);
 
 		//If there is data recieved
 		if (rResult > 0)
@@ -68,6 +68,7 @@ DWORD WINAPI RecieveData(LPVOID lpParameter)
 					printf("Logged in");
 					loggedIn = true;
 
+					LWindow::GetInstancePtr()->SetName(LWindow::GetInstancePtr()->GetLoginData().name);
 					LWindow::GetInstancePtr()->GetRoomState() = true;
 				}
 			}
@@ -167,34 +168,63 @@ void Launcher::Login()
 	{
 		if (loggedIn)
 		{
+			if (LWindow::GetInstancePtr()->GetSendState())
+			{
+				LWindow::GetInstancePtr()->GetSendState() = false;
 
+				Data data = Data();
+
+				data = LWindow::GetInstancePtr()->GetData();
+
+				//Send that message to the server.
+				int sResult = send(ServerSocket, (char*)&data, sizeof(data), 0);
+				printf("Sending %d bytes... \n", sResult);
+
+				//Error handling.
+				if (sResult == SOCKET_ERROR)
+				{
+					printf("send failed: %d\n", WSAGetLastError());
+					closesocket(ServerSocket);
+					WSACleanup();
+					return;
+				}
+
+				LWindow::GetInstancePtr()->SetData(Data());
+			}
 		}
 		else
 		{
 			//When the send button is pressed and a message is in the textbox.
 			if (LWindow::GetInstancePtr()->GetQueryState())
-		{
-			//Send that message to the server.
-			LoginData data = LWindow::GetInstancePtr()->GetLoginData();
-
-			int iResult = send(this->ServerSocket, (char*)&data, sizeof(LoginData), 0);
-
-			int s = sizeof(LoginData);
-			int size = sizeof(std::string);
-
-			printf("send %d bytes to server (%d)", iResult, size);
-
-			//Error handling.
-			if (iResult == SOCKET_ERROR)
 			{
-				printf("send failed: %d\n", WSAGetLastError());
-				closesocket(this->ServerSocket);
-				WSACleanup();
-				return;
-			}
+				//Send that message to the server.
+				LoginData loginData = LWindow::GetInstancePtr()->GetLoginData();
 
-			LWindow::GetInstancePtr()->GetQueryState() = false;
-		}
+				Data data = Data();
+				data.data = (char*)&loginData;
+				data.ID = 0;
+
+				const char* buffer = (char*)&data;
+
+				Data data2 = Data();
+				LoginData lD2 = *(LoginData*)&buffer;
+
+				data.ID = 0;
+				int iResult = send(this->ServerSocket, (char*)&data, sizeof(data), 0);
+
+				printf("send %d bytes to server", iResult);
+
+				//Error handling.
+				if (iResult == SOCKET_ERROR)
+				{
+					printf("send failed: %d\n", WSAGetLastError());
+					closesocket(this->ServerSocket);
+					WSACleanup();
+					return;
+				}
+
+				LWindow::GetInstancePtr()->GetQueryState() = false;
+			}
 		}
 	}
 
@@ -222,3 +252,4 @@ void Launcher::Exit()
 
 	return;
 }
+

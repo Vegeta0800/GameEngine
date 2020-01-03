@@ -8,14 +8,6 @@
 #include "ra_types.h"
 #include "ra_display.h"
 
-#pragma pack(push, 1)
-struct LoginData
-{
-	std::string name;
-	std::string password;
-};
-#pragma pack(pop)
-
 class LWindow
 {
 	DEFINE_SINGLETON(LWindow)
@@ -48,12 +40,23 @@ public:
 	//Get current window state
 	LWindowState GetState(void);
 
+	void RecievedMessage(std::string message);
+	std::string GetRecievedMessage();
+
+	std::string GetName();
+	void SetName(std::string name);
+
+	void SetRecievedMessage(std::string message);
+
 	//Get handle to main window
 	HWND GetHandle();
 
 	//Get states for messages
 	bool& GetQueryState();
 	bool& GetRoomState();
+	bool& GetSendState();
+
+	bool& GetRecievedState();
 
 	//Get LoginData for session
 	LoginData GetLoginData();
@@ -67,7 +70,10 @@ private:
 	ui32 height = 0;
 
 	LoginData loginData;
-	Data data;
+	Data data = Data();
+
+	std::string name;
+	std::string currentMessage;
 
 	bool send = false;
 	bool recieve = false;

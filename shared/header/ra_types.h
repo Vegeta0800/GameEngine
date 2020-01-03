@@ -3,6 +3,7 @@
 
 // EXTERNAL INCLUDES
 #include <stdint.h>
+#include <string>
 
 #ifdef DOUBLE_PRECISION
 typedef double real;
@@ -37,8 +38,16 @@ enum class Meshes
 #pragma pack(push, 1)
 struct Data
 {
-	char* data;
+	std::string data;
 	int ID;
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct LoginData
+{
+	std::string name;
+	std::string password;
 };
 #pragma pack(pop)
 
