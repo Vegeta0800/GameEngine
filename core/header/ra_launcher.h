@@ -4,7 +4,7 @@
 class Launcher
 {
 public:
-	void Startup();
+	bool Startup();
 	void Login();
 
 	void Exit();

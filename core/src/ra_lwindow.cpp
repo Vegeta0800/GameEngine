@@ -12,8 +12,11 @@
 std::vector<Display> g_displays2;
 std::unordered_map<HWND, LWindow*> g_windowMapping2;
 
+std::unordered_map<RECT*, HWND> g_roomMapping;
+
 //Messages as the text on the window.
 std::vector<HWND> messages;
+std::vector<RECT> roomRects;
 
 HWND hwndName; //Name textbox window.
 HWND hwndPassword; //Password textbox window.
@@ -29,61 +32,8 @@ LRESULT CALLBACK WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	switch (msg)
 	{
 	case WM_LBUTTONDOWN: //If Left mouse button is pressed
-		SetFocus(hwnd); //Set focus to the window.
-		break;
-	case WM_KEYDOWN: //If a key is pressed:
 	{
-		switch (wParam)
-		{
-		case 38: //Up button.
-		{
-			if (messages.size() != 0)
-			{
-				//Get the position of the lowest message.
-				RECT Rect;
-				GetWindowRect(messages[messages.size() - 1], &Rect);
-				MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&Rect, 2);
-
-				//If its not over the screen.
-				if (true)
-				{
-					//Move all messages up by 3 units.
-					for (HWND text : messages)
-					{
-						GetWindowRect(text, &Rect);
-						MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&Rect, 2);
-						SetWindowPos(text, 0, Rect.left, Rect.top - 3, Rect.right, Rect.bottom, SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW);
-					}
-				}
-			}
-			break;
-		}
-		case 40: //Down button.
-		{
-			if (messages.size() != 0)
-			{
-				//Get the position of the uppest message.
-				RECT Rect;
-				GetWindowRect(messages[0], &Rect);
-				MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&Rect, 2);
-
-				printf("Rect top: %d", Rect.top);
-
-				//If its over the screen.
-				if (Rect.top < 1)
-				{
-					//Move all messages down by 3 units.
-					for (HWND text : messages)
-					{
-						GetWindowRect(text, &Rect);
-						MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&Rect, 2);
-						SetWindowPos(text, 0, Rect.left, Rect.top + 3, Rect.right, Rect.bottom, SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW);
-					}
-				}
-			}
-			break;
-		}
-		}
+		SetFocus(hwnd); //Set focus to the window.
 		break;
 	}
 	case WM_COMMAND:
@@ -94,34 +44,42 @@ LRESULT CALLBACK WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		{
 			//Trigger event to send a message.
 			//Copy message from the textBox
-			char* name = new char;
-			GetWindowText(hwndName, name, 300);
+			LoginData data;
 
-			char* password = new char;  
-			GetWindowText(hwndPassword, password, 300);
+			memset(data.name, 0, 32);
+			memset(data.password, 0, 32);
 
-			LoginData data = { std::string(name), std::string(password) };
+			GetWindowText(hwndName, data.name, 32);
+
+			GetWindowText(hwndPassword, data.password, 32);
 
 			SetWindowText(hwndName, "");
 			SetWindowText(hwndPassword, "");
-			g_windowMapping2[hwnd]->SetLoginData(data);
+			g_windowMapping2[hwnd]->SetData(data);
 			g_windowMapping2[hwnd]->GetQueryState() = true;
 			break;
 		}
 		case CreateRoom_ID:
 		{
 			std::string mess(g_windowMapping2[hwnd]->GetName());
-			mess += "'s Room";
+			mess += "'s Room 1/2";
 			g_windowMapping2[hwnd]->SetRecievedMessage(mess);
 			g_windowMapping2[hwnd]->GetRecievedState() = true;
 
-			Data data = Data();
+			RoomData data;
 
-			data.ID = 1;
+			memset(data.name, 0, 32);
 
+			data.created = true;
+
+			SET_STRING(data.name, g_windowMapping2[hwnd]->GetName())
+
+			g_windowMapping2[hwnd]->GetCreatedState() = true;
 			g_windowMapping2[hwnd]->SetData(data);
 
 			g_windowMapping2[hwnd]->GetSendState() = true;
+
+			DestroyWindow(hwndButton);
 			break;
 		}
 		}
@@ -283,13 +241,19 @@ void LWindow::SetState(LWindowState state)
 	this->state = state;
 }
 
-void LWindow::SetLoginData(LoginData loginData)
+void LWindow::SetData(LoginData loginData)
 {
 	this->loginData = loginData;
 }
 
+void LWindow::SetData(RoomData roomData)
+{
+	this->roomData = roomData;
+}
+
 void LWindow::Update()
 {
+
 	if (this->roomActive)
 	{
 		this->roomActive = false;
@@ -298,8 +262,8 @@ void LWindow::Update()
 		DestroyWindow(hwndButton);
 
 		//Create the SendButton
-		HWND hwndCreateButton = HWND(); 
-		hwndCreateButton = CreateWindowEx(0, "BUTTON", "Create Room",
+		hwndButton = HWND();
+		hwndButton = CreateWindowEx(0, "BUTTON", "Create Room",
 			WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 315, 480, 120, 25, this->handle,
 			(HMENU)CreateRoom_ID, (HINSTANCE)(LONG_PTR)GetWindowLong(this->handle, -6), NULL);
 
@@ -352,6 +316,11 @@ LoginData LWindow::GetLoginData()
 	return this->loginData;
 }
 
+RoomData LWindow::GetRoomData()
+{
+	return this->roomData;
+}
+
 void LWindow::RecievedMessage(std::string message)
 {
 	HWND hwndChatText;
@@ -370,43 +339,29 @@ void LWindow::RecievedMessage(std::string message)
 		GetWindowRect(messages[messages.size() - 1], &Rect);
 		MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&Rect, 2);
 
+		//If spawned message is under the screen.
+		if (Rect.top + 22 > 380)
+		{
+			printf("Maximum");
+			return;
+		}
+
 		//Create message text 22 units under the lowest message.
 		hwndChatText = CreateWindowEx(0, "static", message.c_str(),
 			WS_CHILD | WS_VISIBLE | WS_TABSTOP, 1, Rect.top + 22, 500, 22, hwndChat,
 			NULL, (HINSTANCE)(LONG_PTR)GetWindowLong(hwndChat, -6), NULL);
-
-		//If spawned message is under the screen.
-		if (Rect.top + 22 > 380)
-		{
-			//Move all messages up by top - 380 units.
-			for (HWND text : messages)
-			{
-				RECT textRect;
-				GetWindowRect(text, &textRect);
-				MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&textRect, 2);
-				SetWindowPos(text, 0, textRect.left, textRect.top - 22, textRect.right, textRect.bottom, SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW);
-			}
-		}
 	}
+
+	g_roomMapping[&Rect] = hwndChatText;
 
 	//Save message to global message vector.s
 	messages.push_back(hwndChatText);
-
+	roomRects.push_back(Rect);
 }
 
 Display* LWindow::GetDisplay(ui32 displayID)
 {
 	return &g_displays2[displayID];
-}
-
-Data LWindow::GetData()
-{
-	return this->data;
-}
-
-void LWindow::SetData(Data data)
-{
-	this->data = data;
 }
 
 bool& LWindow::GetRecievedState()
@@ -437,4 +392,9 @@ void LWindow::SetName(std::string name)
 bool& LWindow::GetSendState()
 {
 	return this->send;
+}
+
+bool& LWindow::GetCreatedState()
+{
+	return this->created;
 }

@@ -21,7 +21,8 @@
 //Global variables used by all threads.
 bool running = true;
 bool loggedIn = false;
-bool sendData = false;
+bool inRoom = false;
+bool sendData = false; 
 
 DWORD WINAPI WindowHandling(LPVOID lpParameter)
 {
@@ -47,14 +48,17 @@ DWORD WINAPI RecieveData(LPVOID lpParameter)
 	//Parameter conversion
 	SOCKET ServerSocket = (SOCKET)lpParameter;
 
-	char buff[sizeof(Data)];
+	char buff[sizeof(LoginData)];
 	int rResult;
 
 	//Receive data until the server closes the connection
 	do
 	{
 		//Recieve data
-		rResult = recv(ServerSocket, buff, sizeof(Data), 0);
+		if(!loggedIn)
+			rResult = recv(ServerSocket, buff, sizeof(LoginData), 0);
+		else if(loggedIn && !inRoom)
+			rResult = recv(ServerSocket, buff, sizeof(RoomData), 0);
 
 		//If there is data recieved
 		if (rResult > 0)
@@ -65,18 +69,32 @@ DWORD WINAPI RecieveData(LPVOID lpParameter)
 				{
 					//Trigger event so the window spawns a new text with the message.
 					printf("Recieved %d bytes from server \n", rResult);
-					printf("Logged in");
+					printf("Logged in\n");
 					loggedIn = true;
 
 					LWindow::GetInstancePtr()->SetName(LWindow::GetInstancePtr()->GetLoginData().name);
 					LWindow::GetInstancePtr()->GetRoomState() = true;
 				}
+				else
+				{
+					printf("Recieved %d bytes from server \n", rResult);
+					printf("Login failed!\n");
+				}
 			}
 			else
 			{
-				if (buff[0] == 1)
+				RoomData data = RoomData();
+				data = *(RoomData*)&buff;
+
+				if (data.name != LWindow::GetInstancePtr()->GetName())
 				{
-					sendData = true;
+					if (data.created == true)
+					{
+						std::string mess(data.name);
+						mess += "'s Room 1/2";
+						LWindow::GetInstancePtr()->SetRecievedMessage(mess);
+						LWindow::GetInstancePtr()->GetRecievedState() = true;
+					}
 				}
 			}
 		}
@@ -98,7 +116,7 @@ DWORD WINAPI RecieveData(LPVOID lpParameter)
 	return 0;
 }
 
-void Launcher::Startup()
+bool Launcher::Startup()
 {
 	running = true;
 
@@ -113,7 +131,7 @@ void Launcher::Startup()
 	if (fResult != 0)
 	{
 		printf("WSAStartup failed: %d\n", fResult);
-		return;
+		return false;
 	}
 
 	// Setup our socket address structure
@@ -133,7 +151,7 @@ void Launcher::Startup()
 	{
 		printf("Failed to execute socket(). Error Code: %ld\n", WSAGetLastError());
 		WSACleanup();
-		return;
+		return false;
 	}
 
 	// Connect to server.
@@ -151,7 +169,7 @@ void Launcher::Startup()
 	{
 		printf("Unable to connect to server!");
 		WSACleanup();
-		return;
+		return false;
 	}
 
 	//Create thread for handling data thats recieved by the server. Pass the server socket as argument.
@@ -159,6 +177,8 @@ void Launcher::Startup()
 	CreateThread(NULL, 0, RecieveData, (LPVOID)this->ServerSocket, 0, &dwThreadId);
 
 	this->Login();
+
+	return false;
 }
 
 void Launcher::Login()
@@ -172,12 +192,10 @@ void Launcher::Login()
 			{
 				LWindow::GetInstancePtr()->GetSendState() = false;
 
-				Data data = Data();
-
-				data = LWindow::GetInstancePtr()->GetData();
+				RoomData data = LWindow::GetInstancePtr()->GetRoomData();
 
 				//Send that message to the server.
-				int sResult = send(ServerSocket, (char*)&data, sizeof(data), 0);
+				int sResult = send(ServerSocket, (const char*)&data, sizeof(data), 0);
 				printf("Sending %d bytes... \n", sResult);
 
 				//Error handling.
@@ -189,7 +207,7 @@ void Launcher::Login()
 					return;
 				}
 
-				LWindow::GetInstancePtr()->SetData(Data());
+				LWindow::GetInstancePtr()->SetData(RoomData());
 			}
 		}
 		else
@@ -200,19 +218,9 @@ void Launcher::Login()
 				//Send that message to the server.
 				LoginData loginData = LWindow::GetInstancePtr()->GetLoginData();
 
-				Data data = Data();
-				data.data = (char*)&loginData;
-				data.ID = 0;
+				int iResult = send(this->ServerSocket, (const char*)&loginData, sizeof(loginData), 0);
 
-				const char* buffer = (char*)&data;
-
-				Data data2 = Data();
-				LoginData lD2 = *(LoginData*)&buffer;
-
-				data.ID = 0;
-				int iResult = send(this->ServerSocket, (char*)&data, sizeof(data), 0);
-
-				printf("send %d bytes to server", iResult);
+				printf("send %d bytes to server\n", iResult);
 
 				//Error handling.
 				if (iResult == SOCKET_ERROR)
@@ -252,4 +260,3 @@ void Launcher::Exit()
 
 	return;
 }
-

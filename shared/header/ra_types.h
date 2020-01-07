@@ -36,18 +36,18 @@ enum class Meshes
 };
 
 #pragma pack(push, 1)
-struct Data
+struct LoginData
 {
-	std::string data;
-	int ID;
+	char name[32];
+	char password[32];
 };
 #pragma pack(pop)
 
 #pragma pack(push, 1)
-struct LoginData
+struct RoomData
 {
-	std::string name;
-	std::string password;
+	char name[32];
+	bool created;
 };
 #pragma pack(pop)
 

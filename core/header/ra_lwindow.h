@@ -28,9 +28,8 @@ public:
 	void SetState(LWindowState state);
 
 	//Set messages
-	void SetLoginData(LoginData loginData);
-
-	void SetData(Data data);
+	void SetData(LoginData loginData);
+	void SetData(RoomData roomData);
 
 	void Update();
 
@@ -56,12 +55,14 @@ public:
 	bool& GetRoomState();
 	bool& GetSendState();
 
+	bool& GetCreatedState();
+
 	bool& GetRecievedState();
 
 	//Get LoginData for session
 	LoginData GetLoginData();
+	RoomData GetRoomData();
 
-	Data GetData();
 private:
 	HWND handle = 0;
 	LWindowState state = LWindowState::Started;
@@ -70,13 +71,15 @@ private:
 	ui32 height = 0;
 
 	LoginData loginData;
-	Data data = Data();
+	RoomData roomData;
 
 	std::string name;
 	std::string currentMessage;
 
 	bool send = false;
 	bool recieve = false;
+
+	bool created = false;
 
 	bool queryLogin = false;
 

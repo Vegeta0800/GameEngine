@@ -92,3 +92,5 @@ Type* Type::instance = nullptr;
 #define V_RETURN(x) hr = x; if (hr != S_OK) { _com_error err(hr); LPCTSTR errMsg = err.ErrorMessage(); ERR("%s", errMsg); throw; }
 
 #define GetVariableName(var) #var
+
+#define SET_STRING(x, y) { for (int i = 0; i < y.length(); i++) { x[i] = y[i]; }}
