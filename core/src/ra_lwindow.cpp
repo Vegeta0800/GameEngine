@@ -1,5 +1,6 @@
 //EXTERNAL INCLUDES
 #include <unordered_map>
+#include <map>
 //INTERNAL INCLUDES
 #include "ra_lwindow.h"
 
@@ -7,15 +8,17 @@
 #define Name_ID 1 //ID for send button events.
 #define Password_ID 2 //ID for send button events.
 #define CreateRoom_ID 3 //ID for send button events.
+#define Ready_ID 4
 
 //Global variables needed outside of the window class.
 std::vector<Display> g_displays2;
 std::unordered_map<HWND, LWindow*> g_windowMapping2;
 
-std::unordered_map<RECT*, HWND> g_roomMapping;
+std::unordered_map<int, std::string> g_roomMapping;
+std::unordered_map<std::string, HWND> g_roomStringMapping;
 
 //Messages as the text on the window.
-std::vector<HWND> messages;
+std::vector<HWND> rooms;
 std::vector<RECT> roomRects;
 
 HWND hwndName; //Name textbox window.
@@ -31,9 +34,41 @@ LRESULT CALLBACK WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	//Handle the messages in the window.
 	switch (msg)
 	{
-	case WM_LBUTTONDOWN: //If Left mouse button is pressed
+	case WM_LBUTTONDBLCLK: //If Left mouse button is pressed
 	{
 		SetFocus(hwnd); //Set focus to the window.
+
+		if (roomRects.size() != 0)
+		{
+			POINT pt;
+			GetCursorPos(&pt);
+
+			for (int i = 0; i < roomRects.size(); i++)
+			{
+				if (PtInRect(&roomRects[i], pt))
+				{
+					RoomData data;
+					memset(data.name, 0, 32);
+					data.created = false;
+					data.deleted = false;
+
+					std::string name = g_roomMapping[i];
+
+					SET_STRING(data.name, name);
+
+					g_windowMapping2[hwnd]->SetData(data);
+					g_windowMapping2[hwnd]->GetSendState() = true;
+
+					DestroyWindow(hwndButton);
+
+					hwndButton = HWND();
+					hwndButton = CreateWindowEx(0, "BUTTON", "Ready",
+						WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 315, 480, 120, 25, g_windowMapping2[hwnd]->GetHandle(),
+						(HMENU)Ready_ID, (HINSTANCE)(LONG_PTR)GetWindowLong(g_windowMapping2[hwnd]->GetHandle(), -6), NULL);
+				}
+			}
+		}
+
 		break;
 	}
 	case WM_COMMAND:
@@ -63,6 +98,8 @@ LRESULT CALLBACK WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		{
 			std::string mess(g_windowMapping2[hwnd]->GetName());
 			mess += "'s Room 1/2";
+
+			g_windowMapping2[hwnd]->SetNextName(g_windowMapping2[hwnd]->GetName());
 			g_windowMapping2[hwnd]->SetRecievedMessage(mess);
 			g_windowMapping2[hwnd]->GetRecievedState() = true;
 
@@ -71,15 +108,22 @@ LRESULT CALLBACK WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			memset(data.name, 0, 32);
 
 			data.created = true;
+			data.deleted = false;
 
 			SET_STRING(data.name, g_windowMapping2[hwnd]->GetName())
-
+				
 			g_windowMapping2[hwnd]->GetCreatedState() = true;
 			g_windowMapping2[hwnd]->SetData(data);
 
 			g_windowMapping2[hwnd]->GetSendState() = true;
 
 			DestroyWindow(hwndButton);
+			break;
+		}
+		case Ready_ID:
+		{
+			g_windowMapping2[hwnd]->GetReadyState() = !g_windowMapping2[hwnd]->GetReadyState();
+			g_windowMapping2[hwnd]->GetSendReadyMessage() = true;
 			break;
 		}
 		}
@@ -124,7 +168,7 @@ BOOL CALLBACK MonitorEnumProc2(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMon
 		currentMonitor.height = abs(info.rcMonitor.top - info.rcMonitor.bottom);
 
 		currentMonitor.posX = info.rcMonitor.left;
-		currentMonitor.posY = info.rcMonitor.top;
+		currentMonitor.posY = info.rcMonitor.top;	
 
 		//Add the display into windows displays list.
 		g_displays2.push_back(currentMonitor);
@@ -154,6 +198,7 @@ void LWindow::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* t
 	wndex.hCursor = LoadCursor(NULL, IDC_ARROW);
 	wndex.hbrBackground = CreateSolidBrush(RGB(255, 210, 0)); //Yellow
 	wndex.lpszClassName = title;
+	wndex.style = CS_DBLCLKS;
 
 	//Register a window and if that fails crash the program.
 	if (!RegisterClassExA(&wndex))
@@ -253,7 +298,6 @@ void LWindow::SetData(RoomData roomData)
 
 void LWindow::Update()
 {
-
 	if (this->roomActive)
 	{
 		this->roomActive = false;
@@ -273,24 +317,38 @@ void LWindow::Update()
 			WS_CHILD | WS_VISIBLE | WS_TABSTOP, 50, 50, 340, 400, this->handle,
 			NULL, (HINSTANCE)(LONG_PTR)GetWindowLong(this->handle, -6), NULL);
 	}
+	else if (this->deleteRoom != "")
+	{
+		DestroyWindow(g_roomStringMapping[this->deleteRoom]);
+		this->deleteRoom = "";
+	}
+	else if (this->update)
+	{
+		this->update = false;
+		hwndButton = HWND();
+		hwndButton = CreateWindowEx(0, "BUTTON", "Ready",
+			WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 315, 480, 120, 25, this->handle,
+			(HMENU)Ready_ID, (HINSTANCE)(LONG_PTR)GetWindowLong(this->handle, -6), NULL);
+	}
 
 	//Spawn new messages when a message is recieved.
-	if (LWindow::GetInstancePtr()->GetRecievedState())
+	if (this->GetRecievedState())
 	{
-		LWindow::GetInstancePtr()->GetRecievedState() = false;
-		LWindow::GetInstancePtr()->RecievedMessage(LWindow::GetInstancePtr()->GetRecievedMessage());
-		LWindow::GetInstancePtr()->SetRecievedMessage("");
-		UpdateWindow(LWindow::GetInstancePtr()->GetHandle());
+		this->GetRecievedState() = false;
+		this->RecievedMessage(this->GetRecievedMessage());
+		this->SetRecievedMessage("");
 	}
 
 	MSG msg = { };
-	if (PeekMessageA(&msg, LWindow::GetInstancePtr()->GetHandle(), 0, 0, PM_REMOVE))
+	if (PeekMessageA(&msg, this->handle, 0, 0, PM_REMOVE))
 	{
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
 
+	UpdateWindow(this->handle);
 }
+
 LWindow::LWindowState LWindow::GetState()
 {
 	return this->state;
@@ -326,17 +384,17 @@ void LWindow::RecievedMessage(std::string message)
 	HWND hwndChatText;
 	RECT Rect;
 
-	if (messages.size() == 0)
+	if (rooms.size() == 0)
 	{
 		//Create message text at top position if its the first one.
 		hwndChatText = CreateWindowEx(0, "static", message.c_str(),
-			WS_CHILD | WS_VISIBLE | WS_TABSTOP, 1, 1, 500, 22, hwndChat,
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP, 1, 1, (5 * (static_cast<int>(message.size()) + 10)), 22, hwndChat,
 			NULL, (HINSTANCE)(LONG_PTR)GetWindowLong(hwndChat, -6), NULL);
 	}
 	else
 	{
 		//Get position of the lowest message.
-		GetWindowRect(messages[messages.size() - 1], &Rect);
+		GetWindowRect(rooms[rooms.size() - 1], &Rect);
 		MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&Rect, 2);
 
 		//If spawned message is under the screen.
@@ -348,15 +406,19 @@ void LWindow::RecievedMessage(std::string message)
 
 		//Create message text 22 units under the lowest message.
 		hwndChatText = CreateWindowEx(0, "static", message.c_str(),
-			WS_CHILD | WS_VISIBLE | WS_TABSTOP, 1, Rect.top + 22, 500, 22, hwndChat,
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP, 1, Rect.top + 22, (5 * (static_cast<int>(message.size()) + 10)), 22, hwndChat,
 			NULL, (HINSTANCE)(LONG_PTR)GetWindowLong(hwndChat, -6), NULL);
 	}
 
-	g_roomMapping[&Rect] = hwndChatText;
+	RECT rect;
+	GetWindowRect(hwndChatText, &rect);
+
+	g_roomMapping[static_cast<int>(roomRects.size())] = this->GetNextName();
+	roomRects.push_back(rect);
+	g_roomStringMapping[this->GetNextName()] = hwndChatText;
 
 	//Save message to global message vector.s
-	messages.push_back(hwndChatText);
-	roomRects.push_back(Rect);
+	rooms.push_back(hwndChatText);
 }
 
 Display* LWindow::GetDisplay(ui32 displayID)
@@ -389,6 +451,16 @@ void LWindow::SetName(std::string name)
 	this->name = name;
 }
 
+std::string LWindow::GetNextName()
+{
+	return this->nextName;
+}
+
+void LWindow::SetNextName(std::string name)
+{
+	this->nextName = name;
+}
+
 bool& LWindow::GetSendState()
 {
 	return this->send;
@@ -397,4 +469,87 @@ bool& LWindow::GetSendState()
 bool& LWindow::GetCreatedState()
 {
 	return this->created;
+}
+
+void LWindow::UpdateRoom(std::string name)
+{
+	this->update = true;
+	std::string mess(name);
+	mess += "'s Room 2/2";
+
+	SetWindowText(g_roomStringMapping[name], mess.c_str());
+}
+
+void LWindow::DeleteRoom(std::string name)
+{
+	if (rooms.size() == 0) return;
+
+	RECT roomRect;
+	GetWindowRect(g_roomStringMapping[name], &roomRect);
+	MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&roomRect, 2);
+
+	RECT rect;
+
+	int roomIndex = 0;
+	if (rooms.size() != 1)
+	{
+		//Move all messages up by 3 units.
+		for (int i = 0; i < (int)rooms.size(); i++)
+		{
+			if (rooms[i] == g_roomStringMapping[name])
+				roomIndex = i;
+
+			GetWindowRect(rooms[i], &rect);
+			MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&rect, 2);
+
+			if (rect.top > roomRect.top)
+				SetWindowPos(rooms[i], 0, rect.left, rect.top - 22, rect.right, rect.bottom, SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW);
+		}
+	}
+	g_roomMapping.erase(roomIndex);
+
+	HWND temp = rooms[rooms.size() - 1];
+	rooms[rooms.size() - 1] = rooms[roomIndex];
+	rooms[roomIndex] = temp;
+	rooms.pop_back();
+
+	GetWindowRect(g_roomStringMapping[name], &roomRect);
+	DestroyWindow(g_roomStringMapping[name]);
+	
+	int rectIndex = 0;
+	if (roomRects.size() != 1)
+	{
+		for (int i = 0; i < roomRects.size(); i++)
+		{
+			if (roomRects[i].top == roomRect.top
+				&& roomRects[i].bottom == roomRect.bottom
+				&& roomRects[i].left == roomRect.left
+				&& roomRects[i].right == roomRect.right)
+			{
+				rectIndex = i;
+			}
+		}
+	}
+
+	RECT tempRect = roomRects[roomRects.size() - 1];
+	roomRects[roomRects.size() - 1] = roomRects[rectIndex];
+	roomRects[rectIndex] = tempRect;
+	roomRects.pop_back();
+
+	g_roomStringMapping.erase(name);
+}
+
+std::string& LWindow::GetDeleteRoom()
+{
+	return this->deleteRoom;
+}
+
+bool& LWindow::GetReadyState()
+{
+	return this->ready;
+}
+
+bool& LWindow::GetSendReadyMessage()
+{
+	return this->sendReady;
 }

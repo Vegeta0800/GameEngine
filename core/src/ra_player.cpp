@@ -49,7 +49,7 @@ void Player::Move()
 	if (Input::GetInstancePtr()->GetKey(KeyCode::D))
 		this->rigidBody->AddForce(Math::Vec3::unit_x, this->player.speed);
 
-	printf("%f, %f, %f \n", this->rigidBody->GetTransform()->position.x, this->rigidBody->GetTransform()->position.y, this->rigidBody->GetTransform()->position.z);
+	//printf("%f, %f, %f \n", this->rigidBody->GetTransform()->position.x, this->rigidBody->GetTransform()->position.y, this->rigidBody->GetTransform()->position.z);
 }
 
 void Player::Shoot()

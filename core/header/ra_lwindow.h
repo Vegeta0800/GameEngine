@@ -45,7 +45,13 @@ public:
 	std::string GetName();
 	void SetName(std::string name);
 
+	std::string GetNextName();
+	void SetNextName(std::string name);
+
 	void SetRecievedMessage(std::string message);
+
+	void UpdateRoom(std::string name);
+	void DeleteRoom(std::string name);
 
 	//Get handle to main window
 	HWND GetHandle();
@@ -58,6 +64,11 @@ public:
 	bool& GetCreatedState();
 
 	bool& GetRecievedState();
+
+	bool& GetReadyState();
+	bool& GetSendReadyMessage();
+
+	std::string& GetDeleteRoom();
 
 	//Get LoginData for session
 	LoginData GetLoginData();
@@ -74,7 +85,11 @@ private:
 	RoomData roomData;
 
 	std::string name;
+	std::string nextName;
+
 	std::string currentMessage;
+
+	std::string deleteRoom = "";
 
 	bool send = false;
 	bool recieve = false;
@@ -84,4 +99,8 @@ private:
 	bool queryLogin = false;
 
 	bool roomActive = false;
+
+	bool ready = false;
+	bool update = false;
+	bool sendReady = false;
 };

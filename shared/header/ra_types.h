@@ -48,6 +48,7 @@ struct RoomData
 {
 	char name[32];
 	bool created;
+	bool deleted;
 };
 #pragma pack(pop)
 

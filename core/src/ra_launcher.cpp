@@ -2,29 +2,30 @@
 #define WIN32_LEAN_AND_MEAN
 
 #include <ws2tcpip.h>
-#include <stdio.h>
 #include <string>
-#include <iostream>
+#include <winsock.h>
+#include <thread>
 
 #include "ra_lwindow.h"
 #include "ra_launcher.h"
 #include "ra_application.h"
-#include <winsock.h>
 
 
 // link with Ws2_32.lib
 #pragma comment(lib, "Ws2_32.lib")
 #define DEFAULT_PORT 12307 //Use any port you want. Has to be in port forwarding settings.
-#define SERVER_IP "127.0.0.1" //Public IP used for clients outside of servers network. (public IPv4 of server)
+#define SERVER_IP "192.168.1.30" //Public IP used for clients outside of servers network. (public IPv4 of server)
 //#define SERVER_IP "" //LAN Address used for clients inside of servers network, because they cant connect to the public IP due to the NAT. (LAN IPv4 of Server)
 
 //Global variables used by all threads.
 bool running = true;
 bool loggedIn = false;
 bool inRoom = false;
-bool sendData = false; 
+bool sendData = false;
 
-DWORD WINAPI WindowHandling(LPVOID lpParameter)
+bool start = false;
+
+void WindowHandling()
 {
 	//Create the window.
 	LWindow::GetInstancePtr()->Instantiate(450, 550, 0, "GameLauncher");
@@ -39,15 +40,13 @@ DWORD WINAPI WindowHandling(LPVOID lpParameter)
 	running = false;
 
 	//End application.
-	return 0;
+	return;
 }
 
 //Handles recieving data from the server with the server socket as a parameter.
-DWORD WINAPI RecieveData(LPVOID lpParameter)
+void RecieveData(SOCKET ServerSocket)
 {
 	//Parameter conversion
-	SOCKET ServerSocket = (SOCKET)lpParameter;
-
 	char buff[sizeof(LoginData)];
 	int rResult;
 
@@ -57,8 +56,10 @@ DWORD WINAPI RecieveData(LPVOID lpParameter)
 		//Recieve data
 		if(!loggedIn)
 			rResult = recv(ServerSocket, buff, sizeof(LoginData), 0);
-		else if(loggedIn && !inRoom)
+		else
 			rResult = recv(ServerSocket, buff, sizeof(RoomData), 0);
+
+		printf("Recieved %d bytes from server \n", rResult);
 
 		//If there is data recieved
 		if (rResult > 0)
@@ -68,7 +69,6 @@ DWORD WINAPI RecieveData(LPVOID lpParameter)
 				if (buff[0] == 1)
 				{
 					//Trigger event so the window spawns a new text with the message.
-					printf("Recieved %d bytes from server \n", rResult);
 					printf("Logged in\n");
 					loggedIn = true;
 
@@ -77,23 +77,65 @@ DWORD WINAPI RecieveData(LPVOID lpParameter)
 				}
 				else
 				{
-					printf("Recieved %d bytes from server \n", rResult);
 					printf("Login failed!\n");
 				}
 			}
 			else
 			{
-				RoomData data = RoomData();
-				data = *(RoomData*)&buff;
-
-				if (data.name != LWindow::GetInstancePtr()->GetName())
+				if (rResult <= 16)
 				{
-					if (data.created == true)
+					std::string ip = buff;
+					ip.resize(rResult);
+
+					sockaddr_in opp;
+					opp.sin_family = AF_INET; //Ipv4 Address
+					if(ip[rResult - 1] == 1)
+						opp.sin_addr.s_addr = INADDR_ANY; //Any IP interface of server is connectable (LAN, public IP, etc).
+					else if(ip[rResult - 1] == 0)
+						opp.sin_addr.s_addr = inet_pton(AF_INET, ip.c_str(), &opp.sin_addr.s_addr); //Any IP interface of server is connectable (LAN, public IP, etc).
+					opp.sin_port = htons(DEFAULT_PORT); //Set port.
+
+					Application::GetInstancePtr()->GetEstablishState() = true;
+					Application::GetInstancePtr()->SetOpponent(opp);
+				} 
+				else
+				{
+					RoomData data = RoomData();
+					data = *(RoomData*)&buff;
+
+					std::string name = data.name;
+
+					if (data.deleted == true)
 					{
-						std::string mess(data.name);
-						mess += "'s Room 1/2";
-						LWindow::GetInstancePtr()->SetRecievedMessage(mess);
-						LWindow::GetInstancePtr()->GetRecievedState() = true;
+						LWindow::GetInstancePtr()->GetDeleteRoom() = name;
+
+						if (!data.created)
+						{
+							std::string mess(name);
+							mess += "'s Room 1/2";
+							LWindow::GetInstancePtr()->SetNextName(name);
+							LWindow::GetInstancePtr()->SetRecievedMessage(mess);
+							LWindow::GetInstancePtr()->GetRecievedState() = true;
+						}
+					}
+					else
+					{
+						if (data.created == true)
+						{
+							if (data.name != LWindow::GetInstancePtr()->GetName())
+							{
+								std::string mess(name);
+								mess += "'s Room 1/2";
+								LWindow::GetInstancePtr()->SetNextName(name);
+								LWindow::GetInstancePtr()->SetRecievedMessage(mess);
+								LWindow::GetInstancePtr()->GetRecievedState() = true;
+							}
+						}
+						else
+						{
+							LWindow::GetInstancePtr()->UpdateRoom(name);
+							printf("Updating room: %s \n", name.c_str());
+						}
 					}
 				}
 			}
@@ -113,15 +155,14 @@ DWORD WINAPI RecieveData(LPVOID lpParameter)
 
 	} while (running);
 
-	return 0;
+	return;
 }
 
 bool Launcher::Startup()
 {
 	running = true;
 
-	DWORD dwThreadIdWindow;
-	CreateThread(NULL, 0, WindowHandling, NULL, 0, &dwThreadIdWindow);
+	this->windowHandling = std::thread(WindowHandling);
 
 	WSADATA wsaData;
 	int fResult = 0;
@@ -173,12 +214,11 @@ bool Launcher::Startup()
 	}
 
 	//Create thread for handling data thats recieved by the server. Pass the server socket as argument.
-	DWORD dwThreadId;
-	CreateThread(NULL, 0, RecieveData, (LPVOID)this->ServerSocket, 0, &dwThreadId);
+	this->recieveData = std::thread(std::bind(RecieveData, this->ServerSocket));
 
 	this->Login();
 
-	return false;
+	return this->startGame;
 }
 
 void Launcher::Login()
@@ -188,6 +228,22 @@ void Launcher::Login()
 	{
 		if (loggedIn)
 		{
+			if (LWindow::GetInstancePtr()->GetSendReadyMessage())
+			{
+				LWindow::GetInstancePtr()->GetSendReadyMessage() = false;
+
+				char b = LWindow::GetInstancePtr()->GetReadyState();
+				int sResult = send(ServerSocket, (const char*)&b, 1, 0);
+
+				if (sResult == SOCKET_ERROR)
+				{
+					printf("send failed: %d\n", WSAGetLastError());
+					closesocket(ServerSocket);
+					WSACleanup();
+					return;
+				}
+			}
+
 			if (LWindow::GetInstancePtr()->GetSendState())
 			{
 				LWindow::GetInstancePtr()->GetSendState() = false;
@@ -228,7 +284,7 @@ void Launcher::Login()
 					printf("send failed: %d\n", WSAGetLastError());
 					closesocket(this->ServerSocket);
 					WSACleanup();
-					return;
+					return;	
 				}
 
 				LWindow::GetInstancePtr()->GetQueryState() = false;
@@ -237,18 +293,21 @@ void Launcher::Login()
 	}
 
 	this->Exit();
+
+	this->windowHandling.join();
+	this->recieveData.join();
 }
 
 void Launcher::Exit()
 {
 	//Shutdown send connection to Server.
-	int rResult = shutdown(ServerSocket, SD_SEND);
+	int rResult = shutdown(this->ServerSocket, SD_SEND);
 
 	//Error handling.
 	if (rResult == SOCKET_ERROR)
 	{
 		printf("shutdown failed: %d\n", WSAGetLastError());
-		closesocket(ServerSocket);
+		closesocket(this->ServerSocket);
 		WSACleanup();
 		return;
 	}

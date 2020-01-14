@@ -1,5 +1,6 @@
 #pragma once
 #include <winsock.h>
+#include <thread>
 
 class Launcher
 {
@@ -10,9 +11,9 @@ public:
 	void Exit();
 
 private:
+	bool startGame = false;
 	SOCKET ServerSocket;
 
-	bool startConnection;
-
-	SOCKADDR_IN enemyAddress;
+	std::thread recieveData;
+	std::thread windowHandling;
 };

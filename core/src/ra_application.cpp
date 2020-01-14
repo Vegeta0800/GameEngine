@@ -51,7 +51,7 @@ void Application::Update()
 
 		this->deltaTime = std::chrono::duration_cast<std::chrono::duration<float>>(gameStartTime - gameCurrentTime).count();
 		gameCurrentTime = gameStartTime;
-
+		  
 		if (!Window::GetInstancePtr()->PollEvents())
 		{
 			SceneManager::GetInstancePtr()->Update();
@@ -101,4 +101,14 @@ bool& Application::GetEstablishState()
 bool& Application::GetStartUpState()
 {
 	return this->startUp;
+}
+
+void Application::SetOpponent(SOCKADDR_IN opp)
+{
+	this->opponent = opp;
+}
+
+SOCKADDR_IN Application::GetOpponent()
+{
+	return this->opponent;
 }
