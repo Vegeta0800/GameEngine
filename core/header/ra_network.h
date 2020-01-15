@@ -1,9 +1,6 @@
 
-struct Data
-{
-	bool left, right;
-	bool shoot;
-};
+#include <thread>
+#include <winsock.h>
 
 class Network
 {
@@ -11,17 +8,17 @@ public:
 	void InitializeClient();
 	void InitializeHost();
 
-	void RecieveHost();
-	void SendHost();
+	void Send();
 
-	void RecieveClient();
-	void SendClient();
+	void Cleanup();
 
 	void SetAddr(sockaddr_in addr);
 
 private:
 	SOCKET opponentSocket;
 	sockaddr_in opponentAddr;
+
+	std::thread recieveData;
 
 	bool host;
 };

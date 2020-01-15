@@ -17,12 +17,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	switch (msg)
 	{
 	case WM_KEYDOWN:
+	{
 		Input::GetInstancePtr()->RegisterKey(static_cast<KeyCode>(wParam), 0);
-		return 0;
+		break;
+	}
 	case WM_KEYUP:
+	{
 		Input::GetInstancePtr()->RegisterKey(static_cast<KeyCode>(wParam), 1);
 		Input::GetInstancePtr()->EradicateKey(static_cast<KeyCode>(wParam), 1);
-		return 0;
+		break;
+	}
 	case WM_SIZE:
 	{
 		if(Rendering::GetInstancePtr()->GetInitStatus())

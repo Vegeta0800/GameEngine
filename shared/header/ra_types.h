@@ -52,7 +52,6 @@ struct RoomData
 };
 #pragma pack(pop)
 
-
 struct iVec2
 {
 	ui32 x;

@@ -1,4 +1,5 @@
 
+#include <thread>
 #include <ctime>
 #include <chrono>
 #include "ra_application.h"
@@ -10,8 +11,14 @@
 #include "input/ra_inputhandler.h"
 #include "ra_scenemanager.h"
 #include "ra_gameobject.h"
+#include "ra_network.h"
 
 DECLARE_SINGLETON(Application)
+
+void NetworkStart()
+{
+	Network net
+}
 
 void Application::Initialize(const char* path, iVec2 resolution, const char* title)
 {

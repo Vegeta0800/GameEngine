@@ -5,6 +5,8 @@
 #include <string>
 #include <winsock.h>
 #include <thread>
+#include <sstream>
+#include <algorithm>
 
 #include "ra_lwindow.h"
 #include "ra_launcher.h"
@@ -24,6 +26,28 @@ bool inRoom = false;
 bool sendData = false;
 
 bool start = false;
+
+std::string Hash(std::string input)
+{
+	unsigned int magic = 397633456;
+	unsigned int hash = 729042348;
+
+	for (int i = 0; i < input.length(); i++)
+	{
+		hash = hash ^ (input[i]);
+		hash = hash * magic;
+	}
+
+	std::string hexHash;
+	std::stringstream hexStream;
+
+	hexStream << std::hex << hash;
+	hexHash = hexStream.str();
+
+	std::transform(hexHash.begin(), hexHash.end(), hexHash.begin(), ::toupper);
+
+	return hexHash;
+}
 
 void WindowHandling()
 {
@@ -204,12 +228,14 @@ bool Launcher::Startup()
 		printf("Unable to connect to server! Error Code: %ld\n", WSAGetLastError());
 		closesocket(this->ServerSocket);
 		this->ServerSocket = INVALID_SOCKET;
+		running = false;
 	}
 
 	if (this->ServerSocket == INVALID_SOCKET)
 	{
 		printf("Unable to connect to server!");
 		WSACleanup();
+		this->windowHandling.join();
 		return false;
 	}
 
@@ -273,6 +299,13 @@ void Launcher::Login()
 			{
 				//Send that message to the server.
 				LoginData loginData = LWindow::GetInstancePtr()->GetLoginData();
+				
+				std::string password = loginData.password;
+
+				password = Hash(password);
+
+				memset(&loginData.password, 0, 32);
+				SET_STRING(loginData.password, password);
 
 				int iResult = send(this->ServerSocket, (const char*)&loginData, sizeof(loginData), 0);
 
