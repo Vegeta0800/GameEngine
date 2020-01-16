@@ -13,12 +13,19 @@
 #include "ra_gameobject.h"
 #include "ra_network.h"
 
-DECLARE_SINGLETON(Application)
-
-void NetworkStart()
+void NetworkStart(bool host)
 {
-	Network net
+	Network* network = new Network();
+
+	if (host)
+		network->InitializeHost();
+	else
+		network->InitializeClient();
+
+	delete network;
 }
+
+DECLARE_SINGLETON(Application)
 
 void Application::Initialize(const char* path, iVec2 resolution, const char* title)
 {
@@ -38,6 +45,11 @@ void Application::Initialize(const char* path, iVec2 resolution, const char* tit
 	Window::GetInstancePtr()->Instantiate(800, 600, 0, "windowTest");
 	SceneManager::GetInstancePtr()->Initialize();
 
+	this->running = true;
+
+	this->networkThread = std::thread(std::bind(NetworkStart, this->host));
+	this->networkThread.detach();
+
 	Rendering::GetInstancePtr()->Initialize("RenderingExample", VK_MAKE_VERSION(0, 0, 0));
 }
 
@@ -52,6 +64,7 @@ void Application::Update()
 
 	while (Window::GetInstancePtr() && Window::GetInstancePtr()->GetState() != Window::WindowState::Closed)
 	{
+		this->running = true;
 		START_TIMER
 
 		gameStartTime = std::chrono::high_resolution_clock::now();
@@ -70,6 +83,8 @@ void Application::Update()
 		}
 			//STOP_TIMER("Loop took")
 	}
+
+	this->running = false;
 
 }
 
@@ -105,17 +120,22 @@ bool& Application::GetEstablishState()
 	return this->establishConnection;
 }
 
-bool& Application::GetStartUpState()
+bool& Application::GetHostState()
 {
-	return this->startUp;
+	return this->host;
 }
 
-void Application::SetOpponent(SOCKADDR_IN opp)
+bool& Application::GetRunState()
+{
+	return this->running;
+}
+
+void Application::SetOpponent(std::string opp)
 {
 	this->opponent = opp;
 }
 
-SOCKADDR_IN Application::GetOpponent()
+std::string Application::GetOpponent()
 {
 	return this->opponent;
 }

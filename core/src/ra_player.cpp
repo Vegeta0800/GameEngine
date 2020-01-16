@@ -28,7 +28,12 @@ void Player::Update()
 	Move();
 
 	if (Input::GetInstancePtr()->GetKeyUp(KeyCode::Space))
+	{
 		Shoot();
+		Input::GetInstancePtr()->GetMyData().shoot = true;
+	}
+	else
+		Input::GetInstancePtr()->GetMyData().shoot = false;
 }
 
 void Player::Cleanup()
@@ -45,9 +50,20 @@ PlayerValues& Player::GetPlayerValues(void)
 void Player::Move()
 {
 	if (Input::GetInstancePtr()->GetKey(KeyCode::A))
+	{
 		this->rigidBody->AddForce(Math::Vec3::neg_unit_x, this->player.speed);
+		Input::GetInstancePtr()->GetMyData().left = true;
+	}
+	else
+		Input::GetInstancePtr()->GetMyData().left = false;
+
 	if (Input::GetInstancePtr()->GetKey(KeyCode::D))
+	{
 		this->rigidBody->AddForce(Math::Vec3::unit_x, this->player.speed);
+		Input::GetInstancePtr()->GetMyData().right = true;
+	}
+	else
+		Input::GetInstancePtr()->GetMyData().right = false;
 
 	//printf("%f, %f, %f \n", this->rigidBody->GetTransform()->position.x, this->rigidBody->GetTransform()->position.y, this->rigidBody->GetTransform()->position.z);
 }

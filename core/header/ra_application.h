@@ -4,6 +4,8 @@
 //INTERNAL INCLUDES
 #include "ra_utils.h"
 #include "ra_types.h"
+#include <thread>
+#include <string>
 
 class Filesystem;
 	
@@ -16,23 +18,28 @@ public:
 	void Update();
 	void Cleanup();
 
-	void SetOpponent(SOCKADDR_IN addr);
+	void SetOpponent(std::string addr);
 
 	Filesystem* GetFilesystem();
 	float GetDeltaTime();
 	float& GetAspectRatio();
 
 	bool& GetEstablishState();
-	bool& GetStartUpState();
-	SOCKADDR_IN GetOpponent();
+	bool& GetHostState();
+	bool& GetRunState();
+
+	std::string GetOpponent();
 private:
 	Filesystem* filesystem;
+	
+	std::thread networkThread;
 
-	SOCKADDR_IN opponent;
+	std::string opponent;
 
 	float deltaTime = 0.0f;
 	float aspectRatio = 0.0f;
 
-	bool startUp;
+	bool host;
+	bool running;
 	bool establishConnection;
 };

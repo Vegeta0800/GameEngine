@@ -16,14 +16,16 @@
 // link with Ws2_32.lib
 #pragma comment(lib, "Ws2_32.lib")
 #define DEFAULT_PORT 12307 //Use any port you want. Has to be in port forwarding settings.
-#define SERVER_IP "192.168.1.30" //Public IP used for clients outside of servers network. (public IPv4 of server)
-//#define SERVER_IP "" //LAN Address used for clients inside of servers network, because they cant connect to the public IP due to the NAT. (LAN IPv4 of Server)
+//#define SERVER_IP "192.168.1.30" //Public IP used for clients outside of servers network. (public IPv4 of server)
+#define SERVER_IP "127.0.0.1" //LAN Address used for clients inside of servers network, because they cant connect to the public IP due to the NAT. (LAN IPv4 of Server)
 
 //Global variables used by all threads.
 bool running = true;
 bool loggedIn = false;
 bool inRoom = false;
 bool sendData = false;
+
+bool inGame = false;
 
 bool start = false;
 
@@ -77,76 +79,61 @@ void RecieveData(SOCKET ServerSocket)
 	//Receive data until the server closes the connection
 	do
 	{
-		//Recieve data
-		if(!loggedIn)
-			rResult = recv(ServerSocket, buff, sizeof(LoginData), 0);
-		else
-			rResult = recv(ServerSocket, buff, sizeof(RoomData), 0);
-
-		printf("Recieved %d bytes from server \n", rResult);
-
-		//If there is data recieved
-		if (rResult > 0)
+		if (!inGame)
 		{
+			//Recieve data
 			if (!loggedIn)
-			{
-				if (buff[0] == 1)
-				{
-					//Trigger event so the window spawns a new text with the message.
-					printf("Logged in\n");
-					loggedIn = true;
-
-					LWindow::GetInstancePtr()->SetName(LWindow::GetInstancePtr()->GetLoginData().name);
-					LWindow::GetInstancePtr()->GetRoomState() = true;
-				}
-				else
-				{
-					printf("Login failed!\n");
-				}
-			}
+				rResult = recv(ServerSocket, buff, sizeof(LoginData), 0);
 			else
+				rResult = recv(ServerSocket, buff, sizeof(RoomData), 0);
+
+			printf("Recieved %d bytes from server \n", rResult);
+
+			//If there is data recieved
+			if (rResult > 0)
 			{
-				if (rResult <= 16)
+				if (!loggedIn)
 				{
-					std::string ip = buff;
-					ip.resize(rResult);
-
-					sockaddr_in opp;
-					opp.sin_family = AF_INET; //Ipv4 Address
-					if(ip[rResult - 1] == 1)
-						opp.sin_addr.s_addr = INADDR_ANY; //Any IP interface of server is connectable (LAN, public IP, etc).
-					else if(ip[rResult - 1] == 0)
-						opp.sin_addr.s_addr = inet_pton(AF_INET, ip.c_str(), &opp.sin_addr.s_addr); //Any IP interface of server is connectable (LAN, public IP, etc).
-					opp.sin_port = htons(DEFAULT_PORT); //Set port.
-
-					Application::GetInstancePtr()->GetEstablishState() = true;
-					Application::GetInstancePtr()->SetOpponent(opp);
-				} 
-				else
-				{
-					RoomData data = RoomData();
-					data = *(RoomData*)&buff;
-
-					std::string name = data.name;
-
-					if (data.deleted == true)
+					if (buff[0] == 1)
 					{
-						LWindow::GetInstancePtr()->GetDeleteRoom() = name;
+						//Trigger event so the window spawns a new text with the message.
+						printf("Logged in\n");
+						loggedIn = true;
 
-						if (!data.created)
-						{
-							std::string mess(name);
-							mess += "'s Room 1/2";
-							LWindow::GetInstancePtr()->SetNextName(name);
-							LWindow::GetInstancePtr()->SetRecievedMessage(mess);
-							LWindow::GetInstancePtr()->GetRecievedState() = true;
-						}
+						LWindow::GetInstancePtr()->SetName(LWindow::GetInstancePtr()->GetLoginData().name);
+						LWindow::GetInstancePtr()->GetRoomState() = true;
 					}
 					else
 					{
-						if (data.created == true)
+						printf("Login failed!\n");
+					}
+				}
+				else
+				{
+					if (rResult <= 16)
+					{
+						printf("%d \n", buff[15]);
+						Application::GetInstancePtr()->GetHostState() = buff[15];
+
+						std::string ip = buff;
+						ip.resize(rResult - 1);
+
+						Application::GetInstancePtr()->GetEstablishState() = true;
+						Application::GetInstancePtr()->SetOpponent(ip);
+						inGame = true;
+					}
+					else
+					{
+						RoomData data = RoomData();
+						data = *(RoomData*)&buff;
+
+						std::string name = data.name;
+
+						if (data.deleted == true)
 						{
-							if (data.name != LWindow::GetInstancePtr()->GetName())
+							LWindow::GetInstancePtr()->GetDeleteRoom() = name;
+
+							if (!data.created)
 							{
 								std::string mess(name);
 								mess += "'s Room 1/2";
@@ -157,24 +144,38 @@ void RecieveData(SOCKET ServerSocket)
 						}
 						else
 						{
-							LWindow::GetInstancePtr()->UpdateRoom(name);
-							printf("Updating room: %s \n", name.c_str());
+							if (data.created == true)
+							{
+								if (data.name != LWindow::GetInstancePtr()->GetName())
+								{
+									std::string mess(name);
+									mess += "'s Room 1/2";
+									LWindow::GetInstancePtr()->SetNextName(name);
+									LWindow::GetInstancePtr()->SetRecievedMessage(mess);
+									LWindow::GetInstancePtr()->GetRecievedState() = true;
+								}
+							}
+							else
+							{
+								LWindow::GetInstancePtr()->UpdateRoom(name);
+								printf("Updating room: %s \n", name.c_str());
+							}
 						}
 					}
 				}
 			}
-		}
-		//If connection is closing:
-		else if (rResult == 0)
-		{
-			printf("Connection closed\n");
-			running = false;
-		}
-		//If failed:
-		else
-		{
-			printf("recv failed: %d\n", WSAGetLastError());
-			running = false;
+			//If connection is closing:
+			else if (rResult == 0)
+			{
+				printf("Connection closed\n");
+				running = false;
+			}
+			//If failed:
+			else
+			{
+				printf("recv failed: %d\n", WSAGetLastError());
+				running = false;
+			}
 		}
 
 	} while (running);
@@ -184,10 +185,6 @@ void RecieveData(SOCKET ServerSocket)
 
 bool Launcher::Startup()
 {
-	running = true;
-
-	this->windowHandling = std::thread(WindowHandling);
-
 	WSADATA wsaData;
 	int fResult = 0;
 	fResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -228,18 +225,18 @@ bool Launcher::Startup()
 		printf("Unable to connect to server! Error Code: %ld\n", WSAGetLastError());
 		closesocket(this->ServerSocket);
 		this->ServerSocket = INVALID_SOCKET;
-		running = false;
 	}
 
 	if (this->ServerSocket == INVALID_SOCKET)
 	{
 		printf("Unable to connect to server!");
 		WSACleanup();
-		this->windowHandling.join();
 		return false;
 	}
 
 	//Create thread for handling data thats recieved by the server. Pass the server socket as argument.
+	running = true;
+	this->windowHandling = std::thread(WindowHandling);
 	this->recieveData = std::thread(std::bind(RecieveData, this->ServerSocket));
 
 	this->Login();

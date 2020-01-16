@@ -3,56 +3,17 @@
 #include <string>
 #include <winsock.h>
 #include <thread>
+#include <map>
 
 #include "ra_network.h"
 #include "ra_application.h"
 #include "input\ra_inputhandler.h"
 
+#define DEFAULT_PORT 12307
+
 bool run = false;
 
-void Recieve(SOCKET opponent, sockaddr_in addr)
-{
-	char buffer[256];
-
-	int addrSize = sizeof(addr);
-
-	while (run)
-	{
-		int iResult = recvfrom(opponent, buffer, sizeof(buffer), 0, (sockaddr*)&addr, &addrSize);
-
-		if (iResult > 1)
-		{
-			Data data = Data();
-			data = *(Data*)&buffer;
-
-			printf("Received %d bytes from opponent \n", iResult);
-
-			Input::GetInstancePtr()->GetOpponentData() = data;
-		}
-		else if (iResult == 0)
-		{
-			run = false;
-		}
-		else
-		{
-			run = false;
-		}
-	}
-
-	int iResult = shutdown(opponent, SD_SEND);
-
-	//Error handling.
-	if (iResult == SOCKET_ERROR)
-	{
-		printf("Failed to execute shutdown(). Error Code: %d\n", WSAGetLastError());
-		closesocket(opponent);
-		return;
-	}
-
-	closesocket(opponent);
-}
-
-void Network::InitializeClient()
+void Network::InitializeClient()	
 {
 	WSADATA wsaData;
 	int fResult = 0;
@@ -81,30 +42,43 @@ void Network::InitializeClient()
 		return;
 	}
 
-	// Connect to server.
-	fResult = connect(this->opponentSocket, reinterpret_cast<SOCKADDR*>(&Application::GetInstancePtr()->GetOpponent()), sizeof(SOCKADDR_IN));
+	run = true;
 
-	//Error handling.
-	if (fResult == SOCKET_ERROR)
-	{
-		printf("Unable to connect to server! Error Code: %ld\n", WSAGetLastError());
-		closesocket(this->opponentSocket);
-		this->opponentSocket = INVALID_SOCKET;
-	}
+	std::string	oppIp = Application::GetInstancePtr()->GetOpponent();
 
-	if (this->opponentSocket == INVALID_SOCKET)
-	{
-		printf("Unable to connect to server!");
-		WSACleanup();
-		return;
-	}
+	sockaddr_in service;
+	service.sin_family = AF_INET; //Ipv4 Address
+	inet_pton(AF_INET, oppIp.c_str(), &service.sin_addr.s_addr);
+	service.sin_port = htons(DEFAULT_PORT); //Set port.
+
+	this->opponentAddr = service;
+	int iResult;
 
 	run = true;
 
-	//Create thread for handling data thats recieved by the server. Pass the server socket as argument.
-	this->recieveData = std::thread(std::bind(Recieve, this->opponentSocket, this->opponentAddr));
+	char buffer[sizeof(DataPacket)];
 
-	this->Send();
+	int addrSize = sizeof(this->opponentAddr);
+
+	while (run)
+	{
+		iResult = sendto(this->opponentSocket, (const char*)&Input::GetInstancePtr()->GetMyData(), sizeof(DataPacket), 0, (sockaddr*)&this->opponentAddr, sizeof(this->opponentAddr));
+	
+		iResult = recvfrom(this->opponentSocket, buffer, sizeof(buffer), 0, (sockaddr*)&this->opponentAddr, &addrSize);
+
+		run = Application::GetInstancePtr()->GetRunState();
+
+		if (iResult > 1)
+		{
+			DataPacket packet = DataPacket();
+			packet = *(DataPacket*)&buffer;
+
+			Input::GetInstancePtr()->GetOpponentData() = packet;
+			printf("Left %d , Right %d, Shoot %d from client \n", packet.left, packet.right, packet.shoot);
+		}
+	}
+
+	this->Cleanup();
 }
 
 void Network::InitializeHost()
@@ -137,8 +111,22 @@ void Network::InitializeHost()
 		return;
 	}
 
+	sockaddr_in service;
+	service.sin_family = AF_INET; //Ipv4 Address
+	service.sin_addr.s_addr = INADDR_ANY; //Any IP interface of server is connectable (LAN, public IP, etc).
+	service.sin_port = htons(DEFAULT_PORT); //Set port.
+
+	std::string oppIp = Application::GetInstancePtr()->GetOpponent();
+
+	sockaddr_in addr;
+	addr.sin_family = AF_INET; //Ipv4 Address
+	inet_pton(AF_INET, oppIp.c_str(), &addr.sin_addr.s_addr);
+	addr.sin_port = htons(DEFAULT_PORT); //Set port.
+
+	this->opponentAddr = addr;
+
 	// Bind UDP socket.
-	fResult = bind(this->opponentSocket, reinterpret_cast<SOCKADDR*>(&Application::GetInstancePtr()->GetOpponent()), sizeof(SOCKADDR_IN));
+	fResult = bind(this->opponentSocket, reinterpret_cast<SOCKADDR*>(&service), sizeof(service));
 
 	//Error handling.
 	if (fResult == SOCKET_ERROR)
@@ -151,32 +139,30 @@ void Network::InitializeHost()
 
 	run = true;
 
-	this->recieveData = std::thread(std::bind(Recieve, this->opponentSocket, this->opponentAddr));
+	char buffer[sizeof(DataPacket)];
 
-	this->Send();
-}
+	int addrSize = sizeof(this->opponentAddr);
+	int iResult;
 
-void Network::Send()
-{
 	while (run)
 	{
-		int iResult = sendto(this->opponentSocket, (const char*)&Input::GetInstancePtr()->GetMyData(), 256, 0, (sockaddr*)&this->opponentAddr, sizeof(this->opponentAddr));
-		
-		printf("send %d bytes to server\n", iResult);
+		iResult = recvfrom(this->opponentSocket, buffer, sizeof(buffer), 0, (sockaddr*)&this->opponentAddr, &addrSize);
 
-		//Error handling.
-		if (iResult == SOCKET_ERROR)
+		run = Application::GetInstancePtr()->GetRunState();
+		
+		if (iResult > 1)
 		{
-			printf("send failed: %d\n", WSAGetLastError());
-			closesocket(this->opponentSocket);
-			WSACleanup();
-			return;
+			DataPacket packet = DataPacket();
+			packet = *(DataPacket*)&buffer;
+
+			Input::GetInstancePtr()->GetOpponentData() = packet;
+			printf("Left %d , Right %d, Shoot %d from client \n", packet.left, packet.right, packet.shoot);
 		}
+
+		iResult = sendto(this->opponentSocket, (const char*)&Input::GetInstancePtr()->GetMyData(), sizeof(DataPacket), 0, (sockaddr*)&this->opponentAddr, sizeof(this->opponentAddr));
 	}
 
 	this->Cleanup();
-
-	this->recieveData.join();
 }
 
 void Network::Cleanup()
@@ -196,9 +182,4 @@ void Network::Cleanup()
 	//Close connection to Server, cleanup WinSock and delete the window.
 	closesocket(opponentSocket);
 	WSACleanup();
-}
-
-void Network::SetAddr(sockaddr_in addr)
-{
-	this->opponentAddr = addr;
 }
