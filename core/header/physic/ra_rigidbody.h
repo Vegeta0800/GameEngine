@@ -1,6 +1,6 @@
+
 #pragma once
 //EXTERNAL INCLUDES
-#include <limits>
 //INTERNAL INCLUDES
 #include "ra_types.h"
 #include "ra_utils.h"
@@ -9,48 +9,56 @@
 
 class Transform;
 
+//Class RigidBody, holds all physics related code
 class Rigidbody
 {
 	//Declare the public functions that are overwritten.
 public:
+	//RigidBody constructor setting a lot of standard values
 	Rigidbody(Transform* transform, std::string name);
 
+	//Update physics
 	void Update(void);
+	//Cleanup rigidbody and delete it
 	void Cleanup(void);
-
+	//Apply force to a specific direction vector
 	void AddForce(Math::Vec3 direction, float force);
 
+
+	//Set object the rigidbody is colliding with
 	void SetHitObject(Rigidbody* object);
 
-	Math::Vec3 GetImpactDirection();
-	Math::Vec3 GetImpactNormal();
 
-	Math::Vec3& GetGravityCenter();
-
-	bool RayCast(Math::Vec3 start, Math::Vec3 end);
-	bool RayCast(Math::Vec3 start, Math::Vec3 end, RaycastInfo& hitInfo);
-	RigidbodyValues& GetRigidbodyValues();
-
+	//Get object the rigidbody is colliding with
 	Rigidbody* GetHitObject();
-
-	std::string GetName();
-
+	//Get Transform
 	Transform* GetTransform();
 
+
+	//Get rigidbodys values
+	RigidbodyValues& GetRigidbodyValues();
+	//Get the position of the gravity center
+	Math::Vec3& GetGravityCenter();
+
+
+	//Get name
+	std::string GetName();
+
 private:
+	//Update the gravity
 	void Gravity(void);
+	//Calculate the velocity by dividng the force by the rigidbodys mass
 	float CalculateVelocity(float force);
 
 	RigidbodyValues rigidBody;
-
 	std::string name;
 
 	//Gravity
+	Math::Vec3 gravityCenter;
 	const float gravityConstant = 0.000000000006674f; // Gravity constant 6.674 * 10 ^ -11
 	float gravity;
 	float massOfCenter;
-	Math::Vec3 gravityCenter;
-	Transform* transform;
 
-	Rigidbody* hitObject;
+	Transform* transform;
+	Rigidbody* hitObject; //Collided Object
 };

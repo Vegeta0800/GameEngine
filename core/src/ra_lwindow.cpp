@@ -1,9 +1,11 @@
+
 //EXTERNAL INCLUDES
 #include <unordered_map>
 #include <map>
 //INTERNAL INCLUDES
 #include "ra_lwindow.h"
 
+//Windows ID's TODO
 #define LoginButton_ID 0 //ID for send button events.
 #define Name_ID 1 //ID for send button events.
 #define Password_ID 2 //ID for send button events.
@@ -11,9 +13,10 @@
 #define Ready_ID 4
 
 //Global variables needed outside of the window class.
-std::vector<Display> g_displays2;
-std::unordered_map<HWND, LWindow*> g_windowMapping2;
+std::vector<Display> g_launcherDisplays;
+std::unordered_map<HWND, LWindow*> g_launcherWindowMapping;
 
+//Room mappings
 std::unordered_map<int, std::string> g_roomMapping;
 std::unordered_map<std::string, HWND> g_roomStringMapping;
 
@@ -23,107 +26,144 @@ std::vector<RECT> roomRects;
 
 HWND hwndName; //Name textbox window.
 HWND hwndPassword; //Password textbox window.
-HWND hwndChat; //Window where the chat is spawned in.
-HWND hwndButton;
+HWND hwndRooms; //Window where the rooms are spawned in.
+HWND hwndButton; //Window that is the button that is active.
 
+//Singleton
 DECLARE_SINGLETON(LWindow);
 
-//Handles messages for a window.
-LRESULT CALLBACK WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+//Handles messages for launcher window.
+LRESULT CALLBACK LaunchWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-	//Handle the messages in the window.
+	//Handle the messages in the window. TODO ENTER AND TAB
 	switch (msg)
 	{
-	case WM_LBUTTONDBLCLK: //If Left mouse button is pressed
+	case WM_LBUTTONDBLCLK: //If Left mouse double clicks
 	{
-		SetFocus(hwnd); //Set focus to the window.
-
+		//If there are rooms already
 		if (roomRects.size() != 0)
 		{
-			POINT pt;
-			GetCursorPos(&pt);
+			SetFocus(hwnd); //Set focus to the launcher window.
 
+			POINT pt;
+			GetCursorPos(&pt); //Get cursor position
+
+			//For all room RECTS
 			for (int i = 0; i < roomRects.size(); i++)
 			{
+				//Check if the cursor positon is inside that RECT
 				if (PtInRect(&roomRects[i], pt))
 				{
+					//If so set room data with the clients name and configure it as a join message
 					RoomData data;
 					memset(data.name, 0, 32);
 					data.created = false;
 					data.deleted = false;
 
+					//Set datas name field
 					std::string name = g_roomMapping[i];
-
 					SET_STRING(data.name, name);
 
-					g_windowMapping2[hwnd]->SetData(data);
-					g_windowMapping2[hwnd]->GetSendState() = true;
+					//Set the data to the launcher windows data
+					g_launcherWindowMapping[hwnd]->SetData(data);
+					g_launcherWindowMapping[hwnd]->GetSendState() = true; //Send the data
 
+					//Destroy the Create Window button
 					DestroyWindow(hwndButton);
 
+					//TODO CREATE LEAVE ROOM BUTTON
+
+					//Create Ready button
 					hwndButton = HWND();
 					hwndButton = CreateWindowEx(0, "BUTTON", "Ready",
-						WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 315, 480, 120, 25, g_windowMapping2[hwnd]->GetHandle(),
-						(HMENU)Ready_ID, (HINSTANCE)(LONG_PTR)GetWindowLong(g_windowMapping2[hwnd]->GetHandle(), -6), NULL);
+						WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 315, 480, 120, 25, g_launcherWindowMapping[hwnd]->GetHandle(),
+						(HMENU)Ready_ID, (HINSTANCE)(LONG_PTR)GetWindowLong(g_launcherWindowMapping[hwnd]->GetHandle(), -6), NULL);
 				}
 			}
 		}
 
+		//If not do nothing.
 		break;
 	}
-	case WM_COMMAND:
+	case WM_COMMAND: //If window registers a command
 	{
 		switch (LOWORD(wParam)) //Convert command
 		{
-		case LoginButton_ID: //If its the send button being pressed.
+		case LoginButton_ID: //If its the login button being pressed.
 		{
-			//Trigger event to send a message.
 			//Copy message from the textBox
+			
+			//Initialize login data
 			LoginData data;
 
+			//Set name and passwords field to \0
 			memset(data.name, 0, 32);
 			memset(data.password, 0, 32);
 
+			//Get the name and passwords input text windows text and set it to the login datas fields
 			GetWindowText(hwndName, data.name, 32);
-
 			GetWindowText(hwndPassword, data.password, 32);
 
+			//Set the name and passwords input text window texts to null.
 			SetWindowText(hwndName, "");
 			SetWindowText(hwndPassword, "");
-			g_windowMapping2[hwnd]->SetData(data);
-			g_windowMapping2[hwnd]->GetQueryState() = true;
+
+			//Set launcher windows data to it.
+			g_launcherWindowMapping[hwnd]->SetData(data);
+			//Trigger event to send a loginData.
+			g_launcherWindowMapping[hwnd]->GetQueryState() = true;
 			break;
 		}
-		case CreateRoom_ID:
+		case CreateRoom_ID: //If its a create room button being pressed
 		{
-			std::string mess(g_windowMapping2[hwnd]->GetName());
-			mess += "'s Room 1/2";
+			//Get name and create string message for a room
+			std::string s_data(g_launcherWindowMapping[hwnd]->GetName());
+			s_data += "'s Room 1/2";
 
-			g_windowMapping2[hwnd]->SetNextName(g_windowMapping2[hwnd]->GetName());
-			g_windowMapping2[hwnd]->SetRecievedMessage(mess);
-			g_windowMapping2[hwnd]->GetRecievedState() = true;
+			//Spawn visible room on clients screen.
+			g_launcherWindowMapping[hwnd]->SetNextName(g_launcherWindowMapping[hwnd]->GetName()); //Set next name for creation placement
+			g_launcherWindowMapping[hwnd]->SetRecievedData(s_data);
+			g_launcherWindowMapping[hwnd]->GetRecievedState() = true;
 
+			//Initialize room data
 			RoomData data;
 
+			//Set name field to null
 			memset(data.name, 0, 32);
 
+			//Set it to a create message
 			data.created = true;
 			data.deleted = false;
 
-			SET_STRING(data.name, g_windowMapping2[hwnd]->GetName())
+			//Set name field to clients name.
+			SET_STRING(data.name, g_launcherWindowMapping[hwnd]->GetName())
 				
-			g_windowMapping2[hwnd]->GetCreatedState() = true;
-			g_windowMapping2[hwnd]->SetData(data);
+			//Created state is true
+			g_launcherWindowMapping[hwnd]->GetCreatedState() = true;
 
-			g_windowMapping2[hwnd]->GetSendState() = true;
+			//Set data 
+			g_launcherWindowMapping[hwnd]->SetData(data);
+			//Send data
+			g_launcherWindowMapping[hwnd]->GetSendState() = true;
 
+			//Destroy the create room button
 			DestroyWindow(hwndButton);
+
+			//TODO CREATE LEAVE ROOM BUTTON
+
+			//Create Ready button
+			hwndButton = HWND();
+			hwndButton = CreateWindowEx(0, "BUTTON", "Ready",
+				WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 315, 480, 120, 25, g_launcherWindowMapping[hwnd]->GetHandle(),
+				(HMENU)Ready_ID, (HINSTANCE)(LONG_PTR)GetWindowLong(g_launcherWindowMapping[hwnd]->GetHandle(), -6), NULL);
+			
 			break;
 		}
-		case Ready_ID:
+		case Ready_ID: //If its a ready button being pressed
 		{
-			g_windowMapping2[hwnd]->GetReadyState() = !g_windowMapping2[hwnd]->GetReadyState();
-			g_windowMapping2[hwnd]->GetSendReadyMessage() = true;
+			//Trigger the ready state to swap and send that message.
+			g_launcherWindowMapping[hwnd]->GetReadyState() = !g_launcherWindowMapping[hwnd]->GetReadyState();
+			g_launcherWindowMapping[hwnd]->GetSendReadyMessage() = true;
 			break;
 		}
 		}
@@ -132,14 +172,14 @@ LRESULT CALLBACK WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	//If the message is destroy, destroy the window.
 	case WM_DESTROY:
 	{
-		g_windowMapping2[hwnd]->SetState(LWindow::LWindowState::Closed); //Set closed state
+		g_launcherWindowMapping[hwnd]->SetState(LWindow::LWindowState::Closed); //Set closed state
 		DestroyWindow(hwnd); //Destroy the window.
 		break;
 	}
 	//If the message is close, stop proccessing messages.
 	case WM_CLOSE:
 	{
-		g_windowMapping2[hwnd]->SetState(LWindow::LWindowState::Closed); //Set closed state
+		g_launcherWindowMapping[hwnd]->SetState(LWindow::LWindowState::Closed); //Set closed state
 		PostQuitMessage(0);
 		break;
 	}
@@ -150,7 +190,6 @@ LRESULT CALLBACK WndProc2(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 	return 0;
 }
-
 //Save display information.
 BOOL CALLBACK MonitorEnumProc2(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
@@ -171,16 +210,17 @@ BOOL CALLBACK MonitorEnumProc2(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMon
 		currentMonitor.posY = info.rcMonitor.top;	
 
 		//Add the display into windows displays list.
-		g_displays2.push_back(currentMonitor);
+		g_launcherDisplays.push_back(currentMonitor);
 	}
 
 	return TRUE;
 }
 
 
+//Instantiating the window with specific values
 void LWindow::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* title)
 {
-	//Initialize variable
+	//Initialize and set variables
 	ui32 style = 0;
 	this->width = width;
 	this->height = height;
@@ -192,19 +232,19 @@ void LWindow::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* t
 	//Create a struct to hold window data and fill that struct with data.
 	WNDCLASSEXA wndex = { 0 };
 	wndex.cbSize = sizeof(WNDCLASSEX);
-	wndex.lpfnWndProc = WndProc2; //Set this function as the function to handle the messages.
+	wndex.lpfnWndProc = LaunchWndProc; //Set this function as the function to handle the messages on another thread.
 	wndex.hInstance = GetModuleHandle(NULL);
 	wndex.hIcon = NULL;
-	wndex.hCursor = LoadCursor(NULL, IDC_ARROW);
+	wndex.hCursor = LoadCursor(NULL, IDC_ARROW); //Cursor
 	wndex.hbrBackground = CreateSolidBrush(RGB(255, 210, 0)); //Yellow
 	wndex.lpszClassName = title;
-	wndex.style = CS_DBLCLKS;
+	wndex.style = CS_DBLCLKS; //Activate double clicks
 
 	//Register a window and if that fails crash the program.
 	if (!RegisterClassExA(&wndex))
 		throw;
 
-	//Set the window style.
+	//Set extra window styles.
 	style = WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
 
 	//Get the selected display.
@@ -266,7 +306,7 @@ void LWindow::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* t
 		throw;
 
 	//Set the window to the main window handle.
-	g_windowMapping2[this->handle] = this;
+	g_launcherWindowMapping[this->handle] = this;
 
 	//Set window state
 	this->state = LWindow::LWindowState::Started;
@@ -276,246 +316,196 @@ void LWindow::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* t
 	UpdateWindow(this->handle);
 }
 
-void LWindow::AddDisplay(Display& display)
-{
-	g_displays2.push_back(display);
-}
-
-void LWindow::SetState(LWindowState state)
-{
-	this->state = state;
-}
-
-void LWindow::SetData(LoginData loginData)
-{
-	this->loginData = loginData;
-}
-
-void LWindow::SetData(RoomData roomData)
-{
-	this->roomData = roomData;
-}
-
+//Update launcher window each tick
 void LWindow::Update()
 {
+	//If login was succesful spawn new window content
 	if (this->roomActive)
 	{
+		//Deactivate spawning
 		this->roomActive = false;
+
+		//Destroy name, password and button window.
 		DestroyWindow(hwndName);
 		DestroyWindow(hwndPassword);
 		DestroyWindow(hwndButton);
 
-		//Create the SendButton
+		//Create the Create Room button
 		hwndButton = HWND();
 		hwndButton = CreateWindowEx(0, "BUTTON", "Create Room",
 			WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 315, 480, 120, 25, this->handle,
 			(HMENU)CreateRoom_ID, (HINSTANCE)(LONG_PTR)GetWindowLong(this->handle, -6), NULL);
 
-		//Create the chat window.
-		hwndChat = HWND();
-		hwndChat = CreateWindowEx(0, "static", "",
+		//Create the room window.
+		hwndRooms = HWND();
+		hwndRooms = CreateWindowEx(0, "static", "",
 			WS_CHILD | WS_VISIBLE | WS_TABSTOP, 50, 50, 340, 400, this->handle,
 			NULL, (HINSTANCE)(LONG_PTR)GetWindowLong(this->handle, -6), NULL);
 	}
+	//If a room is supposed to be deleted
 	else if (this->deleteRoom != "")
 	{
-		DestroyWindow(g_roomStringMapping[this->deleteRoom]);
+		//Stop deletion
 		this->deleteRoom = "";
+		//Destroy requested room
+		DestroyWindow(g_roomStringMapping[this->deleteRoom]);
 	}
+	//If a room is supposed to be updated TODO redundant if ready is instantly created when created room
 	else if (this->update)
 	{
+		//Stop updating room
 		this->update = false;
+
+		//Destroy create room button.
+		DestroyWindow(hwndButton);
+
+		//Create ready button
 		hwndButton = HWND();
 		hwndButton = CreateWindowEx(0, "BUTTON", "Ready",
 			WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON, 315, 480, 120, 25, this->handle,
 			(HMENU)Ready_ID, (HINSTANCE)(LONG_PTR)GetWindowLong(this->handle, -6), NULL);
 	}
 
-	//Spawn new messages when a message is recieved.
+	//Spawn new windows when data is recieved.
 	if (this->GetRecievedState())
 	{
 		this->GetRecievedState() = false;
-		this->RecievedMessage(this->GetRecievedMessage());
-		this->SetRecievedMessage("");
+		this->RecievedData(this->GetRecievedData());
+		this->SetRecievedData("");
 	}
 
+	//If window events occur
 	MSG msg = { };
 	if (PeekMessageA(&msg, this->handle, 0, 0, PM_REMOVE))
 	{
+		//Translate and handle them
 		TranslateMessage(&msg);
 		DispatchMessage(&msg);
 	}
 
+	//Update the main launcher window
 	UpdateWindow(this->handle);
 }
 
-LWindow::LWindowState LWindow::GetState()
+//Create new visible window with input data //TODO IMPROVE MAYBE
+void LWindow::RecievedData(std::string data)
 {
-	return this->state;
-}
-
-HWND LWindow::GetHandle()
-{
-	return this->handle;
-}
-
-bool& LWindow::GetQueryState()
-{
-	return this->queryLogin;
-}
-
-bool& LWindow::GetRoomState()
-{
-	return this->roomActive;
-}
-
-LoginData LWindow::GetLoginData()
-{
-	return this->loginData;
-}
-
-RoomData LWindow::GetRoomData()
-{
-	return this->roomData;
-}
-
-void LWindow::RecievedMessage(std::string message)
-{
-	HWND hwndChatText;
+	//Create temp window handle and RECT
+	HWND hwndRoomsText;
 	RECT Rect;
 
+	//If there are no rooms yet
 	if (rooms.size() == 0)
 	{
-		//Create message text at top position if its the first one.
-		hwndChatText = CreateWindowEx(0, "static", message.c_str(),
-			WS_CHILD | WS_VISIBLE | WS_TABSTOP, 1, 1, (5 * (static_cast<int>(message.size()) + 10)), 22, hwndChat,
-			NULL, (HINSTANCE)(LONG_PTR)GetWindowLong(hwndChat, -6), NULL);
+		//Create a visible room at top position if its the first one.
+		hwndRoomsText = CreateWindowEx(0, "static", data.c_str(),
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP, 1, 1, (5 * (static_cast<int>(data.size()) + 10)), 22, hwndRooms,
+			NULL, (HINSTANCE)(LONG_PTR)GetWindowLong(hwndRooms, -6), NULL);
 	}
+	//Else if there are rooms
 	else
 	{
-		//Get position of the lowest message.
+		//Get position of the lowest visible room.
 		GetWindowRect(rooms[rooms.size() - 1], &Rect);
-		MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&Rect, 2);
+		MapWindowPoints(HWND_DESKTOP, hwndRooms, (LPPOINT)&Rect, 2); //Map to room frame
 
-		//If spawned message is under the screen.
+		//If spawned visible room is under the screen. TODO SCROLL MAYBE?
 		if (Rect.top + 22 > 380)
 		{
 			printf("Maximum");
 			return;
 		}
 
-		//Create message text 22 units under the lowest message.
-		hwndChatText = CreateWindowEx(0, "static", message.c_str(),
-			WS_CHILD | WS_VISIBLE | WS_TABSTOP, 1, Rect.top + 22, (5 * (static_cast<int>(message.size()) + 10)), 22, hwndChat,
-			NULL, (HINSTANCE)(LONG_PTR)GetWindowLong(hwndChat, -6), NULL);
+		//Create visible room text 22 units under the visible room message.
+		hwndRoomsText = CreateWindowEx(0, "static", data.c_str(),
+			WS_CHILD | WS_VISIBLE | WS_TABSTOP, 1, Rect.top + 22, (5 * (static_cast<int>(data.size()) + 10)), 22, hwndRooms,
+			NULL, (HINSTANCE)(LONG_PTR)GetWindowLong(hwndRooms, -6), NULL);
 	}
 
+	//Get the newly spawned visible room
 	RECT rect;
-	GetWindowRect(hwndChatText, &rect);
+	GetWindowRect(hwndRoomsText, &rect);
 
+	//Store the rooms index in mapping using the next name
 	g_roomMapping[static_cast<int>(roomRects.size())] = this->GetNextName();
-	roomRects.push_back(rect);
-	g_roomStringMapping[this->GetNextName()] = hwndChatText;
+	roomRects.push_back(rect); //push newly spawned visible room rect to roomRects 
+	g_roomStringMapping[this->GetNextName()] = hwndRoomsText; //Map rooms name to window handle
 
-	//Save message to global message vector.s
-	rooms.push_back(hwndChatText);
+	//Push room to all rooms.
+	rooms.push_back(hwndRoomsText);
 }
 
-Display* LWindow::GetDisplay(ui32 displayID)
+//Update room to either 1/2 from 2/2 or 2/2 from 1/2
+void LWindow::UpdateRoom(std::string name, bool joined)
 {
-	return &g_displays2[displayID];
+	//If joined
+	if (joined)
+	{
+		//Update room to ... 2/2
+		this->update = true;
+		std::string data(name);
+		data += "'s Room 2/2";
+
+		SetWindowText(g_roomStringMapping[name], data.c_str());
+	}
+	//If left
+	else
+	{
+		//Update room to ... 1/2
+		std::string data(name);
+		data += "'s Room 1/2";
+		SetWindowText(g_roomStringMapping[name], data.c_str());
+	}
 }
 
-bool& LWindow::GetRecievedState()
-{
-	return this->recieve;
-}
-
-std::string LWindow::GetRecievedMessage()
-{
-	return this->currentMessage;
-}
-
-void LWindow::SetRecievedMessage(std::string message)
-{
-	this->currentMessage = message;
-}
-
-std::string LWindow::GetName()
-{
-	return this->name;
-}
-
-void LWindow::SetName(std::string name)
-{
-	this->name = name;
-}
-
-std::string LWindow::GetNextName()
-{
-	return this->nextName;
-}
-
-void LWindow::SetNextName(std::string name)
-{
-	this->nextName = name;
-}
-
-bool& LWindow::GetSendState()
-{
-	return this->send;
-}
-
-bool& LWindow::GetCreatedState()
-{
-	return this->created;
-}
-
-void LWindow::UpdateRoom(std::string name)
-{
-	this->update = true;
-	std::string mess(name);
-	mess += "'s Room 2/2";
-
-	SetWindowText(g_roomStringMapping[name], mess.c_str());
-}
-
+//Delete a room
 void LWindow::DeleteRoom(std::string name)
 {
+	//If there are no rooms return
 	if (rooms.size() == 0) return;
 
+	//Get wanted room rect
 	RECT roomRect;
 	GetWindowRect(g_roomStringMapping[name], &roomRect);
-	MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&roomRect, 2);
+	MapWindowPoints(HWND_DESKTOP, hwndRooms, (LPPOINT)&roomRect, 2);
 
 	RECT rect;
 
+	//Move all other rooms that are under this room up
 	int roomIndex = 0;
 	if (rooms.size() != 1)
 	{
-		//Move all messages up by 3 units.
 		for (int i = 0; i < (int)rooms.size(); i++)
 		{
 			if (rooms[i] == g_roomStringMapping[name])
 				roomIndex = i;
 
 			GetWindowRect(rooms[i], &rect);
-			MapWindowPoints(HWND_DESKTOP, hwndChat, (LPPOINT)&rect, 2);
+			MapWindowPoints(HWND_DESKTOP, hwndRooms, (LPPOINT)&rect, 2);
 
+			//Check if wanted room is higher than the other room
 			if (rect.top > roomRect.top)
+			{
+				//If so move up the other room by 22 units.
 				SetWindowPos(rooms[i], 0, rect.left, rect.top - 22, rect.right, rect.bottom, SWP_NOZORDER | SWP_NOSIZE | SWP_SHOWWINDOW);
+			}
 		}
 	}
+
+	//Delete index from room mapping
 	g_roomMapping.erase(roomIndex);
 
+	//Swap wanted room with last room and pop back the vector
 	HWND temp = rooms[rooms.size() - 1];
 	rooms[rooms.size() - 1] = rooms[roomIndex];
 	rooms[roomIndex] = temp;
 	rooms.pop_back();
 
+	//Get the window rect and destroy the window afterwards
 	GetWindowRect(g_roomStringMapping[name], &roomRect);
 	DestroyWindow(g_roomStringMapping[name]);
 	
+	//Search for the window with the same rect info and do the same trick as for the rooms.
 	int rectIndex = 0;
 	if (roomRects.size() != 1)
 	{
@@ -526,30 +516,138 @@ void LWindow::DeleteRoom(std::string name)
 				&& roomRects[i].left == roomRect.left
 				&& roomRects[i].right == roomRect.right)
 			{
-				rectIndex = i;
+				RECT tempRect = roomRects[roomRects.size() - 1];
+				roomRects[roomRects.size() - 1] = roomRects[rectIndex];
+				roomRects[rectIndex] = tempRect;
+				roomRects.pop_back();
+				break; //stop
 			}
 		}
 	}
 
-	RECT tempRect = roomRects[roomRects.size() - 1];
-	roomRects[roomRects.size() - 1] = roomRects[rectIndex];
-	roomRects[rectIndex] = tempRect;
-	roomRects.pop_back();
-
+	//Erase the rooms name from mapping
 	g_roomStringMapping.erase(name);
 }
 
+
+//Add a display
+void LWindow::AddDisplay(Display& display)
+{
+	g_launcherDisplays.push_back(display);
+}
+//Set the launcher window state
+void LWindow::SetState(LWindowState state)
+{
+	this->state = state;
+}
+//Set the launcher windows login data
+void LWindow::SetData(LoginData loginData)
+{
+	this->loginData = loginData;
+}
+//Set the launcher windows room data
+void LWindow::SetData(RoomData roomData)
+{
+	this->roomData = roomData;
+}
+//Set received data
+void LWindow::SetRecievedData(std::string data)
+{
+	this->currentData = data;
+}
+//Set clients name
+void LWindow::SetName(std::string name)
+{
+	this->name = name;
+}
+//Set next name
+void LWindow::SetNextName(std::string name)
+{
+	this->nextName = name;
+}
+
+
+//Get launcher main window handle
+HWND LWindow::GetHandle()
+{
+	return this->handle;
+}
+//Get display of a display ID
+Display* LWindow::GetDisplay(ui32 displayID)
+{
+	return &g_launcherDisplays[displayID];
+}
+//Get launcher windows state
+LWindow::LWindowState LWindow::GetState()
+{
+	return this->state;
+}
+
+//Get Login Data
+LoginData LWindow::GetLoginData()
+{
+	return this->loginData;
+}
+//Get Room Data
+RoomData LWindow::GetRoomData()
+{
+	return this->roomData;
+}
+
+//Get received data
+std::string LWindow::GetRecievedData()
+{
+	return this->currentData;
+}
+//Get name
+std::string LWindow::GetName()
+{
+	return this->name;
+}
+//Get next name
+std::string LWindow::GetNextName()
+{
+	return this->nextName;
+}
+//Get reference to the deleted room name
 std::string& LWindow::GetDeleteRoom()
 {
 	return this->deleteRoom;
 }
 
+//Get login request state
+bool& LWindow::GetQueryState()
+{
+	return this->queryLogin;
+}
+//Get state if login was succesful and room frame window should be created
+bool& LWindow::GetRoomState()
+{
+	return this->roomActive;
+
+}
+//Get ready state of client
 bool& LWindow::GetReadyState()
 {
 	return this->ready;
 }
-
+//Get if client has created a room.
+bool& LWindow::GetCreatedState()
+{
+	return this->created;
+}
+//Get if data is received to show.
+bool& LWindow::GetRecievedState()
+{
+	return this->recieve;
+}
+//Get if ready message should be send.
 bool& LWindow::GetSendReadyMessage()
 {
 	return this->sendReady;
+}
+//Get if data should be send
+bool& LWindow::GetSendState()
+{
+	return this->send;
 }

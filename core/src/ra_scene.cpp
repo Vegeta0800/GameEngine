@@ -1,29 +1,35 @@
-#include <unordered_set>
 
+//EXTERNAL INCLUDES
+#include <unordered_set>
+#include <thread>
+//INTERNAL INCLUDES
 #include "ra_scene.h"
+#include "math/ra_mathfunctions.h"
+#include "input/ra_inputhandler.h"
+#include "filesystem/ra_filesystem.h"
+#include "components/player/ra_player.h"
+#include "components/player/ra_bullet.h"
+#include "components/enemy/ra_enemy.h"
+#include "physic/ra_rigidbody.h"
+#include "ra_application.h"
 #include "ra_camera.h"
 #include "ra_gameobject.h"
-#include "ra_application.h"
-#include "filesystem/ra_filesystem.h"
 #include "ra_mesh.h"
 #include "ra_texture.h"
 #include "ra_material.h"
-#include "physic/ra_rigidbody.h"
-#include "ra_boxcollider.h"
-#include "math/ra_mathfunctions.h"
-#include "input/ra_inputhandler.h"
-#include "components/player/ra_player.h"
-#include "components/player/ra_bullet.h"
 
+//Initialize scene, camera and setup root node
 void Scene::Initialize(std::string name, Camera* camera)
 {
+	//Set scene name and create root node
 	this->sceneName = name;
 	Gameobject* scene = new Gameobject;
-	scene->MakeRoot();
 	scene->SetName(name);
+	scene->hasRoot() = true;
 
 	this->gameObjects[name] = scene;
 
+	//Create camera or set camera if possible
 	if (camera == nullptr)
 	{
 		this->mainCamera = new Camera;
@@ -32,11 +38,13 @@ void Scene::Initialize(std::string name, Camera* camera)
 	else
 		this->mainCamera = camera;
 }
-
+//Update scene graph, collisions, camera, components and rigidbodies
 void Scene::Update()
 {
+	//Update collision
 	UpdateCollisions();
 
+	//Loop through components cast to type and update it
 	for (Component* comp : this->components)
 	{
 		switch (comp->GetType())
@@ -47,188 +55,181 @@ void Scene::Update()
 		case ComponentType::Bullet:
 			reinterpret_cast<Bullet*>(comp)->Update();
 			break;
+		case ComponentType::Enemy:
+			reinterpret_cast<Enemy*>(comp)->Update();
+			break;
 		}
 	}
 
+	//Loop through all rigidbodies and update them if active
 	for (std::string object : this->objects)
 	{
 		if(this->gameObjects[object]->GetIsActive())
 			this->rigidBodies[object]->Update();
 	}
 
+	//Update scene root (in turn updates whole scene graph)
 	this->gameObjects[this->sceneName]->Update();
 
+	//Update camera
 	this->mainCamera->Update();
-
 }
-
+//Update collisions on all active gameobjects
 void Scene::UpdateCollisions()
 {
+	//Setup checked gameobjects hash set
 	std::unordered_set<Gameobject*> checkedGameobjects;
-
+	//Setup already colliding gameobjects in this iteration
+	std::unordered_map<Gameobject*, bool> collided;
+	
+	//For all gameobjects
 	for (int i = 0; i < this->gameObjectVector.size(); i++)
 	{
-		if (this->boxCollider[this->gameObjectVector[i]->GetName()]->hasCollision() 
-			&& this->gameObjectVector[i]->GetIsActive())
+		//Check if it has collision and it is active
+		if (this->gameObjectVector[i]->hasCollision() && this->gameObjectVector[i]->GetIsActive())
 		{
+			//Then loop through all gameobjects that are:
 			for (int j = 0; j < this->gameObjectVector.size(); j++)
 			{
+				//Not current gameobject, active, collidable, without the same tag and not collided yet in this iteration
 				if (j != i && this->gameObjectVector[j]->GetIsActive()
-					&& this->boxCollider[this->gameObjectVector[j]->GetName()]->hasCollision()
-					&& this->gameObjectVector[i]->GetTag() != this->gameObjectVector[j]->GetTag())
+					&& this->gameObjectVector[i]->hasCollision()
+					&& this->gameObjectVector[i]->GetTag() != this->gameObjectVector[j]->GetTag()
+					&& !collided[this->gameObjectVector[i]] && !collided[this->gameObjectVector[j]])
 				{
+					//Check if that gameobject already is not in the checked gameobjects hashset
 					if (checkedGameobjects.find(this->gameObjectVector[j]) == checkedGameobjects.end())
 					{
+						//If it is not check collision between current and other gameobject
 						if (CheckCollision(this->gameObjectVector[i], this->gameObjectVector[j]))
 						{
+							//If they collide, set their rigidbody colliding bools to true
 							this->rigidBodies[this->gameObjectVector[i]->GetName()]->GetRigidbodyValues().isColliding = true;
 							this->rigidBodies[this->gameObjectVector[j]->GetName()]->GetRigidbodyValues().isColliding = true;
 
+							//Set their rigidbodies hitObjects to each other.
 							this->rigidBodies[this->gameObjectVector[i]->GetName()]
 								->SetHitObject(this->rigidBodies[this->gameObjectVector[j]->GetName()]);
 							this->rigidBodies[this->gameObjectVector[j]->GetName()]
 								->SetHitObject(this->rigidBodies[this->gameObjectVector[i]->GetName()]);
+							
+							//Prevent from being checked again this iteration
+							collided[this->gameObjectVector[j]] = true;
+							collided[this->gameObjectVector[i]] = true;
 						}
+						//If they are not colliding
 						else
 						{
+							//Set their rigidbody colliding bools to false
 							this->rigidBodies[this->gameObjectVector[i]->GetName()]->GetRigidbodyValues().isColliding = false;
 							this->rigidBodies[this->gameObjectVector[j]->GetName()]->GetRigidbodyValues().isColliding = false;
 
+							//Set their rigidbodies hitObjects to nullptr.
 							this->rigidBodies[this->gameObjectVector[i]->GetName()]->SetHitObject(nullptr);
 							this->rigidBodies[this->gameObjectVector[j]->GetName()]->SetHitObject(nullptr);
 						}
 					}
 				}
 			}
-
+			
+			//Prevent current gameobject from being checked again.
 			checkedGameobjects.insert(this->gameObjectVector[i]);
 		}
 	}
 }
-
+//Cleanup Scenegraph, components, rigidbodies, camera, meshes
 void Scene::Cleanup()
 {
+	//For all components cast to its type, execute cleanup and delete it.
 	for (Component* comp : this->components)
 	{
 		switch (comp->GetType())
 		{
 		case ComponentType::Player:
+		{
 			reinterpret_cast<Player*>(comp)->Cleanup();
+			delete comp;
+			break;
+		}
+		case ComponentType::Bullet:
+		{
+			reinterpret_cast<Bullet*>(comp)->Cleanup();
+			delete comp;
+			break;
+		}
+		case ComponentType::Enemy:
+		{
+			reinterpret_cast<Enemy*>(comp)->Cleanup();
+			delete comp;
+			break;
+		}
 		}
 	}
 
+	//Cleanup all rigidbodies and meshes.
 	for (std::string object : this->objects)
 	{
 		this->rigidBodies[object]->Cleanup();
 		this->meshes[object]->Cleanup();
 	}
 
+	//Delete camera
+	this->mainCamera->SetTarget(nullptr);
 	delete this->mainCamera;
 
+	//Cleanup scenegraph
 	this->gameObjects[this->sceneName]->Cleanup();
 
+	//Clear maps and vectors
+	this->gameObjectVector.clear();
+	this->objectPooledObjects.clear();
 	this->gameObjects.clear();
+	this->componentMap.clear();
 	this->meshes.clear();
-	this->materials.clear();
-	this->boxCollider.clear();
 	this->rigidBodies.clear();
+	this->materials.clear();
+	this->components.clear();
+	this->objects.clear();
 }
 
-ui32 Scene::GetObjectCount()
-{
-	return this->objectCount;
-}
 
-Gameobject* Scene::GetSceneRoot()
-{
-	return this->gameObjects[this->sceneName];
-}
-
-Gameobject* Scene::GetGameobject(std::string objectName)
-{
-	return this->gameObjects[objectName];
-}
-
-std::vector<Gameobject*> Scene::GetAllGameobjects()
-{
-	return this->gameObjectVector;
-}
-
-std::vector<std::string> Scene::GetObjectPool(std::string poolName)
-{
-	return this->objectPooledObjects[poolName];
-}
-
-std::string Scene::GetObjectOfPool(std::string poolName)
-{
-	this->objectPooledObjects[poolName];
-
-	std::string tempStr = this->objectPooledObjects[poolName][0];
-	this->objectPooledObjects[poolName].erase(this->objectPooledObjects[poolName].begin());
-	this->objectPooledObjects[poolName].push_back(tempStr);
-
-	return tempStr;
-}
-
-Material* Scene::GetMaterial(std::string objectName)
-{
-	return this->materials[objectName];
-}
-
-Mesh* Scene::GetMesh(std::string objectName)
-{
-	return this->meshes[objectName];
-}
-
-Camera* Scene::GetCamera()
-{
-	return this->mainCamera;
-}
-
-Rigidbody* Scene::GetRigidBody(std::string objectName)
-{
-	return this->rigidBodies[objectName];
-}
-
-BoxCollider* Scene::GetBoxCollider(std::string objectName)
-{
-	return this->boxCollider[objectName];
-}
-
-Component* Scene::GetObjectComponent(std::string objectName)
-{
-	return this->componentMap[objectName];
-}
-
+//Add a object to a scene
 void Scene::AddObject(std::string name, std::string modelPath, bool active, std::vector<std::string> texturePaths, std::string parentName)
 {
+	//If active then increment the object count
 	if (active)
 		this->objectCount++;
 
-	//Gameobject
+
+	//Create new gameobject and initialize it either with a parent or without a parent
 	this->gameObjects[name] = new Gameobject();
 	if (parentName != "")
 		this->gameObjects[name]->Initialize(this->gameObjects[parentName], name, active);
 	else
 		this->gameObjects[name]->Initialize(this->gameObjects[this->sceneName], name, active);
 
-	//Textures
+
+	//Create objects textures
 	std::vector<Texture*> objectTextures(5);
-	std::string path = Application::GetInstancePtr()->GetFilesystem()->DirectoryPath("textures");
+	std::string path = Application::GetInstancePtr()->GetFilesystem()->DirectoryPath("textures"); //Get texture file path
+	path.pop_back(); //Remove last /
 
-	path.pop_back();
-
+	//If there are no specific texture paths given to the function
 	if (texturePaths.size() == 0) 
 	{
+		//Initialize everything with a white image
 		for (int i = 0; i < objectTextures.size(); i++)
 		{
+			//Create and set new texture.
 			Texture* tex = new Texture();
 			tex->GetPath() = path + "empty.png";
 			objectTextures[i] = tex;
 		}
 	}
+	//If there are specific texture paths
 	else
 	{
+		//Set those
 		for (int i = 0; i < texturePaths.size(); i++)
 		{
 			Texture* tex = new Texture();
@@ -238,34 +239,58 @@ void Scene::AddObject(std::string name, std::string modelPath, bool active, std:
 		}
 	}
 
+
+	//Create new mesh with the input model path.
 	modelPath = modelPath + ".obj";
-
-	//Mesh
 	this->meshes[name] = new Mesh(objectTextures);
-	this->meshes[name]->CreateMesh(modelPath.c_str());
+	this->meshes[name]->NameMesh(modelPath.c_str());
 
-	//Material
+
+	//Create standard material with white color
 	this->materials[name] = new Material();
 	this->materials[name]->fragColor = fColorRGBA{ 1, 1, 1, 1 };
 	this->materials[name]->ambientValue = 0.1f;
 	this->materials[name]->specularValue = 16.0f;
 
-	//Rigidbody
+
+	//Create new rigidbody
 	this->rigidBodies[name] = new Rigidbody(&this->gameObjects[name]->GetTransform(), name);
 
-	//BoxColliders
-	this->boxCollider[name] = new BoxCollider(&this->gameObjects[name]->GetTransform());
-	this->boxCollider[name]->hasCollision() = true;
-
-
+	//Push back the name to the objects vector and the gameobject to the gameobjects vector
 	this->objects.push_back(name);
 	this->gameObjectVector.push_back(this->gameObjects[name]);
 }
+//Add object pool
+void Scene::AddObjectPool(std::string objectPoolName, ui32 poolSize, std::string name, std::string modelPath, bool active, std::vector<std::string> texturePaths, std::string parentName)
+{
+	//For size
+	for (ui32 i = 0; i < poolSize; i++)
+	{
+		//Create new name with the template name plus the current iteration index
+		std::string tempName = name;
+		tempName = tempName + ' ' + std::to_string(i);
 
+		//Create new object with that name
+		AddObject(tempName, modelPath, active, texturePaths, parentName);
+
+		//Pushback name and gameobject to dedicataed vectors/maps.
+		this->objectPooledObjects[objectPoolName].push_back(tempName);
+		this->gameObjects[tempName]->GetTag() = name;
+	}
+}
+//Add component to object
+void Scene::AddComponent(Component* comp, std::string name)
+{
+	this->components.push_back(comp);
+	this->componentMap[name].push_back(comp);
+}
+//Add component to all objects in an object pool
 void Scene::AddComponentToObjectPool(std::string name, Component* component)
 {
+	//For all names in a object pool
 	for (std::string str : this->objectPooledObjects[name])
 	{
+		//get components type and add it to the object
 		switch (component->GetType())
 		{
 		case ComponentType::Bullet:
@@ -279,25 +304,8 @@ void Scene::AddComponentToObjectPool(std::string name, Component* component)
 	}
 }
 
-void Scene::AddObjectPool(std::string objectPoolName, ui32 poolSize, std::string name, std::string modelPath, bool active, std::vector<std::string> texturePaths, std::string parentName)
-{
-	for (ui32 i = 0; i < poolSize; i++)
-	{
-		std::string tempName = name;
-		tempName = tempName + ' ' + std::to_string(i);
-		AddObject(tempName, modelPath, active, texturePaths, parentName);
-		this->objectPooledObjects[objectPoolName].push_back(tempName);
-		this->gameObjects[tempName]->GetTag() = name;
 
-	}
-}
-
-void Scene::AddComponent(Component* comp, std::string name)
-{
-	this->components.push_back(comp);
-	this->componentMap[name] = comp;
-}
-
+//Set object to active
 void Scene::SetActive(std::string objectName, bool active)
 {
 	if(active)
@@ -308,37 +316,100 @@ void Scene::SetActive(std::string objectName, bool active)
 	this->gameObjects[objectName]->GetIsActive() = active;
 }
 
-Math::Vec3 Scene::GetAxis(Math::Vec3 point1, Math::Vec3 point2)
+
+//Get all gameobjects in scene
+std::vector<Gameobject*> Scene::GetAllGameobjects()
 {
-	Math::Vec3 edge = point1 - point2;
-	Math::Vec3 edgeNormal = Math::Vec3{ -edge.y, edge.x, edge.z };
-	Math::Normalize(edgeNormal);
-	return edgeNormal;
+	return this->gameObjectVector;
+}
+//Get all components of object
+std::vector<Component*> Scene::GetObjectComponents(std::string objectName)
+{
+	return this->componentMap[objectName];
+}
+//Get a object pool
+std::vector<std::string> Scene::GetObjectPool(std::string poolName)
+{
+	return this->objectPooledObjects[poolName];
 }
 
-bool Scene::isProjectionIntersecting(Math::Vec3 aCorners[], Math::Vec3 bCorners[], Math::Vec3 axis)
+//Get gameobject pointer to the scene root
+Gameobject* Scene::GetSceneRoot()
 {
-	float aMin, aMax, bMin, bMax = 0.0f;
+	return this->gameObjects[this->sceneName];
+}
+//Get specific game object
+Gameobject* Scene::GetGameobject(std::string objectName)
+{
+	return this->gameObjects[objectName];
+}
+//Get specific rigidbody
+Rigidbody* Scene::GetRigidBody(std::string objectName)
+{
+	return this->rigidBodies[objectName];
+}
+//Get specific component of an object
+Component* Scene::GetObjectComponent(std::string objectName, ComponentType type)
+{
+	for (Component* comp : this->componentMap[objectName])
+	{
+		if (comp->GetType() == type)
+			return comp;
+	}
 
-	Math::GetMinMaxOfProjection(aCorners, axis, aMin, aMax);
-	Math::GetMinMaxOfProjection(bCorners, axis, bMin, bMax);
-
-	if (aMin > bMax) return false;
-	if (aMax < bMin) return false;
-
-	return true;
+	return nullptr;
+}
+//Get material of object
+Material* Scene::GetMaterial(std::string objectName)
+{
+	return this->materials[objectName];
+}
+//Get mesh of object
+Mesh* Scene::GetMesh(std::string objectName)
+{
+	return this->meshes[objectName];
+}
+//Get scenes camera
+Camera* Scene::GetCamera()
+{
+	return this->mainCamera;
 }
 
+//Get a first object in an objectPool
+std::string Scene::GetObjectOfPool(std::string poolName)
+{
+	this->objectPooledObjects[poolName];
+
+	//Get first object, delete it from the vector and then push it back to the end.
+	std::string tempStr = this->objectPooledObjects[poolName][0];
+	this->objectPooledObjects[poolName].erase(this->objectPooledObjects[poolName].begin());
+	this->objectPooledObjects[poolName].push_back(tempStr);
+
+	return tempStr;
+}
+//Get Object count
+ui32 Scene::GetObjectCount()
+{
+	return this->objectCount;
+}
+
+
+//Check collision between two gameobjects
 bool Scene::CheckCollision(Gameobject* gbA, Gameobject* gbB)
 {
-	std::string aString = gbA->GetName();
-	std::string bString = gbB->GetName();
+	//Get transforms
+	Transform& object1 = gbA->GetTransform();
+	Transform& object2 = gbB->GetTransform();
 
-	Transform object1 = gbA->GetTransform();
-	Transform object2 = gbB->GetTransform();
+	//Compute dx, dy and use it to calculate the distance between gbA and gbB
+	float dx = object1.position.x - object2.position.x;
+	float dy = object1.position.y - object2.position.y;
+	float distance = sqrt(dx * dx + dy * dy);
 
-	return (object1.position.x < object2.position.x + this->boxCollider[bString]->GetWidth() &&
-		object1.position.x + this->boxCollider[aString]->GetWidth() > object2.position.x &&
-		object1.position.y < object2.position.y + this->boxCollider[bString]->GetHeight() &&
-		object1.position.y + this->boxCollider[aString]->GetHeight() > object2.position.y);
+	//If the distance is smaller than both gameobjects radius added together (minus a scaling value)
+	if (distance < ((gbA->GetRadius() + gbA->GetRadius()) - this->radiusReduction))
+		return true; //They collide
+	//Otherwise
+	else
+		return false; //They dont collide
 }

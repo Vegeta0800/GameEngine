@@ -1,7 +1,11 @@
-#pragma once
-#include "ra_types.h"
-#include "math/ra_vector3.h"
 
+#pragma once
+//EXTERNAL INCLUDES
+//INTERNAL INCLUDES
+#include "math/ra_vector3.h"
+#include "ra_types.h"
+
+//Material class holds shader values
 class Material
 {
 public:

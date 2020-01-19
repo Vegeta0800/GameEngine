@@ -106,6 +106,7 @@ namespace Math
 		};
 	}
 
+	//Multiply matrix by vector
 	inline Mat4x4 operator*(const Mat4x4& lhs, const Vec3& rhs)
 	{
 		return Mat4x4
@@ -213,6 +214,7 @@ namespace Math
 		};
 	}
 
+	//Create vulkan specific translation matrix
 	inline Mat4x4 CreateTranslationMatrix(const Vec3& transformVec)
 	{
 		return Mat4x4
@@ -224,6 +226,7 @@ namespace Math
 		};
 	}
 
+	//Create scaling matrix
 	inline Mat4x4 CreateScalingMatrix(const Vec3& scalingVec)
 	{
 		return Mat4x4
@@ -235,6 +238,7 @@ namespace Math
 		};
 	}
 
+	//Create rotation X matrix
 	inline Mat4x4 CreateRotationXMatrix(float thetha)
 	{
 		if (thetha == 0.0f)
@@ -250,6 +254,7 @@ namespace Math
 			0, 0, 0, 1
 		};
 	}
+	//Create rotation Y matrix
 	inline Mat4x4 CreateRotationYMatrix(float thetha)
 	{
 		if (thetha == 0.0f)
@@ -265,6 +270,7 @@ namespace Math
 			0, 0, 0, 1
 		};
 	}
+	//Create rotation Z matrix
 	inline Mat4x4 CreateRotationZMatrix(float thetha)
 	{
 		if (thetha == 0.0f)
@@ -281,6 +287,7 @@ namespace Math
 		};
 	}
 
+	//Create quaternion rotation matrix
 	inline Mat4x4 CreateRotationMatrixQuaternion(const Quaternion& rotation)
 	{
 		return Mat4x4
@@ -291,7 +298,8 @@ namespace Math
 			0.0f, 0.0f, 0.0f, 1.0f
 		};
 	}
-
+	
+	//Create full rotation matrix
 	inline Mat4x4 CreateRotationMatrix(const Vec3& eulerRotation)
 	{
 		float thetha = eulerRotation.x;
@@ -306,7 +314,7 @@ namespace Math
 		return rot;
 	}
 
-
+	//Create vulkan specific perspective projection matrix
 	inline Mat4x4 CreateProjectionMatrix(float fovY, float aspect, float zNear, float zFar)
 	{
 		float const tanHalfFovY = tan(fovY / 2.0f);
@@ -321,6 +329,7 @@ namespace Math
 
 	}
 
+	//Create view look at matrix
 	inline Mat4x4 CreateViewMatrixLookAt(const Vec3& eye, const Vec3& center, const Vec3& up)
 	{
 		Vec3 f(center - eye);
@@ -338,26 +347,7 @@ namespace Math
 		};
 	}
 
-	inline Mat4x4 CreateViewMatrixFPS(const Vec3& eye, float pitch, float yaw)
-	{
-		float cosPitch = cos(pitch);
-		float sinPitch = sin(pitch);
-		float cosYaw = cos(yaw);
-		float sinYaw = sin(yaw);
-
-		Math::Vec3 xaxis = { cosYaw, 0, -sinYaw };
-		Math::Vec3 yaxis = { sinYaw * sinPitch, cosPitch, cosYaw * sinPitch };
-		Math::Vec3 zaxis = { sinYaw * cosPitch, -sinPitch, cosPitch * cosYaw };
-
-		// Create a 4x4 view matrix from the right, up, forward and eye position vectors
-		return Math::Mat4x4{
-			xaxis.x,            yaxis.x,            zaxis.x,      0,
-			xaxis.y,            yaxis.y,            zaxis.y,      0,
-			xaxis.z,            yaxis.z,            zaxis.z,      0,
-			-Math::Dot(xaxis, eye), -Math::Dot(yaxis, eye), -Math::Dot(zaxis, eye), 1
-		};
-	}
-
+	//Create model matrix
 	inline Mat4x4 CreateModelMatrix(const Vec3& position, const Vec3& scaling, const Vec3& eulerRotation)
 	{
 		Math::Mat4x4 modelMatrix = Math::Mat4x4::identity;
@@ -368,6 +358,7 @@ namespace Math
 		return modelMatrix;
 	}
 
+	//Inverse matrix
 	inline Mat4x4 Inverse(Mat4x4 m)
 	{
 		float

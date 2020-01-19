@@ -28,6 +28,7 @@ namespace Math
 		static const Vec3 unit_scale;
 	};
 
+	//Check if vector3 is equal
 	inline bool operator==(const Vec3& lhs, const Vec3& rhs)
 	{
 		if (lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z)
@@ -35,7 +36,7 @@ namespace Math
 		return false;
 	}
 
-
+	//Check if vector3 is unequal
 	inline bool operator!=(const Vec3& lhs, const Vec3& rhs)
 	{
 		if (lhs.x != rhs.x || lhs.y != rhs.y || lhs.z != rhs.z)
@@ -98,6 +99,7 @@ namespace Math
 		};
 	}
 
+	//Multiply 2 vector3 together.
 	inline Vec3 operator*(const Vec3& lhs, const Vec3& rhs)
 	{
 		return Vec3
@@ -249,6 +251,7 @@ namespace Math
 		return temp;
 	}
 
+	//Get forward vector using an euler rotation
 	inline Vec3 GetForwardVector(const Vec3& rotation)
 	{
 		float roll = rotation.x * M_PI / 180.0f;
@@ -264,6 +267,7 @@ namespace Math
 		};
 	}
 
+	//Get right vector using an euler rotation
 	inline Vec3 GetRightVector(const Vec3& rotation)
 	{
 		float roll = rotation.x * M_PI / 180.0f;
@@ -278,6 +282,7 @@ namespace Math
 		};
 	}
 
+	//Negate a vector
 	inline Vec3 Negate(const Vec3& vec)
 	{
 		return Vec3
@@ -288,13 +293,14 @@ namespace Math
 		};
 	}
 	
+	//Get absolute vector
 	inline Vec3 Abs(const Vec3& vec)
 	{
 		return Vec3
 		{
 			abs(vec.x),
 			abs(vec.y),
-			abs(-vec.z)
+			abs(vec.z)
 		};
 	}
 }

@@ -3,6 +3,7 @@
 //EXTERNAL INCLUDES
 //INTERNAL INCLUDES
 
+//Define a console command
 struct CVar
 {
 	const char* name;

@@ -8,15 +8,23 @@
 #include "ra_utils.h"
 #include "ra_cvar.h"
 
+//Console class to use commands
 class Console 
 {
 	//Define Console as a singleton. See utils.h for definition.
 	DEFINE_SINGLETON(Console)
 
 public:
-	CVar GetCVar(const std::string& name);
+	//Cleanup the console
+	void Cleanup();
+	
+	
+	//Set a new cvar
 	void SetCVar(const CVar& cvar);
-	void CleanUp();
+
+
+	//Get a specific cvar
+	CVar GetCVar(const std::string& name);
 
 private:
 	std::map<std::string, const char*> cvars;

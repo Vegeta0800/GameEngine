@@ -1,9 +1,12 @@
 
+//EXTERNAL INCLUDES
+//INTERNAL INCLUDES
 #include "ra_camera.h"
 #include "input/ra_inputhandler.h"
 #include "ra_application.h"
 #include "ra_gameobject.h"
 
+//Initialize Camera with standard values
 void Camera::Initialize()
 {
 	this->position = Math::Vec3::zero;
@@ -17,93 +20,91 @@ void Camera::Initialize()
 	this->viewMatrix = Math::Mat4x4::identity;
 	this->projectionMatrix = Math::Mat4x4::identity;
 }
-
+//Update each frame
 void Camera::Update()
 {
 	UpdatePosition();
 }
 
-bool Camera::FrustumCulling(Math::Vec3 Min, Math::Vec3 Max, std::vector<Vec4> frustum_planes)
-{
-	bool inside = true;
 
-	//test all 6 frustum planes
-	for (int i = 0; i < 6; i++)
-	{
-		float d = max(Min.x * frustum_planes[i].r, Max.x * frustum_planes[i].r) +
-			max(Min.y * frustum_planes[i].g, Max.y * frustum_planes[i].g) +
-			max(Min.z * frustum_planes[i].b, Max.z * frustum_planes[i].b) +
-			frustum_planes[i].a;
-
-		inside &= d > 0;
-	}
-	return inside;
-}
-
-void Camera::UpdatePosition()
-{
-	if (this->target != nullptr)
-	{
-		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position * 0.1f, this->targetOffset, this->orientation);
-	}
-	else
-		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position * 0.1f, this->position * 0.1f + (this->direction * this->offset), this->orientation);
-
-	this->projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), Application::GetInstancePtr()->GetAspectRatio(), 0.1f, 100.0f);
-	this->projectionMatrix.m22 *= -1.0f;
-}
-
-Math::Vec3& Camera::GetPostion()
-{
-	return this->position;
-}
-
-Math::Vec3& Camera::GetRotation()
-{
-	return this->rotation;
-}
-
-Transform* Camera::GetTarget()
-{
-	return this->target;
-}
-
+//Set cameras target transform
 void Camera::SetTarget(Transform* target)
 {
 	this->target = target;
 }
 
-float& Camera::GetOffset()
+
+//Get cameras target transform
+Transform* Camera::GetTarget()
 {
-	return this->offset;
+	return this->target;
 }
 
+
+//Get cameras position
+Math::Vec3& Camera::GetPostion()
+{
+	return this->position;
+}
+//Get cameras rotation
+Math::Vec3& Camera::GetRotation()
+{
+	return this->rotation;
+}
+//Get reference to the direction
 Math::Vec3& Camera::GetDirection()
 {
 	return this->direction;
 }
-
+//Get reference to the target offset
 Math::Vec3& Camera::GetTargetOffset()
 {
 	return this->targetOffset;
 }
-
+//Get reference to the orientation
 Math::Vec3& Camera::GetOrientation()
 {
 	return this->orientation;
 }
 
+//Get view projection matrix
 Math::Mat4x4 Camera::GetVPMatrix()
 {
 	return this->projectionMatrix * this->viewMatrix;
 }
-
+//Get view matrix
 Math::Mat4x4 Camera::GetViewMatrix()
 {
 	return this->viewMatrix;
 }
-
+//Get projection matrix
 Math::Mat4x4 Camera::GetProjectionMatrix()
 {
 	return this->projectionMatrix;
+}
+
+//Get reference to the offset
+float& Camera::GetOffset()
+{
+	return this->offset;
+}
+
+
+//Update the cameras position
+void Camera::UpdatePosition()
+{
+	//If camera is locked on a target
+	if (this->target != nullptr)
+	{
+		//Create a view matrix that is looking at the target
+		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position * 0.1f, this->target->position, this->orientation);
+	}
+	//If camera isnt locked on a target
+	else
+		//Look at the cameras position plus its offset and create the view matrix
+		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position * 0.1f, this->position * 0.1f + (this->direction * this->targetOffset), this->orientation);
+
+	//Create projection matrix  
+	this->projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), Application::GetInstancePtr()->GetAspectRatio(), 0.1f, 100.0f);
+	this->projectionMatrix.m22 *= -1.0f; //Inverse for vulkan
 }

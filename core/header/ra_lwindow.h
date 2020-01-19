@@ -1,106 +1,115 @@
+
 #pragma once
 //EXTERNAL INCLUDES
 #include <Windows.h>
-#include <vector>
 #include <string>
 //INTERNAL INCLUDES
 #include "ra_utils.h"
 #include "ra_types.h"
 #include "ra_display.h"
 
+//Launcher window class
 class LWindow
 {
+	//Singleton
 	DEFINE_SINGLETON(LWindow)
 public:
+	
+	//States the window can be in
 	enum class LWindowState
 	{
 		Started,
 		Closed
 	};
 
-	//Create window
+	//Instantiating the window with specific values
 	void Instantiate(ui32 width, ui32 height, ui32 displayID, const char* title);
+	//Update launcher window each tick
+	void Update();
+	//Create new visible window with input data //TODO IMPROVE MAYBE
+	void RecievedData(std::string data);
+	//Update room to either 1/2 from 2/2 or 2/2 from 1/2
+	void UpdateRoom(std::string name, bool joined);
+	//Delete a room
+	void DeleteRoom(std::string name);
+
 
 	//Add a display
 	void AddDisplay(Display& display);
-
-	//Set window state
+	//Set the launcher window state
 	void SetState(LWindowState state);
-
-	//Set messages
+	//Set the launcher windows login data
 	void SetData(LoginData loginData);
+	//Set the launcher windows room data
 	void SetData(RoomData roomData);
-
-	void Update();
-
-	//Get Display by ID
-	Display* GetDisplay(ui32 displayID);
-
-	//Get current window state
-	LWindowState GetState(void);
-
-	void RecievedMessage(std::string message);
-	std::string GetRecievedMessage();
-
-	std::string GetName();
+	//Set received data
+	void SetRecievedData(std::string data);
+	//Set clients name
 	void SetName(std::string name);
-
-	std::string GetNextName();
+	//Set next name
 	void SetNextName(std::string name);
 
-	void SetRecievedMessage(std::string message);
 
-	void UpdateRoom(std::string name);
-	void DeleteRoom(std::string name);
-
-	//Get handle to main window
+	//Get launcher main window handle
 	HWND GetHandle();
+	//Get display of a display ID
+	Display* GetDisplay(ui32 displayID);
+	//Get launcher windows state
+	LWindowState GetState(void);
 
-	//Get states for messages
-	bool& GetQueryState();
-	bool& GetRoomState();
-	bool& GetSendState();
-
-	bool& GetCreatedState();
-
-	bool& GetRecievedState();
-
-	bool& GetReadyState();
-	bool& GetSendReadyMessage();
-
-	std::string& GetDeleteRoom();
-
-	//Get LoginData for session
+	//Get Rogin Data
 	LoginData GetLoginData();
+	//Get Room Data
 	RoomData GetRoomData();
 
+	//Get received data
+	std::string GetRecievedData();
+	//Get name
+	std::string GetName();
+	//Get next name
+	std::string GetNextName();
+	//Get reference to the deleted room name
+	std::string& GetDeleteRoom();
+
+	//Get login request state
+	bool& GetQueryState();
+	//Get state if login was succesful and room frame window should be created
+	bool& GetRoomState();
+	//Get ready state of client
+	bool& GetReadyState();
+	//Get if client has created a room.
+	bool& GetCreatedState();
+	//Get if data is received to show.
+	bool& GetRecievedState();
+	//Get if ready message should be send.
+	bool& GetSendReadyMessage();
+	//Get if data should be send
+	bool& GetSendState();
+	
 private:
+	std::string nextName; //For locating last room created. 
+	std::string name;
+
+	std::string currentData;
+	std::string deleteRoom = "";
+	
 	HWND handle = 0;
-	LWindowState state = LWindowState::Started;
-
-	ui32 width = 0;
-	ui32 height = 0;
-
+	
 	LoginData loginData;
 	RoomData roomData;
 
-	std::string name;
-	std::string nextName;
+	LWindowState state = LWindowState::Started;
 
-	std::string currentMessage;
+	ui32 height = 0;
+	ui32 width = 0;
 
-	std::string deleteRoom = "";
-
+	//states
 	bool send = false;
 	bool recieve = false;
-
 	bool created = false;
-
 	bool queryLogin = false;
-
 	bool roomActive = false;
-
 	bool ready = false;
-	bool update = false;
+	bool update = false; //TODO
 	bool sendReady = false;
 };

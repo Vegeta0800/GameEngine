@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <iostream>
 #include <chrono>
+//INTERNAL INCLUDES 
 
 
 // Converts degrees to radians.
@@ -13,13 +14,13 @@
 // Converts radians to degrees.
 #define RadToDeg(angleRadians) (angleRadians * 180.0f / M_PI)
 
+//Time helper functions: INIT timer first, then you can start a timer and stop a timer to read out time taken by specific code
 #define TIMING
-
 #ifdef TIMING
 #define INIT_TIMER auto start = std::chrono::high_resolution_clock::now();
 #define START_TIMER  start = std::chrono::high_resolution_clock::now();
 #define STOP_TIMER(name)  std::cout << "RUNTIME of " << name << ": " << \
-    std::chrono::duration_cast<std::chrono::nanoseconds>( \
+    std::chrono::duration_cast<std::chrono::milliseconds>( \
             std::chrono::high_resolution_clock::now()-start \
     ).count() << " ns " << std::endl; 
 #else
@@ -77,6 +78,7 @@ protected:									\
 #define DECLARE_SINGLETON(Type)				\
 Type* Type::instance = nullptr;
 
+
 //Define an output message in the console if the debug mode is active.
 #if defined(_DEBUG)
 #define LOG(x, ...) { char string[128]; snprintf(string, 128, x, __VA_ARGS__); printf("[INFO]: [%s]\n", string); }
@@ -91,6 +93,8 @@ Type* Type::instance = nullptr;
 //Define a function that is able to give the error message of an HRESULT to the ERR define. That way the HRESULT Error is getting outputted.
 #define V_RETURN(x) hr = x; if (hr != S_OK) { _com_error err(hr); LPCTSTR errMsg = err.ErrorMessage(); ERR("%s", errMsg); throw; }
 
+//Get variable name
 #define GetVariableName(var) #var
 
+//Set string to a char array
 #define SET_STRING(x, y) { for (int i = 0; i < y.length(); i++) { x[i] = y[i]; }}

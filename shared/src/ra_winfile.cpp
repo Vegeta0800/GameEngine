@@ -1,15 +1,21 @@
-#include <string>
 
+//EXTERNAL INCLUDES
+#include <string>
+//INTERNAL INCLUDES
 #include "filesystem/ra_winfile.h"
 #include "ra_utils.h"
 
+//Construct windows file with a path to a file
 WinFile::WinFile(const char* path)
 {
 	Initialize(path);
 }
 
+
+//Initialize a windows file
 void WinFile::Initialize(const char* path)
 {
+	//handle to file
 	HANDLE hfile;
 
 	//Try to find the file and open it. If it doesnt exist create it.
@@ -19,6 +25,7 @@ void WinFile::Initialize(const char* path)
 		throw;
 	}
 
+	//Create file handle by opening file at path
 	hfile = CreateFileA
 	(
 		path,
@@ -44,10 +51,12 @@ void WinFile::Initialize(const char* path)
 		throw;
 	}
 
+	//Get file directory
 	std::string dir(path);
 	dir = dir.substr(0, dir.find_last_of("/"));
 	dir = dir.substr(dir.find_last_of("/") + 1);
 
+	//Get file name
 	std::string name(path);
 	name = name.substr(name.find_last_of("/") + 1);
 
@@ -58,7 +67,15 @@ void WinFile::Initialize(const char* path)
 	this->mBuffer = buffer;
 	this->mSize = fileSizeHigh.QuadPart;
 }
+//Cleanup file
+void WinFile::Cleanup()
+{
+	CloseHandle(reinterpret_cast<HANDLE>(this->mHandle));
+	this->mHandle = 0;
+	this->mBuffer = nullptr;
+}
 
+//Is a file present at path
 bool WinFile::FindFile(const char* path)
 {
 	WIN32_FIND_DATA findData = { 0 };
@@ -69,32 +86,26 @@ bool WinFile::FindFile(const char* path)
 	return true;
 }
 
-std::string WinFile::GetName()
-{
-	return this->mFileName;
-}
-
-std::string WinFile::GetDirectory()
-{
-	return this->mDirectory;
-}
-
-i64 WinFile::GetSize()
-{
-	return this->mSize;
-}
-
+//Get byte buffer of file
 byte* WinFile::Read()
 {
 	return this->mBuffer;
 }
 
-void WinFile::Cleanup()
+
+//Get name of file
+std::string WinFile::GetName()
 {
-	CloseHandle(reinterpret_cast<HANDLE>(this->mHandle));
-	this->mHandle = 0;
-	this->mBuffer = nullptr;
+	return this->mFileName;
+}
+//Get name of directory
+std::string WinFile::GetDirectory()
+{
+	return this->mDirectory;
 }
 
-
-
+//Get file size
+i64 WinFile::GetSize()
+{
+	return this->mSize;
+}

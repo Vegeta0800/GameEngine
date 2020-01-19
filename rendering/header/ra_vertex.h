@@ -1,17 +1,23 @@
 
 #pragma once
+//EXTERNAL INCLUDES
+#include <vulkan\vulkan_core.h>
 #include <vector>
 #include <unordered_map>
+//INTERNAL INCLUDES
 #include "math/ra_vector3.h"
 #include "math/ra_vector2.h"
-#include <vulkan\vulkan_core.h>
 
+//Vertex struct holds information about:
+//Local space position, UV Coordinates, normals and descriptions
 struct Vertex
 {
+	//Position, normal and UV Coordinates
 	Math::Vec3 position;
 	Math::Vec3 normal;
 	Math::Vec2 uvCoord;
 
+	//Get the vertex binding description
 	static VkVertexInputBindingDescription GetBindingDescription()
 	{
 		VkVertexInputBindingDescription vertexInputBindingDescription;
@@ -22,11 +28,14 @@ struct Vertex
 		return vertexInputBindingDescription;
 	}
 
+	//Compare operator for vertices
 	bool operator== (const Vertex& other) const
 	{
 		return position == other.position && normal == other.normal && uvCoord == other.uvCoord;
 	}
 
+	//Get all the vertex input attribute descriptions
+	//All variables have to be listed here with a location and format (for shader)
 	static std::vector<VkVertexInputAttributeDescription> GetAttributeDescriptions()
 	{
 		std::vector<VkVertexInputAttributeDescription> vertexInputAttributeDescription(3);
@@ -52,6 +61,7 @@ struct Vertex
 
 namespace std {
 
+	//Implement multiplication method to hash vertices
 	template <> struct hash<Vertex>
 	{
 		size_t operator()(const Vertex& k) const

@@ -1,10 +1,11 @@
-#pragma once
 
+#pragma once
 // EXTERNAL INCLUDES
 #include <vulkan/vulkan.h>
 #include <cstdio>
 // INTERNAL INCLUDES
 
+//Read out a vulkan result and return the error message associated with it
 inline const char* GetVulkanResultString(const VkResult& result)
 {
 	const char* str = "Unknown";
@@ -109,17 +110,8 @@ inline const char* GetVulkanResultString(const VkResult& result)
 	return str;
 }
 
-#if defined (RA_COMPILE_RELEASE)
-#define VK_CHECK(x)															\
-{																			\
-	auto hr = x;															\
-    if (hr != VK_SUCCESS)                                                   \
-    {                                                                       \
-        printf("Vulkan error: [%s]\n", GetVulkanResultString(hr));          \
-        return;                                                             \
-    }																		\
-}
-#else
+//Check function. If vulkan function isnt succesful:
+//Stops code, prints out vulkan result with helper function above
 #define VK_CHECK(x)															\
 {																			\
 	auto hr = x;															\
@@ -133,4 +125,3 @@ inline const char* GetVulkanResultString(const VkResult& result)
         printf("Vulkan action: %s [%s]\n", #x, GetVulkanResultString(hr));	\
     }																		\
 }
-#endif

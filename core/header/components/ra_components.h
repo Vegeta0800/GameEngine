@@ -1,73 +1,53 @@
 
 #pragma once
+//EXTERNAL INCLUDES
+//INTERNAL INCLUDES
 #include "math/ra_vector3.h"
 
+//Available components
 enum class ComponentType
 {
-	Movement = 0,
-	Shoot = 1,
+	Player = 0,
+	Enemy = 1,
 	Bullet = 2,
-	Collision = 3,
-	Health = 4,
-	GravityShot = 5,
-	Player = 6,
 };
 
+//Values that define the player
 struct PlayerValues
 {
 	float speed;
+	float health;
 	float bulletSpeed;
 	float bulletTimer;
 	float bulletTime;
 	Math::Vec3 bulletDir;
 };
 
+//Values that define the enemy
 struct EnemyValues
 {
+	Math::Vec3 bulletDir;
 	float speed;
-	float interval;
 	float health;
 	float bulletSpeed;
-	Math::Vec3 bulletDir;
+	float bulletTimer;
+	float bulletTime;
 };
 
-struct MovementValues
-{
-	float stoppingCoefficient;
-	float velocity;
-	float maxSpeed;
-	float speed;
-	float rotationSpeed;
-	Math::Vec3 direction;
-};
-
+//Values that define the bullet
 struct BulletValues
 {
-	bool activated;
-	float speed;
-	float time;
 	Math::Vec3 dir;
-};
-
-struct ShootingValues
-{
-	ui64 shotID;
-	bool available;
-	float timer;
-	float cooldown;
 	float speed;
-	float bulletSpeed;
-	float growth;
 	float time;
+	bool activated;
 };
 
+//Values that define the rigidBody
 struct RigidbodyValues
 {
-	bool isEnabled;
-	bool isKinematic;
-	bool gravityEnabled;
-	bool hasCollision;
-	bool isColliding;
+	Math::Vec3 gravityDir;
+	Math::Vec3 movementDir;
 
 	float mass;
 	float airDensity;
@@ -75,40 +55,9 @@ struct RigidbodyValues
 	float velocity;
 	float force;
 
-	Math::Vec3 gravityDir;
-	Math::Vec3 movementDir;
-};
-
-struct HealthValues
-{
-	bool shield;
-
-	float health;
-	float damage;
-	float resistance;
-};
-
-
-struct RaycastInfo
-{
-	float distance;
-	Math::Vec3 hitPosition;
-	Math::Vec3 hitNormal;
-};
-
-struct GravityShotValues
-{
-	float timeInAir;
-	float gravityRadius;
-	float pullSpeed;
-	float cooldown;
-	float timeToExplode;
-
-	bool activated;
-	float speed;
-	float time;
-	Math::Vec3 dir;
-
-	Math::Vec3 direction;
-	Math::Vec3 gravityDirection;
+	bool isEnabled;
+	bool isKinematic;
+	bool gravityEnabled;
+	bool hasCollision;
+	bool isColliding;
 };

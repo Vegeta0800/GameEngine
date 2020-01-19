@@ -1,8 +1,10 @@
 
 #pragma once
-
+//EXTERNAL INCLUDES
+//INTERNAL INCLUDES
 #include "ra_types.h"
 
+//Basically all possible key hexcodes mapped to a code
 enum class KeyCode : ui32
 {
 	NO_CODE = 0x00,

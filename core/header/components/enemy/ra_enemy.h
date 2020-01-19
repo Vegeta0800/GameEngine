@@ -1,13 +1,12 @@
 
 #pragma once
 //EXTERNAL INCLUDES
-#include <string>
 //INTERNAL INCLUDES
 #include "components/ra_component.h"
 
 class Rigidbody;
 
-//Class Movement that is derived from class Component.
+//Class Enemy that is derived from class Component.
 class Enemy : public Component
 {
 	//Declare the public functions that are overwritten.
@@ -18,7 +17,7 @@ public:
 	virtual void Update(void) override;
 	virtual void Cleanup(void) override;
 
-
+	EnemyValues& GetEnemyValues();
 private:
 	void Move();
 	void Shoot();

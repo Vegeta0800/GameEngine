@@ -4,6 +4,7 @@
 //INTERNAL INCLUDES
 #include "ra_types.h"
 
+//Display struct to store information about a physical screen
 struct Display
 {
 	ui32 id;

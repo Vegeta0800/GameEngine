@@ -1,6 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
+//Incoming data
 layout(location = 0) in vec2 fragUVCoord;
 layout(location = 1) in vec3 fragNormal;
 layout(location = 2) in vec3 fragView;
@@ -9,14 +10,17 @@ layout(location = 4) in vec3 fragLightColor;
 layout(location = 5) in float fragAmbientValue;
 layout(location = 6) in float fragSpecularValue;
 
+//OutColor
 layout(location = 0) out vec4 outColor;
 
+//Uniform buffer bindings
 layout(binding = 1) uniform sampler2D tex;
 layout(binding = 2) uniform sampler2D normalMap;
 layout(binding = 3) uniform sampler2D emissionMap;
 layout(binding = 4) uniform sampler2D roughnessMap;
 layout(binding = 5) uniform sampler2D ambientMap;
 
+//Convert SRgB to a Linear format
 vec4 SRGBtoLinear(vec4 srgbIn)
 {
 	#ifdef MANUAL_SRGB

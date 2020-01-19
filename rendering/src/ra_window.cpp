@@ -3,14 +3,18 @@
 #include <unordered_map>
 //INTERNAL INCLUDES
 #include "ra_window.h"
+#include "input/ra_inputhandler.h"
 #include "ra_application.h"
 #include "ra_rendering.h"
-#include "input/ra_inputhandler.h"
 
+//Global variables used by multiple threads
+std::vector<Display> g_displays; //Available displays
+std::unordered_map<HWND, Window*> g_windowMapping; //Map handle to a window
 
-std::vector<Display> g_displays;
-std::unordered_map<HWND, Window*> g_windowMapping;
+//Singleton
+DECLARE_SINGLETON(Window)
 
+//Handles messages for main window.
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	//Handle the messages in the window.
@@ -49,6 +53,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	return 0;
 }
 
+//Save display information.
 BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
 	//Initialize variables.
@@ -74,11 +79,11 @@ BOOL CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMoni
 	return TRUE;
 }
 
-DECLARE_SINGLETON(Window)
 
+//Instantiating the window with specific values
 void Window::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* title)
 {
-	//Initialize variable
+	//Initialize and set variables
 	ui32 style = 0;
 	this->width = width;
 	this->height = height;
@@ -144,17 +149,20 @@ void Window::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* ti
 	if (this->handle == NULL)
 		throw;
 
+	//Set the main windows handle to this
 	g_windowMapping[this->handle] = this;
 
+	//Set state to pending for the renderer to complete his setup
 	this->state = Window::WindowState::Pending;
 }
-
+//Show active window and update it
 void Window::ShowActiveWindow()
 {
 	ShowWindow(this->handle, SW_SHOW);
 	UpdateWindow(this->handle);
 }
-
+//Check if there are any events and if so handle them and return true
+//If not return false
 bool Window::PollEvents(void)
 {
 	MSG msg;
@@ -167,37 +175,45 @@ bool Window::PollEvents(void)
 	return false;
 }
 
+
+//Add a display
 void Window::AddDisplay(Display& display)
 {
 	g_displays.push_back(display);
 }
 
+//Set windows state
 void Window::SetState(WindowState state)
 {
 	this->state = state;
 }
 
+
+//Get Handle of main window
+HWND& Window::GetHandle(void)
+{
+	return this->handle;
+}
+
+//Get the windows state
 Window::WindowState Window::GetState()
 {
 	return this->state;
 }
 
+//Get a display by ID
 Display* Window::GetDisplay(ui32 displayID)
 {
 	return &g_displays[displayID];
 }
 
+//Get Width of main window
 ui32 Window::GetWidth(void)
 {
 	return this->width;
 }
-
+//Get Height of main window
 ui32 Window::GetHeight(void)
 {
 	return this->height;
-}
-
-HWND& Window::GetHandle(void)
-{
-	return this->handle;
 }

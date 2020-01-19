@@ -1,10 +1,11 @@
-#pragma once
 
+#pragma once
 //EXTERNAL INCLUDES
 //INTERNAL INCLUDES
 #include "math/ra_vector3.h"
 #include "math/ra_quaternion.h"
 
+//Declare Transform class
 class Transform
 {
 public:
