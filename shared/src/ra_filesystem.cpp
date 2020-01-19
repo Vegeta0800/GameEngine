@@ -45,11 +45,12 @@ void Filesystem::ListDirectories(const char* startPath, std::vector<std::string>
 	while (FindNextFile(handle, &data))
 	{
 		//If relevant directory is found
-		if ((strncmp("bin", data.cFileName, 3) == 0) 
-			|| (strncmp("models", data.cFileName, 6) == 0) 
-			|| (strncmp("textures", data.cFileName, 8) == 0)
-			|| (strncmp("data", data.cFileName, 4) == 0)
-			|| (strncmp("shader", data.cFileName, 6) == 0))
+		if ((strncmp(".", data.cFileName, 1) != 0)
+			&& (strncmp("..", data.cFileName, 2) != 0)
+			&& (strncmp("src", data.cFileName, 3) != 0)
+			&& (strncmp("header", data.cFileName, 6) != 0) 
+			&& (strncmp("out", data.cFileName, 3) != 0)
+			&& (strncmp("lib", data.cFileName, 3) != 0))
 		{
 			//If directory
 			if (data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)

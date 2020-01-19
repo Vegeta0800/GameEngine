@@ -111,7 +111,6 @@ void Application::Cleanup()
 	Rendering::GetInstancePtr()->Cleanup();
 	SceneManager::GetInstancePtr()->Cleanup();
 	this->filesystem->Cleanup();
-	delete this->filesystem;
 	Window::GetInstancePtr()->Release();
 	Console::GetInstancePtr()->Cleanup();
 	Console::GetInstancePtr()->Release();

@@ -148,19 +148,16 @@ void Scene::Cleanup()
 		case ComponentType::Player:
 		{
 			reinterpret_cast<Player*>(comp)->Cleanup();
-			delete comp;
 			break;
 		}
 		case ComponentType::Bullet:
 		{
 			reinterpret_cast<Bullet*>(comp)->Cleanup();
-			delete comp;
 			break;
 		}
 		case ComponentType::Enemy:
 		{
 			reinterpret_cast<Enemy*>(comp)->Cleanup();
-			delete comp;
 			break;
 		}
 		}

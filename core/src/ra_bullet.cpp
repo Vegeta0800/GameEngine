@@ -136,7 +136,7 @@ void Bullet::Cleanup(void)
 //Set the bullets parent
 void Bullet::SetParent(Rigidbody* parent)
 {
-	this->parentRigidBody = rigidBody;
+	this->parentRigidBody = parent;
 }
 
 

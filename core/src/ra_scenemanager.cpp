@@ -30,7 +30,6 @@ void SceneManager::Initialize()
 		//Create main camera		
 		Camera* cam = new Camera;
 		cam->Initialize();
-		cam->GetPostion() = Math::Vec3{ 0.0f, 5.0f, 230.0f };
 		cam->GetTargetOffset() = Math::Vec3{ 0.0f, 8.0f, 0.0f };
 		
 		//Initialize Scene with camera
@@ -77,8 +76,23 @@ void SceneManager::Initialize()
 		enemy->Initialize(mainSceneRoot->GetRigidBody("Enemy"));
 		mainSceneRoot->AddComponent(enemy, "Enemy");
 
-		//Set camera target to player
-		cam->SetTarget(&mainSceneRoot->GetGameobject("Player")->GetTransform());
+		//Compute middlepoint between player and enemy
+		Math::Vec3 A = mainSceneRoot->GetGameobject("Player")->GetTransform().position;
+		Math::Vec3 B = mainSceneRoot->GetGameobject("Enemy")->GetTransform().position;
+		float distance = Math::Distance(A, B);
+		distance = distance / 2.0f;
+		Math::Vec3 target = Math::Vec3{ 0.0f, 8.0f, 0.0f };
+
+		//Create target transform
+		Transform* targetTransform = new Transform();
+		targetTransform->position = target;
+		targetTransform->eulerRotation = Math::Vec3{ 0, 0, 0 };
+		targetTransform->rotation = Math::Quaternion::identity;
+		targetTransform->scaling = Math::Vec3::unit_scale;
+
+		//Set camera position and target
+		cam->SetTarget(&mainSceneRoot->GetGameobject("Enemy")->GetTransform());
+		cam->GetPostion() = Math::Vec3{0.0f, A.y, 20.0f};
 
 		//Set scene name string to variable name
 		mainSceneName = GetVariableName(mainSceneRoot);
