@@ -56,6 +56,12 @@ void Player::Cleanup()
 	Component::Cleanup();
 }
 
+//If player is killed end game
+void Player::Death()
+{
+	Application::GetInstancePtr()->GetRunState() = false;
+}
+
 
 //Get reference to players values
 PlayerValues& Player::GetPlayerValues(void)

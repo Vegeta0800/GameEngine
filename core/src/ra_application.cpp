@@ -58,9 +58,8 @@ void Application::Initialize(const char* path, iVec2 resolution, const char* tit
 	//Run
 	this->running = true;
 
-	//Start network on a new thread and detach it.
+	//Start network on a new thread.
 	this->networkThread = std::thread(std::bind(NetworkStart, this->host));
-	this->networkThread.detach();
 
 	//Initialize rendering
 	Rendering::GetInstancePtr()->Initialize("RenderingExample", VK_MAKE_VERSION(0, 0, 0));
@@ -77,7 +76,7 @@ void Application::Update()
 	auto gameCurrentTime = std::chrono::high_resolution_clock::now();
 
 	//While window opened
-	while (Window::GetInstancePtr() && Window::GetInstancePtr()->GetState() != Window::WindowState::Closed)
+	while (this->running && Window::GetInstancePtr() && Window::GetInstancePtr()->GetState() != Window::WindowState::Closed)
 	{
 		this->running = true;
 
@@ -102,10 +101,17 @@ void Application::Update()
 		STOP_TIMER("Loop took")
 	}
 
+	//If window not closed yet, close it.
+	if (Window::GetInstancePtr()->GetState() != Window::WindowState::Closed)
+	{
+		Window::GetInstancePtr()->SetState(Window::WindowState::Closed);
+		Window::GetInstancePtr()->Destroy();
+	}
+
 	//Stop app
 	this->running = false;
 }
-//Cleanup all instances and delete pointers.
+//Cleanup all instances and delete pointers. Also wait for network to conclude sending the result
 void Application::Cleanup()
 {
 	Rendering::GetInstancePtr()->Cleanup();
@@ -117,6 +123,7 @@ void Application::Cleanup()
 	Rendering::GetInstancePtr()->Release();
 	SceneManager::GetInstancePtr()->Release();
 	Input::GetInstancePtr()->Release();
+	this->networkThread.join();
 }
 
 

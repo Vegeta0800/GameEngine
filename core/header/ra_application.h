@@ -64,6 +64,6 @@ private:
 
 	bool host;
 	bool won;
-	bool running;
+	bool running = false;
 	bool establishConnection;
 };

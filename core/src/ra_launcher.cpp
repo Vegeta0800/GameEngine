@@ -130,6 +130,7 @@ void RecieveData(SOCKET ServerSocket)
 
 						//Begin application init
 						Application::GetInstancePtr()->GetEstablishState() = true;
+						Application::GetInstancePtr()->GetRunState() = true;
 						Application::GetInstancePtr()->SetOpponent(ip); //Set opponents IP
 						inGame = true;
 					}
@@ -370,31 +371,37 @@ void Launcher::Send()
 			}
 		}
 		//If game concluded
-		else if(this->sendResult && inGame)
+		else if(!Application::GetInstancePtr()->GetRunState() && inGame)
 		{
 			//Reset bools
-			this->sendResult = false;
 			inGame = false;
 
-			//Get winner and store it into char
-			char c;
+			//Reset launcher
+			Application::GetInstancePtr()->GetEstablishState() = false;
+			LWindow::GetInstancePtr()->GetRoomState() = true;
+
+			//Send result if enemy died
 			if (Application::GetInstancePtr()->GetWinnerState())
-				c = 1;
-			else
-				c = 0;
-
-			//Send result to server
-			int iResult = send(this->ServerSocket, &c, sizeof(c), 0);
-
-			printf("send %d bytes to server\n", iResult);
-
-			//Error handling.
-			if (iResult == SOCKET_ERROR)
 			{
-				printf("send failed: %d\n", WSAGetLastError());
-				closesocket(this->ServerSocket);
-				WSACleanup();
-				return;
+				//Get winner and store it into char
+				char c;
+				c = 1;
+
+				Application::GetInstancePtr()->GetWinnerState() = false;
+
+				//Send result to server
+				int iResult = send(this->ServerSocket, &c, sizeof(c), 0);
+
+				printf("send %d bytes to server\n", iResult);
+
+				//Error handling.
+				if (iResult == SOCKET_ERROR)
+				{
+					printf("send failed: %d\n", WSAGetLastError());
+					closesocket(this->ServerSocket);
+					WSACleanup();
+					return;
+				}
 			}
 		}
 	}
@@ -426,11 +433,4 @@ void Launcher::Cleanup()
 	WSACleanup();
 	LWindow::GetInstancePtr()->Release();
 	return;
-}
-
-//End game TODO
-void Launcher::EndGame()
-{
-	inGame = false;
-	this->sendResult = true;
 }

@@ -70,6 +70,11 @@ void Bullet::Update(void)
 							//Deactivate the enemy
 							SceneManager::GetInstancePtr()->GetActiveScene()
 								->SetActive(this->rigidBody->GetHitObject()->GetName(), false);
+
+							//End game and send result
+							reinterpret_cast<Enemy*>(SceneManager::GetInstancePtr()->GetActiveScene()
+								->GetObjectComponent(this->rigidBody->GetHitObject()->GetName(), ComponentType::Enemy)
+								)->Death();
 						}
 
 						//Set the bullets hitObject to nullptr
@@ -96,6 +101,11 @@ void Bullet::Update(void)
 							//Deactivate the player
 							SceneManager::GetInstancePtr()->GetActiveScene()
 								->SetActive(this->rigidBody->GetHitObject()->GetName(), false);
+
+							//End game
+							reinterpret_cast<Player*>(SceneManager::GetInstancePtr()->GetActiveScene()
+								->GetObjectComponent(this->rigidBody->GetHitObject()->GetName(), ComponentType::Player)
+								)->Death();
 						}
 
 						//Set the bullets hitObject to nullptr

@@ -97,7 +97,7 @@ void Camera::UpdatePosition()
 	if (this->target != nullptr)
 	{
 		//Create a view matrix that is looking at the target
-		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position * 0.1f, this->target->position, this->orientation);
+		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position * 0.1f, this->target->position * 0.1f, this->orientation);
 	}
 	//If camera isnt locked on a target
 	else
@@ -105,6 +105,6 @@ void Camera::UpdatePosition()
 		this->viewMatrix = Math::CreateViewMatrixLookAt(this->position * 0.1f, this->position * 0.1f + (this->direction * this->targetOffset), this->orientation);
 
 	//Create projection matrix  
-	this->projectionMatrix = Math::CreateProjectionMatrix(DegToRad(45.0f), Application::GetInstancePtr()->GetAspectRatio(), 0.1f, 100.0f);
+	this->projectionMatrix = Math::CreateProjectionMatrix(DegToRad(90.0f), Application::GetInstancePtr()->GetAspectRatio(), 0.1f, 100.0f);
 	this->projectionMatrix.m22 *= -1.0f; //Inverse for vulkan
 }

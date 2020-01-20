@@ -16,12 +16,8 @@ public:
 	//Cleanup
 	void Cleanup();
 
-	//End game
-	void EndGame();
-
 private:
 	bool startGame = false;
-	bool sendResult = false;
 	SOCKET ServerSocket;
 
 	std::thread recieveData;

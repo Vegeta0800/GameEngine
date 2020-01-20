@@ -26,6 +26,8 @@ public:
 	void Instantiate(ui32 width, ui32 height, ui32 displayID, const char* title);
 	//Show active window and update it
 	void ShowActiveWindow();
+	//Destroy window
+	void Destroy(void);
 	//Check if there are any events and if so handle them and return true
 	//If not return false
 	bool PollEvents(void);

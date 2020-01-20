@@ -22,6 +22,9 @@ public:
 	//Cleanup player
 	virtual void Cleanup(void) override;
 
+	//If player is killed end game
+	void Death();
+
 
 	//Get reference to players values
 	PlayerValues& GetPlayerValues(void);

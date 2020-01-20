@@ -12,11 +12,14 @@
 #include "ra_material.h"
 #include "ra_transform.h"
 
+//Default constructor
 Enemy::Enemy()
 {
 
 }
 
+
+//Initialize player with standard values
 void Enemy::Initialize(Rigidbody* rigidBody)
 {
 	Component::Initialize("Enemy", ComponentType::Enemy);
@@ -24,9 +27,7 @@ void Enemy::Initialize(Rigidbody* rigidBody)
 	this->enemy.speed = 30.0f;
 	this->enemy.health = 100.0f;
 }
-
-int test = 0;
-
+//Update players movement and shooting behavior
 void Enemy::Update()
 {
 	Component::Update();
@@ -34,13 +35,12 @@ void Enemy::Update()
 	Move();
 
 	//TODO
-	if (test == 0)
+	if (Input::GetInstancePtr()->GetOpponentData().shoot)
 	{
-		test++;
+		Input::GetInstancePtr()->GetOpponentData().shoot = false;
 		Shoot();
 	}
 }
-
 //Cleanup enemy
 void Enemy::Cleanup()
 {
@@ -48,11 +48,20 @@ void Enemy::Cleanup()
 	Component::Cleanup();
 }
 
+//If enemy is killed send result to server and end game
+void Enemy::Death()
+{
+	Application::GetInstancePtr()->GetWinnerState() = true;
+	Application::GetInstancePtr()->GetRunState() = false;
+}
+
+
 //Get Enemy values
 EnemyValues& Enemy::GetEnemyValues(void)
 {
 	return this->enemy;
 }
+
 
 //Move left or right when client gets opponents data to do so from the network
 void Enemy::Move()
@@ -62,7 +71,6 @@ void Enemy::Move()
 	if (Input::GetInstancePtr()->GetOpponentData().right)
 		this->rigidBody->AddForce(Math::Vec3::neg_unit_x, this->enemy.speed);
 }
-
 //Shoot function, gets bullet, shoots bullet
 void Enemy::Shoot()
 {

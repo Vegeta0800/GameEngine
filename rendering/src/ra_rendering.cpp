@@ -304,7 +304,7 @@ void Rendering::CreateDescriptorSets()
 		{
 			//Allocate space for descriptorset using the descriptorpool and descriptorsetlayout.
 			descriptorSetAllocateInfo.pSetLayouts = &layouts[i];
-			VK_CHECK(vkAllocateDescriptorSets(this->logicalDevice, &descriptorSetAllocateInfo, &this->descriptorSets[i]));
+			vkAllocateDescriptorSets(this->logicalDevice, &descriptorSetAllocateInfo, &this->descriptorSets[i]);
 		}
 	}
 
@@ -998,7 +998,7 @@ void Rendering::CreateDescriptorPool()
 	descriptorPoolInfo.pPoolSizes = descriptorPoolSizes.data();
 
 	//Create descriptorpool using the descriptorpool info.
-	VK_CHECK(vkCreateDescriptorPool(this->logicalDevice, &descriptorPoolInfo, nullptr, &this->descriptorPool));
+	vkCreateDescriptorPool(this->logicalDevice, &descriptorPoolInfo, nullptr, &this->descriptorPool);
 }
 //Create descriptorset for a gameobject
 void Rendering::CreateDescriptorSet(Gameobject* gb, ui32 setIndex)
@@ -1624,7 +1624,7 @@ void Rendering::RecordCommands()
 void Rendering::ReRecordCommands(void)
 {
 	vkDeviceWaitIdle(this->logicalDevice);
-
+	 
 	if (this->descriptorSets.size() > 0)
 	{
 		vkFreeDescriptorSets(this->logicalDevice, this->descriptorPool, static_cast<ui32>(this->descriptorSets.size()), this->descriptorSets.data());
@@ -1870,14 +1870,14 @@ void Rendering::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
 		commandPoolInfo.flags = 0; 
 		commandPoolInfo.queueFamilyIndex = this->indexOfTransferQueue;
 
-		VK_CHECK(vkCreateCommandPool(this->logicalDevice, &commandPoolInfo, nullptr, &transferCommandPool));
+		vkCreateCommandPool(this->logicalDevice, &commandPoolInfo, nullptr, &transferCommandPool);
 
 		commandBufferInfo.commandPool = transferCommandPool;
 	}
 
 	//Allocate command buffer.
 	VkCommandBuffer commandBuffer;
-	VK_CHECK(vkAllocateCommandBuffers(this->logicalDevice, &commandBufferInfo, &commandBuffer));
+	vkAllocateCommandBuffers(this->logicalDevice, &commandBufferInfo, &commandBuffer);
 
 	//Begin recording of the command buffer.
 	VkCommandBufferBeginInfo commandBufferBeginInfo;
@@ -1886,7 +1886,7 @@ void Rendering::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
 	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	commandBufferBeginInfo.pInheritanceInfo = nullptr;
 
-	VK_CHECK(vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo));
+	vkBeginCommandBuffer(commandBuffer, &commandBufferBeginInfo);
 
 	//Set buffer copy infos.
 	VkBufferCopy bufferCopy;
@@ -1898,7 +1898,7 @@ void Rendering::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
 	vkCmdCopyBuffer(commandBuffer, src, dst, 1, &bufferCopy);
 
 	//End recording of the command buffer.
-	VK_CHECK(vkEndCommandBuffer(commandBuffer));
+	vkEndCommandBuffer(commandBuffer);
 
 	//Submit info using the command buffer.
 	VkSubmitInfo submitInfo;
@@ -1915,12 +1915,12 @@ void Rendering::CopyBuffer(VkBuffer src, VkBuffer dst, VkDeviceSize size)
 	//Submit to queue. If transfer queue is available then take it. If not take graphics queue.
 	if (this->transferQueue != VK_NULL_HANDLE)
 	{
-		VK_CHECK(vkQueueSubmit(this->transferQueue, 1, &submitInfo, VK_NULL_HANDLE));
+		vkQueueSubmit(this->transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
 		vkQueueWaitIdle(this->transferQueue);
 	}
 	else
 	{
-		VK_CHECK(vkQueueSubmit(this->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE)); //Transfer bit is included with graphics bit.
+		vkQueueSubmit(this->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE); //Transfer bit is included with graphics bit.
 		vkQueueWaitIdle(this->graphicsQueue);
 	}
 

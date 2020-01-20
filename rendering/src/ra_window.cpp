@@ -161,6 +161,12 @@ void Window::ShowActiveWindow()
 	ShowWindow(this->handle, SW_SHOW);
 	UpdateWindow(this->handle);
 }
+//Destroy window
+void Window::Destroy(void)
+{
+	DestroyWindow(this->handle);
+	PostQuitMessage(0);
+}
 //Check if there are any events and if so handle them and return true
 //If not return false
 bool Window::PollEvents(void)

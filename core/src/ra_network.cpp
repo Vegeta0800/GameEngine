@@ -64,6 +64,8 @@ void Network::InitializeClient()
 	//While running
 	while (this->run)
 	{
+		this->run = Application::GetInstancePtr()->GetRunState();
+
 		//Send clients data to opponent
 		iResult = sendto(this->opponentSocket, (const char*)&Input::GetInstancePtr()->GetMyData(), sizeof(DataPacket), 0, (sockaddr*)&this->opponentAddr, sizeof(this->opponentAddr));
 	
@@ -84,6 +86,8 @@ void Network::InitializeClient()
 			Input::GetInstancePtr()->GetOpponentData() = packet;
 		}
 	}
+
+	printf("Close connection");
 
 	//Cleanup when game concluded.
 	this->Cleanup();

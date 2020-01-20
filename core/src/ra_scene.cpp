@@ -171,7 +171,7 @@ void Scene::Cleanup()
 	}
 
 	//Delete camera
-	this->mainCamera->SetTarget(nullptr);
+	delete this->mainCamera->GetTarget();
 	delete this->mainCamera;
 
 	//Cleanup scenegraph

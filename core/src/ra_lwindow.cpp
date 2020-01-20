@@ -325,9 +325,29 @@ void LWindow::Update()
 		//Deactivate spawning
 		this->roomActive = false;
 
-		//Destroy name, password and button window.
-		DestroyWindow(hwndName);
-		DestroyWindow(hwndPassword);
+		//If reset launcher
+		if (rooms.size() != 0)
+		{
+			//Clear all rooms
+			for (int i = 0; i < rooms.size(); i++)
+			{
+				//Messages as the text on the window.
+				DestroyWindow(rooms[i]);
+			}
+			g_roomMapping.clear();
+			g_roomStringMapping.clear();
+			roomRects.clear();
+			rooms.clear();
+		}
+		//If first time
+		else
+		{
+			//Destroy name, password and button window.
+			DestroyWindow(hwndName);
+			DestroyWindow(hwndPassword);
+		}
+
+		//Destroy button
 		DestroyWindow(hwndButton);
 
 		//Create the Create Room button
@@ -347,8 +367,10 @@ void LWindow::Update()
 	{
 		//Stop deletion
 		this->deleteRoom = "";
+
 		//Destroy requested room
 		DestroyWindow(g_roomStringMapping[this->deleteRoom]);
+		g_roomStringMapping.erase(this->deleteRoom);
 	}
 	//If a room is supposed to be updated TODO redundant if ready is instantly created when created room
 	else if (this->update)
