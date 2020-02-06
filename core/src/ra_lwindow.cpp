@@ -292,13 +292,13 @@ void LWindow::Instantiate(ui32 width, ui32 height, ui32 displayID, const char* t
 	//Create the name box.
 	hwndName = HWND();
 	hwndName = CreateWindowEx(0, "EDIT", "",
-		WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL | ES_WANTRETURN | ES_MULTILINE,
+		WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL | ES_WANTRETURN,
 		10, 420, 300, 25, this->handle, (HMENU)Name_ID, (HINSTANCE)(LONG_PTR)GetWindowLong(this->handle, -6), 0);
 
 	//Create the password box.
 	hwndPassword = HWND(); 
 	hwndPassword = CreateWindowEx(0, "EDIT", "",
-		WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL | ES_WANTRETURN | ES_MULTILINE,
+		WS_CHILD | WS_VISIBLE | WS_BORDER | ES_LEFT | ES_AUTOHSCROLL | ES_WANTRETURN | ES_PASSWORD,
 		10, 480, 300, 25, this->handle, (HMENU)Password_ID, (HINSTANCE)(LONG_PTR)GetWindowLong(this->handle, -6), 0);
 
 	//If that fails crash the program.
